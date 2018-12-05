@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block tab_title %}
+  Portfolio
+{% endblock tab_title %}
+
+{#{% block content_title %}#}
+{#  Portfolio#}
+{#{% endblock content_title %}#}
+
+{% block content %}
+<div class="container">
+
+  <h1>Binance Account</h1>
+
+
+  <form action="" method="post">{% with form=exchange_account_form %}{% csrf_token %}
+
+    {% for hidden_field in form.hidden_fields %}
+      {{ hidden_field }}
+    {% endfor %}
+
+    <div class="form-group">
+      <label for="{{ form.api_key.id_for_label }}">API Key</label>
+      <input type="text" class="form-control" autocomplete="off"
+             id="{{ form.api_key.id }}" name="{{ form.api_key.html_name }}"
+             value="{{ form.api_key.value|default:"" }}" placeholder="paste key here">
+      <small id="{{ form.api_key.id_for_label }}-help" class="form-text text-muted">
+        You can find this in your Binance API key settings.
+      </small>
+    </div>
+
+    <div class="form-group">
+      <label for="{{ form.secret_key.id_for_label }}">Secret Key</label>
+      <input type="text" class="form-control" autocomplete="off"
+             id="{{ form.secret_key.id }}" name="{{ form.secret_key.html_name }}"
+             value="{{ form.secret_key.value|default:"" }}" placeholder="paste key here">
+
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+
+  {% endwith %}</form>
+
+</div>
+{% endblock content %}

@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block tab_title %}
+  Allocations
+{% endblock tab_title %}
+
+{#{% block content_title %}#}
+{#  Portfolio#}
+{#{% endblock content_title %}#}
+
+{% block content %}
+<div class="container">
+
+  <div class="row">
+    <div class="col-sm-6">
+      <h1>
+        Portfolio Allocations
+      </h1>
+    </div>
+    <div class="col-sm-6">
+      <ul class="list-unstyled">
+        <li class="text-right">
+          <h4>{{ allocation_object.BTC_value }} BTC</h4>
+        </li>
+        <li class="text-right">
+          <h4>${{ allocation_object.USD_value|default_if_none:"[N/A]" }} USD</h4>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col">
+      <h4>
+        Total:
+        <span id="allocation_total_percent">
+          100
+        </span>
+        %
+        <i class="fa fa-info-circle small" data-toggle="tooltip" data-placement="right"
+           title="The remainder will be held in BTC to support auto-balancing and minimize fees."
+        ></i>
+      </h4>
+    </div>
+
+    <div class="col text-right">
+      <form method="post" target="">
+        {% csrf_token %}
+        <input id="allocation_array" name="allocation_array" type="hidden" value="[]">
+        <button id="save" type="submit" class="btn btn-primary">Save</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="hr-divider">
+    <h3 class="hr-divider-content hr-divider-heading">
+      ITF Packs
+    </h3>
+  </div>
+
+  <div class="card-deck my-3">
+
+    {% for target_alloc in ITF_target_allocations %}
+
+      <div class="card text-center border-primary bg-transparent">
+        <div class="card-header">
+          {{ target_alloc.coin }}
+        </div>
+        <div class="card-body">
+
+
+            <form class="form-inline justify-content-center my-0" onsubmit="return false">
+
+              <div class="input-group my-0">
+
+                <input type="number" class="form-control p-1 text-center" style="max-width:6em;"
+                       id="{{ target_alloc.coin }}_portion" name="{{ target_alloc.coin }}_portion"
+                       value="{{ target_alloc.portion }}" data-coin="{{ target_alloc.coin }}"
+                       placeholder="0.0" maxlength="5">
+
+                <div class="input-group-append">
+                  <div class="input-group-text text-white">%</div>
+                </div>
+              </div>
+
+            </form>
+
+        </div>
+      </div>
+    {% endfor %}
+
+  </div>
+
+  <div class="hr-divider">
+    <h3 class="hr-divider-content hr-divider-heading">
+      Binance Coins
+    </h3>
+  </div>
+
+  <div class="card-deck my-3">
+
+    {% for target_alloc in target_allocation_expanded|dictsort:"portion" reversed %}
+
+      <div class="card text-center border-secondary bg-transparent">
+        <div class="card-header">
+          {{ target_alloc.coin }}
+        </div>
+        <div class="card-body m-1 p-1">
+
+
+            <form class="form-inline justify-content-center my-0" onsubmit="return false">
+
+              <div class="input-group my-0">
+
+                <input type="number" class="form-control p-1 text-center" style="max-width:6em;"
+                       id="{{ target_alloc.coin }}_portion" name="{{ target_alloc.coin }}_portion"
+                       value="{{ target_alloc.portion }}"  data-coin="{{ target_alloc.coin }}"
+                       placeholder="0.0" maxlength="5">
+
+                <div class="input-group-append">
+                  <div class="input-group-text text-white">%</div>
+                </div>
+              </div>
+
+            </form>
+
+        </div>
+      </div>
+      {% if forloop.counter|divisibleby:6 %}
+        </div><div class="card-deck my-4">
+      {% endif %}
+    {% endfor %}
+
+  </div>
+
+</div>
+{% endblock content %}
+
+{% load static %}
+{% block javascript %}
+  <script src="{% static '/javascript/allocation.js' %}"></script>
+{% endblock javascript %}
