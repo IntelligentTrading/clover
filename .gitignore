@@ -1,3 +1,12 @@
+.vscode
+*.pyc
+*.secret
+intelligenttrading-datastore.json
+.idea/
+*credentials.json
+
+# Created by .ignore support plugin (hsz.mobi)
+### Python template
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -23,7 +32,6 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -45,7 +53,6 @@ nosetests.xml
 coverage.xml
 *.cover
 .hypothesis/
-.pytest_cache/
 
 # Translations
 *.mo
@@ -54,7 +61,6 @@ coverage.xml
 # Django stuff:
 *.log
 local_settings.py
-db.sqlite3
 
 # Flask stuff:
 instance/
@@ -77,6 +83,8 @@ target/
 
 # celery beat schedule file
 celerybeat-schedule
+# celery beat pid
+celerybeat.pid
 
 # SageMath parsed files
 *.sage.py
@@ -87,8 +95,6 @@ celerybeat-schedule
 env/
 venv/
 ENV/
-env.bak/
-venv.bak/
 
 # Spyder project settings
 .spyderproject
@@ -102,3 +108,12 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# generated staticfiles
+staticfiles/
+
+.DS_Store
+
+node_modules/
+*.rdb
+static/theme-dashboard.zip
