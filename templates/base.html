@@ -1,0 +1,136 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  {% spaceless %}
+    <title>
+      {% block tab_title %}Service{% endblock tab_title %} | Intelligent Trading
+    </title>
+  {% endspaceless %}
+
+  {% block viewport %}
+    <meta name="viewport" content="width=480, maximum-scale=1.0, user-scalable=no" />
+  {% endblock viewport %}
+
+  <!---META TAGS--->
+  {% block additional_meta_tags %}
+  {% endblock additional_meta_tags %}
+
+  <!--FAVICON--> <!--iOS and Android icons-->
+  <!--{#  <link rel="apple-touch-icon-precomposed" href="{{ STATIC_URL }}images/apple-touch-icon-152x152.png">#}-->
+
+  <!-- JS -->
+  {#  https://getbootstrap.com/docs/4.1/getting-started/introduction/#js#}
+  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>  <!-- CSS -->
+
+
+  <!-- CSS -->
+  {#  https://getbootstrap.com/docs/4.1/getting-started/introduction/#css#}
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+  {#  https://www.bootstrapcdn.com/fontawesome/#}
+  <link href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+
+
+
+  <link href="https://s3.amazonaws.com/intelligenttrading-stage/static/vendor/theme-dashboard/dist/toolkit-inverse.min.css" rel="stylesheet">
+{#  <link href="{% static '/vendor/theme-dashboard/dist/toolkit-inverse.min.css' %}" rel="stylesheet">#}
+  <link href="{% static '/css/base.css' %}?v=0" rel="stylesheet">
+  {% block css %}
+  {% endblock css %}
+</head>
+
+<body>
+
+  <div class="container-fluid mb-5">
+    <div class="row">
+
+
+{#      {% block navigation %}#}
+{#        {% include 'navigation.html' %}#}
+{#      {% endblock navigation %}#}
+
+
+      <div class="col-md-12 content" style="padding-top: 2.1rem;">
+
+        <div class="dashhead">
+
+          <div class="dashhead-titles">
+            <h6 class="dashhead-subtitle">
+              {% block content_subtitle %}Portfolio Management by Intelligent Trading Foundation{% endblock %}
+            </h6>
+            <h3 class="dashhead-title">
+              {% block content_title %}Lobularia Maritima{% endblock %}
+            </h3>
+          </div>
+
+          <div class="dashhead-toolbar">
+
+{#            <span class="dashhead-toolbar-divider hidden-xs"></span>#}
+
+            {% block content_toolbar %}
+              <div class="btn-group dashhead-toolbar-item">
+                {% block content_toolbar_items %}
+
+                  <ul class="nav nav-bordered">
+                    <li class="nav-item">
+                      {% url 'portfolio:dashboard' as url %}
+                      <a class="nav-link {% if request.path == url %}active{% endif %}" href="{{ url }}">
+                        Portfolio
+                      </a>
+                    </li>
+
+                    <li class="nav-item">
+                      {% url 'portfolio:allocation' as url %}
+                      <a class="nav-link {% if request.path == url %}active{% endif %}" href="{{ url }}">
+                        Allocations
+                      </a>
+                    </li>
+
+                    <li class="nav-item">
+                      {% url 'portfolio:exchange_account' as url %}
+                      <a class="nav-link {% if request.path == url %}active{% endif %}" href="{{ url }}">
+                        Account
+                      </a>
+                    </li>
+                  </ul>
+
+                {% endblock %}
+              </div>
+            {% endblock content_toolbar %}
+          </div>
+        </div>
+        <hr class="visible-xs mt-3">
+
+        {% block messages %}
+          {% include 'messages.html' %}
+        {% endblock messages %}
+
+        {% block content %}
+          <p>Hello World</p>
+        {% endblock content %}
+
+      </div>
+    </div>
+  </div>
+
+  <nav class="navbar fixed-bottom navbar bg-faded">
+    {% block footer %}
+      {% include 'footer.html' %}
+    {% endblock footer %}
+  </nav>
+
+  <!--Javascript Placed at the end of the document. Pages load faster. -->
+
+  <script src="https://s3.amazonaws.com/intelligenttrading-stage/static/vendor/theme-dashboard/dist/toolkit.min.js"></script>
+{#  <script src="{% static '/vendor/theme-dashboard/dist/toolkit.min.js' %}"></script>#}
+  <script src="{% static '/javascript/base.js' %}?v=0"></script>
+  {% block javascript %}
+  {% endblock javascript %}
+
+</body>
+</html>
