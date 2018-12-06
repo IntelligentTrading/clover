@@ -1,0 +1,1 @@
+from apps.doge.models.doge import Doge
