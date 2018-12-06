@@ -192,7 +192,7 @@ class CachedDataTAProvider(TAProvider):
         return self.data.price_data.index.get_loc(input[0])
 
 
-class ReddisDummyTAProvider(TAProvider):
+class RedisDummyTAProvider(TAProvider):
 
     def get_indicator(self, indicator_name, input):
         timestamp = self._get_timestamp(input)

@@ -12,7 +12,7 @@ from apps.backtesting.tick_provider import PriceDataframeTickProvider
 from apps.backtesting.tick_listener import TickListener
 from apps.backtesting.utils import datetime_from_timestamp
 from apps.genetic_algorithms.gp_utils import Period
-from apps.genetic_algorithms.leaf_functions import ReddisDummyTAProvider
+from apps.genetic_algorithms.leaf_functions import RedisDummyTAProvider
 
 METRIC_IDS = {
     'mean_profit': 0,
@@ -104,6 +104,7 @@ class DogeTrainer:
 
     @staticmethod
     def run_training(start_timestamp, end_timestamp):
+        # TODO: replace with datetime.now() and similar beautiful stuff
         training_period = Period('2018/04/01 00:00:00 UTC', '2018/04/08 00:00:00 UTC')
         trainer = DogeTrainer(redis_db)
         trainer.retrain_doges(training_period.start_time, training_period.end_time, 10)
@@ -113,35 +114,11 @@ class DogeTrainer:
 
 class DogeTrader(TickListener):
 
-    def __init__(self, database):
-        # load current batch of doges from the db
-        # TODO: fill this from actual db
-
+    def __init__(self, database=redis_db):
         with open(GP_TRAINING_CONFIG, 'r') as f:
             self.gp_training_config_json = f.read()
 
-        doge_strategies = []
-        transaction_currency = 'BTC'
-        counter_currency = 'USDT'
-        resample_period = 60
-        source = 0
-
-        function_provider = ReddisDummyTAProvider()
-
-        # get doges out of DB
-        doge = Doge.objects.filter().latest('train_end_timestamp')
-
-        with open('dogi.db') as dummy_db:
-            for line in dummy_db:
-                start_timestamp, end_timestamp, experiment_id, i, individual_str, mean_profit = line.split('\t')
-                experiment_json = DogeTrainer.fill_json_template(self.gp_training_config_json,
-                                                                 int(float(start_timestamp)), int(float(end_timestamp)))
-                doge, gp = ExperimentManager.resurrect_doge(experiment_json, experiment_id, individual_str, database, function_provider)
-                strategy = GeneticTickerStrategy(doge, transaction_currency, counter_currency, resample_period,
-                                                 source, gp)
-                doge_strategies.append(strategy)
-
-        self.doge_strategies = doge_strategies
+        self.doge_strategies = self._load_latest_doge_strategies(database)
 
         # dummy tick provider for now, TODO: replace with actual one
         e = ExperimentManager('gv5_experiments.json', database=database)
@@ -150,6 +127,34 @@ class DogeTrader(TickListener):
         tick_provider.run()
 
         # simulate the decision process over all the strategies
+
+    def _load_latest_doge_strategies(self, database):
+        doge_strategies = []
+        transaction_currency = 'BTC'
+        counter_currency = 'USDT'
+        resample_period = 60
+        source = 0
+        function_provider = RedisDummyTAProvider()
+
+        # get doges out of DB
+        last_timestamp = Doge.objects.latest('train_end_timestamp').train_end_timestamp.timestamp()  # ah well :)
+        dogi = Doge.objects.filter(train_end_timestamp=last_timestamp)
+
+        for doge_object in dogi:
+            start_timestamp = doge_object.train_start_timestamp.timestamp()
+            end_timestamp = doge_object.train_end_timestamp.timestamp()
+            individual_str = doge_object.representation
+            experiment_id = doge_object.experiment_id
+
+            experiment_json = DogeTrainer.fill_json_template(self.gp_training_config_json,
+                                                             int(float(start_timestamp)), int(float(end_timestamp)))
+            doge, gp = ExperimentManager.resurrect_doge(experiment_json, experiment_id, individual_str, database,
+                                                        function_provider)
+            strategy = GeneticTickerStrategy(doge, transaction_currency, counter_currency, resample_period,
+                                             source, gp)
+            doge_strategies.append(strategy)
+
+        return doge_strategies
 
     def process_event(self, price_data, signal_data):
         print(f'So wow! Price arrived ({datetime_from_timestamp(price_data.Index)})')
