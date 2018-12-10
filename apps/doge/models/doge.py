@@ -9,6 +9,7 @@ from apps.genetic_algorithms.gp_artemis import ExperimentManager
 from apps.backtesting.data_sources import redis_db
 from apps.genetic_algorithms.genetic_program import GeneticTickerStrategy
 from apps.backtesting.tick_provider import PriceDataframeTickProvider
+from apps.backtesting.tick_provider_heartbeat import TickProviderHeartbeat
 from apps.backtesting.tick_listener import TickListener
 from apps.backtesting.utils import datetime_from_timestamp
 from apps.genetic_algorithms.gp_utils import Period
@@ -121,10 +122,14 @@ class DogeTrader(TickListener):
         self.doge_strategies = self._load_latest_doge_strategies(database)
 
         # dummy tick provider for now, TODO: replace with actual one
-        e = ExperimentManager('gv5_experiments.json', database=database)
-        tick_provider = PriceDataframeTickProvider(e.training_data[0].price_data)
-        tick_provider.add_listener(self)
-        tick_provider.run()
+        # e = ExperimentManager('gv5_experiments.json', database=database)
+        # tick_provider = PriceDataframeTickProvider(e.training_data[0].price_data)
+        # tick_provider.add_listener(self)
+        # tick_provider.run()
+
+        tick_provider_heartbeat = TickProviderHeartbeat(60, 'BTC', 'USDT', database=redis_db)
+        tick_provider_heartbeat.add_listener(self)
+        tick_provider_heartbeat.run()
 
         # simulate the decision process over all the strategies
 
