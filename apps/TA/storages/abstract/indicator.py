@@ -2,7 +2,7 @@ import logging
 
 from apps.TA import TAException, HORIZONS
 from apps.TA.storages.abstract.ticker import TickerStorage
-from apps.signal.models import Signal
+#from apps.signal.models import Signal
 
 logger = logging.getLogger(__name__)
 

@@ -594,6 +594,8 @@ class ExperimentManager:
         individuals = []
         fitnesses = []
 
+        return [] # TODO fix to read from DB
+
         with open(HOF_AND_BEST_FILENAME, 'r') as f:
             for line in f:
                 line = line.split(':')
