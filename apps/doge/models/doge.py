@@ -18,8 +18,11 @@ from apps.genetic_algorithms.leaf_functions import RedisDummyTAProvider
 METRIC_IDS = {
     'mean_profit': 0,
 }
+import os.path
+BASE = os.path.dirname(os.path.abspath(__file__))
 
-GP_TRAINING_CONFIG = 'doge_config.json'
+GP_TRAINING_CONFIG = os.path.join(BASE, 'doge_config.json')
+
 
 
 class Doge(models.Model):
@@ -106,9 +109,11 @@ class DogeTrainer:
     @staticmethod
     def run_training(start_timestamp, end_timestamp):
         # TODO: replace with datetime.now() and similar beautiful stuff
-        training_period = Period('2018/04/01 00:00:00 UTC', '2018/04/08 00:00:00 UTC')
+        training_period = Period('2018/02/01 00:00:00 UTC', '2018/02/07 00:00:00 UTC')
         trainer = DogeTrainer(redis_db)
-        trainer.retrain_doges(training_period.start_time, training_period.end_time, 10)
+        start_time = redis_db.get_nearest_db_timestamp(training_period.start_time, 'BTC', 'USDT', None, None)
+        end_time = redis_db.get_nearest_db_timestamp(training_period.end_time, 'BTC', 'USDT', None, None)
+        trainer.retrain_doges(start_time, end_time, 10)
 
         #trader = DogeTrader(database=redis_db)
 

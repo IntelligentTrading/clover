@@ -2,12 +2,13 @@ import logging
 import time
 
 from apps.common.utilities.multithreading import start_new_thread
-from apps.indicator.models.sma import SMA_LIST
+#from apps.indicator.models.sma import SMA_LIST
 from settings import STAGE
 from settings.redis_db import database
 
 logger = logging.getLogger(__name__)
 
+SMA_LIST = [9, 20, 26, 30, 50, 52, 60, 120, 200]
 
 def redisCleanup():
 
