@@ -19,7 +19,6 @@ def visit_node(graph, node, labels, parent = None):
 
 def compress(individual):
     nodes, edges, labels = gp.graph(individual)
-    from gp_utils import recompute_tree_graph
     graph = recompute_tree_graph(nodes, edges)
     root = visit_node(graph, 0, labels)
     optimized = optimize(root)
