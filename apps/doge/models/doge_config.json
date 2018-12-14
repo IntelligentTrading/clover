@@ -1,0 +1,46 @@
+{{
+    "training_data": [
+        {{
+        "transaction_currency": "BTC",
+        "counter_currency": "USDT",
+        "start_time": "{start_time}",
+        "end_time": "{end_time}",
+        "resample_period": 5,
+        "source": 0
+        }}
+    ],
+
+    "validation_data": [
+     ],
+
+    "fitness_functions": ["ff_benchmarkdiff"],
+    "grammar_version": "gv5",
+    "num_generations": 3,
+
+    "mating_probabilities": [
+        0.7
+    ],
+
+    "mutation_probabilities": [
+        0.5, 0.8
+    ],
+
+    "population_sizes": [
+        50
+    ],
+
+    "premade_individuals": [
+        "if_then_else(rsi_lt_20(ARG0), buy, if_then_else(rsi_gt_80(ARG0), sell, ignore))",
+        "if_then_else(rsi_lt_25(ARG0), buy, if_then_else(rsi_gt_75(ARG0), sell, ignore))",
+        "if_then_else(rsi_lt_30(ARG0), buy, if_then_else(rsi_gt_70(ARG0), sell, ignore))"
+    ],
+
+    "tree_depth": 5,
+    "order_generator": "alternating",
+    "reseed_initial_population": {{
+        "enabled": 0,
+        "num_good_individuals": 1,
+        "min_fitness": 0,
+        "max_iterations": 10
+    }}
+}}
