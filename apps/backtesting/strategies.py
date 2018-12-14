@@ -66,7 +66,10 @@ class Strategy(ABC):
     def get_short_summary(self):
         pass
 
-    def get_decision(self, timestamp, price, signals):
+    def get_decision(self, ticker_data):
+        timestamp = ticker_data.timestamp
+        price = ticker_data.close_price
+        signals = ticker_data.signals
         decision = None
         for signal in signals:
             if not self.belongs_to_this_strategy(signal):
@@ -333,7 +336,10 @@ class BuyAndHoldTimebasedStrategy(SignalStrategy):
         self._bought = False
         self._sold = False
 
-    def get_decision(self, timestamp, price, signals):
+    def get_decision(self, ticker_data):
+        timestamp = ticker_data.timestamp
+        price = ticker_data.close_price
+        signals = ticker_data.signals
         if timestamp >= self._start_time and timestamp <= self._end_time and not self._bought:
             if abs(timestamp - self._start_time) > 120:
                 log.warning("Buy and hold BUY: ticker more than 2 mins after start time ({:.2f} mins)!"

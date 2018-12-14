@@ -171,7 +171,7 @@ class DogeCommittee:
 
         # get doges out of DB
         last_timestamp = Doge.objects.latest('train_end_timestamp').train_end_timestamp.timestamp()  # ah well :)
-        dogi = Doge.objects.filter(train_end_timestamp=last_timestamp).order_by('-metric_value')
+        dogi = Doge.objects.filter(train_end_timestamp=last_timestamp) # .order_by('-metric_value') TODO: check if needed
 
         for doge_object in dogi:
             doge = DogeTrader(database=database, doge_object=doge_object, function_provider=self.function_provider,
@@ -211,7 +211,7 @@ class DogeCommittee:
         for i, doge in enumerate(self.doge_strategies):
             decision = doge.vote(ticker_data)
             weight = doge.metric_value
-            print(f'  Doge {i} says: {str(decision)} (its weight is {weight})')
+            print(f'  Doge {i} says: {str(decision)} (its weight is {weight:.2f})')
             votes.append(decision.outcome)
             weights.append(doge.metric_value)
 
