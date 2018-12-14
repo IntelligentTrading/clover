@@ -25,6 +25,7 @@ from functools import partial
 #from pathos.multiprocessing import ProcessingPool as Pool
 from apps.backtesting.utils import parallel_run
 from apps.genetic_algorithms.gp_utils import Period
+from apps.doge.models.doge import Doge
 
 
 SAVE_HOF_AND_BEST = True
@@ -102,7 +103,7 @@ class ExperimentManager:
         for mating_prob, mutation_prob, population_size, fitness_function in variants:
             if LOAD_ROCKSTARS:
                 grammar_version = self.experiment_json["grammar_version"]
-                rockstars = self._load_rockstars(grammar_version, fitness_function, to_load=['hof'], limit_top=20)
+                rockstars = self._load_rockstars(limit_top=20)
                 logging.info(f'Loaded {len(rockstars)} rockstars for {grammar_version}, {fitness_function}.')
             else:
                 rockstars = []
@@ -121,7 +122,6 @@ class ExperimentManager:
                 tree_depth=self.experiment_json["tree_depth"],
                 reseed_params=self.experiment_json["reseed_initial_population"]
             )
-
 
     def _register_variants(self, rebuild_grammar=True):
         clear_all_experiments()
@@ -177,22 +177,7 @@ class ExperimentManager:
 
             logging.info(f"Running variant {i}")
             record = variant.run(keep_record=keep_record, display_results=display_results, saved_figure_ext='.fig.png')
-            self._save_rockstars(record)
 
-    def _save_rockstars(self, record):
-        if SAVE_HOF_AND_BEST:
-            hof, best = record.get_result()
-            fitness_function = record.get_args()['fitness_function']
-            grammar_version = record.get_args()['grammar_version']
-            with open(HOF_AND_BEST_FILENAME, 'a') as f:
-                f.write(
-                    f'hof:{record.get_experiment_id()}:{grammar_version}:{fitness_function._name}:'
-                    f'{"&".join([str(i) + "/" + str(i.fitness.values[0]) for i in hof])}\n'
-                )
-                f.write(
-                    f'gen_best:{record.get_experiment_id()}:{grammar_version}:{fitness_function._name}:'
-                    f'{"&".join([str(i) + "/" + str(i.fitness.values[0]) for i in best])}\n'
-                )
 
     def explore_records(self, use_validation_data=True):
         if use_validation_data:
@@ -590,26 +575,13 @@ class ExperimentManager:
     def plot_data(self):
         self.training_data[0].plot()
 
-    def _load_rockstars(self, grammar_version, fitness_function_name, to_load = ['hof', 'gen_best'], limit_top=None):
-        individuals = []
-        fitnesses = []
+    def _load_rockstars(self, metric_id=0, limit_top=None):
+        # find the latest timestamp
+        last_timestamp = Doge.objects.latest('train_end_timestamp').train_end_timestamp.timestamp()  # ah well :)
+        dogi = Doge.objects.filter(train_end_timestamp=last_timestamp).order_by('-metric_value')
 
-        return [] # TODO fix to read from DB
-
-        with open(HOF_AND_BEST_FILENAME, 'r') as f:
-            for line in f:
-                line = line.split(':')
-                if not line[0] in to_load or line[2] != grammar_version or line[3] != fitness_function_name:
-                    continue
-                entries = line[4].split('&')
-                for entry in entries:
-                    individual_str, fitness = entry.split('/')
-                    if individual_str in individuals:  # we don't want repeat individuals
-                        continue
-                    individuals.append(individual_str)
-                    fitnesses.append(fitness)
-
-        individuals = [x for _, x in sorted(zip(fitnesses, individuals))]
+        # collect string representations
+        individuals = [doge.representation for doge in dogi]
         if limit_top is None:
             return individuals
         else:

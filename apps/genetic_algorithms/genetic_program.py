@@ -41,48 +41,45 @@ class Grammar(ABC):
 
 
 class GeneticTickerStrategy(TickerStrategy):
-    def __init__(self, tree, transaction_currency, counter_currency, resample_period, source,
-                 gp_object):
-        self.transaction_currency = transaction_currency
-        self.counter_currency = counter_currency
-        self.resample_period = resample_period
-        self.source = source
+    def __init__(self, tree, gp_object):
         self.tree = tree
         self.gp_object = gp_object
         self.i = 0
         self.func = self.gp_object.toolbox.compile(expr=self.tree)
 
-    def process_ticker(self, price_data, signals):
+    def process_ticker(self, ticker_data):
         """
         :param price_data: Pandas row with OHLC data and timestamp.
         :param signals: ITF signals co-occurring with price tick.
         :return: StrategyDecision.BUY or StrategyDecision.SELL or StrategyDecision.IGNORE
         """
 
-        price = price_data.close_price
-        timestamp = price_data.Index
-        return self.get_decision(timestamp, price, signals)
+        return self.get_decision(ticker_data)
 
-    def get_decision(self, timestamp, price, signals):
+    def get_decision(self, ticker_data):
 
-        outcome = self.func([timestamp, self.transaction_currency, self.counter_currency])
+        outcome = self.func([ticker_data.timestamp, ticker_data.transaction_currency, ticker_data.counter_currency])
 
         decision = None
         if outcome == self.gp_object.function_provider.buy:
-            signal = Signal("Genetic", 1, None, 3, 3, price, 0, timestamp, None, self.transaction_currency,
-                            self.counter_currency, self.source, self.resample_period)
-            decision = StrategyDecision(timestamp, self.transaction_currency, self.counter_currency,
+            signal = Signal("Genetic", 1, None, 3, 3, ticker_data.close_price, 0, ticker_data.timestamp, None,
+                            ticker_data.transaction_currency,
+                            ticker_data.counter_currency, ticker_data.source, ticker_data.resample_period)
+            decision = StrategyDecision(ticker_data.timestamp, ticker_data.transaction_currency,
+                                        ticker_data.counter_currency,
                                         self.source, StrategyDecision.BUY, signal)
         elif outcome == self.gp_object.function_provider.sell:
-            signal = Signal("Genetic", -1, None, 3, 3, price, 0, timestamp, None, self.transaction_currency,
-                            self.counter_currency, self.source, self.resample_period)
-            decision = StrategyDecision(timestamp, self.transaction_currency, self.counter_currency,
-                                        self.source, StrategyDecision.SELL, signal)
+            signal = Signal("Genetic", -1, None, 3, 3, ticker_data.close_price, 0, ticker_data.timestamp, None,
+                            ticker_data.transaction_currency,
+                            ticker_data.counter_currency, ticker_data.source, ticker_data.resample_period)
+            decision = StrategyDecision(ticker_data.timestamp, ticker_data.transaction_currency,
+                                        ticker_data.counter_currency,
+                                        ticker_data.source, StrategyDecision.SELL, signal)
         elif not outcome == self.gp_object.function_provider.ignore:
             logging.warning("Invalid outcome encountered")
 
         if decision is None:
-            decision = StrategyDecision(timestamp, outcome=StrategyDecision.IGNORE)
+            decision = StrategyDecision(ticker_data.timestamp, outcome=StrategyDecision.IGNORE)
 
         return decision
 
