@@ -32,6 +32,9 @@ DEMO = 'DEMO' in DEPLOYMENT_TYPE
 STAGE = 'STAGE' in DEPLOYMENT_TYPE
 LOCAL = 'LOCAL' in DEPLOYMENT_TYPE
 
+# for Heroku deployment wierdness
+LOAD_TALIB = True
+
 # Set up logger
 if LOCAL:
     log_level = logging.DEBUG
