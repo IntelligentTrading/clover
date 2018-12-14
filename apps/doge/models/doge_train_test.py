@@ -3,8 +3,7 @@ import logging
 from apps.backtesting.data_sources import redis_db, postgres_db
 from apps.backtesting.tick_listener import TickListener
 from apps.backtesting.tick_provider_heartbeat import TickProviderHeartbeat
-from apps.backtesting.tick_provider_itf_db import TickProviderITFDB
-from apps.backtesting.tick_provider import PriceDataframeTickProvider
+from apps.backtesting.tick_provider import TickerData
 from apps.backtesting.utils import datetime_from_timestamp
 from apps.doge.models import Doge
 from apps.doge.models.doge import GP_TRAINING_CONFIG, METRIC_IDS
@@ -13,16 +12,29 @@ from apps.genetic_algorithms.gp_artemis import ExperimentManager
 from apps.genetic_algorithms.gp_utils import Period
 from apps.genetic_algorithms.leaf_functions import RedisTAProvider
 
-
-
 class DogeTrainer:
+    """
+    A class that encapsulates GP training.
+    """
 
     def __init__(self, database):
+        """
+
+        :param database: database from data_sources, either Redis or Postgres
+        """
         with open(GP_TRAINING_CONFIG, 'r') as f:
             self.gp_training_config_json = f.read()
         self.database = database
 
+
     def retrain_doges(self, start_timestamp, end_timestamp, max_doges_to_save=10):
+        """
+        Reruns doge training and saves results to the database.
+        :param start_timestamp: starting time to use for training (tickers are specified in GP_TRAINING_CONFIG json)
+        :param end_timestamp: end time to use for training (tickers are specified in GP_TRAINING_CONFIG json)
+        :param max_doges_to_save: maximum number of GPs to save in the database
+        :return:
+        """
         config_json = self.fill_json_template(self.gp_training_config_json, start_timestamp, end_timestamp)
 
         logging.info('>>>>>>> Starting GP training... ')
@@ -65,6 +77,13 @@ class DogeTrainer:
 
     @staticmethod
     def fill_json_template(gp_training_config_json, start_timestamp, end_timestamp):
+        """
+        Fills the json training template with starting and ending times.
+        :param gp_training_config_json: string json describing the training process (loaded from GP_TRAINING_CONFIG file)
+        :param start_timestamp: training start time
+        :param end_timestamp: training end time
+        :return:
+        """
         return gp_training_config_json.format(
             start_time=datetime_from_timestamp(start_timestamp),
             end_time=datetime_from_timestamp(end_timestamp)
@@ -72,6 +91,12 @@ class DogeTrainer:
 
     @staticmethod
     def run_training(start_timestamp, end_timestamp):
+        """
+        Instantiates a DogeTrainer and reruns training.
+        :param start_timestamp:
+        :param end_timestamp:
+        :return:
+        """
         # TODO: replace with datetime.now() and similar beautiful stuff
         training_period = Period('2018/02/01 00:00:00 UTC', '2018/02/07 00:00:00 UTC')
         trainer = DogeTrainer(redis_db)
@@ -83,8 +108,20 @@ class DogeTrainer:
 
 
 class DogeTrader:
+    """
+    A class that encapsulates a single Doge that trades.
+    NOTE: instantiated in DogeCommittee, no need to manually instantiate
+    (TODO: might reuse the Django Doge model class?)
+    """
 
     def __init__(self, database, doge_object, function_provider, gp_training_config_json):
+        """
+        Instantiates a doge trader.
+        :param database: database instance from data_sources to use, either Redis (redis_db) or Postgres
+        :param doge_object: a Django Doge object obtained by filtering the DB
+        :param function_provider: an instance of the TAProvider class that provides TA values
+        :param gp_training_config_json: a string representation of the training config json (loaded from GP_TRAINING_CONFIG file)
+        """
         self.train_start_timestamp = doge_object.train_start_timestamp.timestamp()
         self.train_end_timestamp = doge_object.train_end_timestamp.timestamp()
         self.individual_str = doge_object.representation
@@ -101,29 +138,96 @@ class DogeTrader:
         self.strategy = GeneticTickerStrategy(tree=self.doge, gp_object=self.gp)
 
     def vote(self, ticker_data):
+        """
+        :param ticker_data: an instance of TickerData class, containing the ticker info and optionally OHLCV data and signals
+        :return: an instance of StrategyDecision class
+        """
         return self.strategy.process_ticker(ticker_data)
+
+
+class DogeCommittee:
+    """
+    A class that encapsulates trading using a committee of GPs.
+    The committee is built out of the latest GPs in the database.
+    """
+
+    def __init__(self, database=redis_db, max_doges=100):
+        with open(GP_TRAINING_CONFIG, 'r') as f:
+            self.gp_training_config_json = f.read()
+
+        self.max_doges = max_doges
+        self.function_provider = RedisTAProvider()
+        doge_strategies = self._load_latest_doge_strategies(database)
+        self.doge_strategies = doge_strategies if len(doge_strategies) <= max_doges else doge_strategies[:max_doges]
+
+
+    def _load_latest_doge_strategies(self, database):
+        """
+        Loads latest doge traders from the database.
+        :param database: the database to use
+        :return: a list of DogeTrader objects
+        """
+        doge_traders = []
+
+        # get doges out of DB
+        last_timestamp = Doge.objects.latest('train_end_timestamp').train_end_timestamp.timestamp()  # ah well :)
+        dogi = Doge.objects.filter(train_end_timestamp=last_timestamp).order_by('-metric_value')
+
+        for doge_object in dogi:
+            doge = DogeTrader(database=database, doge_object=doge_object, function_provider=self.function_provider,
+                              gp_training_config_json=self.gp_training_config_json)
+            doge_traders.append(doge)
+
+        return doge_traders
+
+    def vote(self, transaction_currency, counter_currency, timestamp, source='binance', resample_period=5):
+        """
+        Produces votes of all committee members for the given ticker at timestamp.
+        :param transaction_currency: transaction currency
+        :param counter_currency: counter currency
+        :param timestamp: timestamp
+        :param source: exchange
+        :param resample_period: resampling period in minutes
+        :return: a list of votes (+1=buy, -1=sell, 0=ignore) and a list of
+                 unnormalized weights of doges that produced the votes
+        """
+        ticker_data = TickerData(
+            timestamp=timestamp,
+            transaction_currency=transaction_currency,
+            counter_currency=counter_currency,
+            source=source,
+            resample_period=resample_period,
+            open_price=None, # TODO fill if needed
+            high_price=None,
+            low_price=None,
+            close_price=None,
+            close_volume=None,
+            signals=[],
+        )
+
+        votes = []
+        weights = []
+
+        for i, doge in enumerate(self.doge_strategies):
+            decision = doge.vote(ticker_data)
+            weight = doge.metric_value
+            print(f'  Doge {i} says: {str(decision)} (its weight is {weight})')
+            votes.append(decision.outcome)
+            weights.append(doge.metric_value)
+
+        return votes, weights
 
 
 
 class DogeTradingManager(TickListener):
+    """
+    A class that initializes a heartbeat tick provider that periodically polls Redis for ticker prices and
+    trades on them using a DogeCommittee.
+    """
 
     def __init__(self, database=redis_db, heartbeat_period_secs=60):
-        with open(GP_TRAINING_CONFIG, 'r') as f:
-            self.gp_training_config_json = f.read()
 
-        self.function_provider = RedisTAProvider()
-        self.doge_strategies = self._load_latest_doge_strategies(database)
-
-        # dummy tick provider for now, TODO: replace with actual one
-        # e = ExperimentManager('gv5_experiments.json', database=database)
-        # tick_provider = PriceDataframeTickProvider(e.training_data[0].price_data,
-        #                                           transaction_currency=e.training_data[0].transaction_currency,
-        #                                           counter_currency=e.training_data[0].counter_currency,
-        #                                           source=e.training_data[0].source,
-        #                                           resample_period=e.training_data[0].resample_period)
-        # tick_provider.add_listener(self)
-        # tick_provider.run()
-
+        self.doge_committee = DogeCommittee(database)
 
         tick_provider_heartbeat = TickProviderHeartbeat(
             heartbeat_period_secs=heartbeat_period_secs,
@@ -133,19 +237,6 @@ class DogeTradingManager(TickListener):
         tick_provider_heartbeat.add_listener(self)
         tick_provider_heartbeat.run()
 
-    def _load_latest_doge_strategies(self, database):
-        doge_traders = []
-
-        # get doges out of DB
-        last_timestamp = Doge.objects.latest('train_end_timestamp').train_end_timestamp.timestamp()  # ah well :)
-        dogi = Doge.objects.filter(train_end_timestamp=last_timestamp)
-
-        for doge_object in dogi:
-            doge = DogeTrader(database=database, doge_object=doge_object, function_provider=self.function_provider,
-                              gp_training_config_json=self.gp_training_config_json)
-            doge_traders.append(doge)
-
-        return doge_traders
 
     def process_event(self, ticker_data):
         """
@@ -154,21 +245,18 @@ class DogeTradingManager(TickListener):
         :param ticker_data: an instance of TickerData (OHLCV for a ticker at timestamp)
         :return:
         """
-        print(f'So wow! Price for {ticker_data.transaction_currency}-{ticker_data.counter_currency} '
+        logging.info(f'So wow! Price for {ticker_data.transaction_currency}-{ticker_data.counter_currency} '
               f'arrived ({datetime_from_timestamp(ticker_data.timestamp)})')
 
-        sum_votes = total_weight = 0
-        for i, doge in enumerate(self.doge_strategies):
-            decision = doge.vote(ticker_data)
-            print(f'  Doge {i} says: {str(decision)} (its weight is {doge.metric_value})')
-            sum_votes += decision.outcome * doge.metric_value  # outcome is +1 for buy, -1 for sell, 0 for ignore
-            total_weight += doge.metric_value
+        votes, weights = self.doge_committee.vote(ticker_data.transaction_currency,
+                                                  ticker_data.counter_currency,
+                                                  ticker_data.timestamp)
 
-        print(f'Total sum of votes: {sum_votes}')
-        print(f'Total doge weight: {total_weight}')
-        print(f'End decision for {ticker_data.transaction_currency}-{ticker_data.counter_currency} '
-              f'at {datetime_from_timestamp(ticker_data.timestamp)}: {sum_votes/total_weight}\n\n')
+        weighted_votes = [weight*votes[i] for i, weight in enumerate(weights)]
+
+        logging.info(f'End decision for {ticker_data.transaction_currency}-{ticker_data.counter_currency} '
+              f'at {datetime_from_timestamp(ticker_data.timestamp)}: {sum(weighted_votes)/sum(weights)}\n\n')
 
 
     def broadcast_ended(self):
-        print('Doges have spoken.')
+        logging.info('Doges have spoken.')
