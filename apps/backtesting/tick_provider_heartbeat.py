@@ -1,7 +1,7 @@
 import time
 import pandas as pd
 from apps.backtesting.data_sources import postgres_db
-from apps.backtesting.tick_provider import TickProvider
+from apps.backtesting.tick_provider import TickProvider, TickerData
 
 
 class TickProviderHeartbeat(TickProvider):
@@ -21,13 +21,20 @@ class TickProviderHeartbeat(TickProvider):
         while(True):
             # get the price for our transaction_currency-counter_currency pair
             # mock data for now
-            price_data = pd.DataFrame(
-                {'close_price': 6956, 'high_price': 6973, 'low_price': 6892, 'close_volume': None},
-                index=[1522540800]).iloc[0]  # TODO: fill this with real data
-
-            signals_now = []
-            for row in price_data.iteritems():
-                self.notify_listeners(row, signals_now)
+            ticker_data = TickerData(
+                timestamp=1923891283,
+                transaction_currency='BTC',
+                counter_currency='USDT',
+                source=0,
+                resample_period=5,
+                open_price=123124344, #row.open_price,
+                high_price=213455555, #row.high_price,
+                low_price=9999999, #row.low_price,
+                close_price=213123233,
+                close_volume=4,
+                signals=[],
+            )
+            self.notify_listeners(ticker_data)
             time.sleep(self.heartbeat_period_secs)
 
         self.broadcast_ended()

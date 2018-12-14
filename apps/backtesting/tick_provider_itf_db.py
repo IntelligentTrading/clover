@@ -1,7 +1,7 @@
 import pandas as pd
 from apps.backtesting.data_sources import postgres_db
 from apps.backtesting.signals import Signal
-from apps.backtesting.tick_provider import TickProvider
+from apps.backtesting.tick_provider import TickProvider, TickerData
 
 
 class TickProviderITFDB(TickProvider):

@@ -376,41 +376,41 @@ class RedisDB(Database):
         pass
 
     def get_resampled_prices_in_range(self, start_time, end_time,
-                                      transaction_currency, counter_currency, index="close_price",
-                                      source="binance", normalize=True):
+                                      transaction_currency, counter_currency, candle_duration_minutes=5,
+                                      source="binance", normalize=False):
         """
 
-        :param start_time:
-        :param end_time:
-        :param transaction_currency:
-        :param counter_currency:
+        :param start_time: start of time range (timestamp in seconds)
+        :param end_time: end of time range (timestamp in seconds)
+        :param transaction_currency: transaction currency
+        :param counter_currency: counter currency
         :param index:
         :param source: only "binance"
-        :param normalize: todo: what is this?
-        :return:
+        :param normalize: if True, the returned price from database should be divided by 1E8
+        :return: a dataframe with open, high, low and closing price and close volume
         """
 
-        periods_range = (end_time - start_time) // (5*60) #.seconds // 5
+        periods_range = (end_time - start_time) // (candle_duration_minutes*60)
 
         close_prices = PriceStorage.query(
             ticker=f'{transaction_currency}_{counter_currency}',
-            exchange="binance",
+            exchange=source,
             index="close_price",
-            timestamp=end_time, #.timestamp(),
+            timestamp=end_time,
             periods_range=periods_range,
             timestamp_tolerance=0
         ) # ['values']
 
         high_prices = PriceStorage.query(
             ticker=f'{transaction_currency}_{counter_currency}',
-            exchange="binance",
+            exchange=source,
             index="high_price",
-            timestamp=end_time, #.timestamp(),
+            timestamp=end_time,
             periods_range=periods_range,
             timestamp_tolerance=0
         ) # ['values']
 
-        # assert len(close_prices['scores']) == len(high_prices['scores'])
+        # assert len(close_prices['scores']) == len(high_prices['scores']) TODO @tomcounsell make this work, currently missing data!
 
         timestamps = [PriceStorage.timestamp_from_score(float(score)) for score in close_prices['scores']]
         close_prices = list(map(float, close_prices['values']))
@@ -418,6 +418,7 @@ class RedisDB(Database):
         data = {'timestamp': timestamps, 'close_price': close_prices,
                 'high_price': close_prices, 'low_price': close_prices, 'close_volume': close_prices}
                 # TODO fix stuff with missing high prices and other values
+
         df = pd.DataFrame(data, columns=['timestamp', 'close_price', 'high_price', 'low_price', 'close_volume'])
         df = df.set_index('timestamp')
 
@@ -425,7 +426,6 @@ class RedisDB(Database):
 
 
     def get_nearest_resampled_price(self, timestamp, transaction_currency, counter_currency, resample_period, source, normalize):
-
         prices = PriceStorage.query(
             ticker=f'{transaction_currency}_{counter_currency}',
             exchange="binance",
@@ -694,5 +694,5 @@ class RedisDummyDB(Database):
         pass
 
 
-postgres_db = None #PostgresDatabaseConnection()
+postgres_db = PostgresDatabaseConnection()
 redis_db = RedisDB()
