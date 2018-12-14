@@ -44,7 +44,10 @@ class Command(BaseCommand):
         logger.info("Starting TA worker.")
 
         subscribers = {}
-        for subscriber_class in get_subscriber_classes():
+        all_subscriber_classes = []
+        all_subscriber_classes.append(get_subscriber_classes())
+        all_subscriber_classes.append(get_doge_subscriber_classes())
+        for subscriber_class in all_subscriber_classes:
             subscribers[subscriber_class.__name__] = subscriber_class()
             logger.debug(f'added subscriber {subscriber_class}')
             logger.debug(f'new subscriber is {subscribers[subscriber_class.__name__]}')
@@ -59,12 +62,6 @@ class Command(BaseCommand):
                 # logger.debug(f'checking subscription {class_name}: {subscribers[class_name]}')
                 try:
                     subscribers[class_name]()  # run subscriber class
-
-                    # estimate when TA should be finished
-                    # activate the doges 🐕🐕🐕
-                    # votes = {}
-                    # for ticker in ['BTC_USDT']:
-                    #     votes['BTC_USDT'] = sum(doge.vote("BTC_USDT") * doge.weight for doge in living_doges)
 
                 except Exception as e:
                     logger.error(str(e))
@@ -100,4 +97,11 @@ def get_subscriber_classes():
         # trix.TrixSubscriber, ultosc.UltoscSubscriber,
         willr.WillrSubscriber, # the last one (if changes, change in SignalSubscriber default subscription)
 
+    ]
+
+def get_doge_subscriber_classes():
+    from apps.doge.doge_TA_actors import *
+
+    return [
+        # place your doges here
     ]
