@@ -197,3 +197,5 @@ HORIZONS_TIME2NAMES = {
 # list of the exchanges on which we generate signals. Make it in sync with same list in Data app settings
 #EXCHANGE_MARKETS = ('poloniex', 'binance', 'bittrex', 'bitfinex', 'kucoin')
 EXCHANGE_MARKETS = ('poloniex', 'binance', 'bittrex')
+
+LOAD_TALIB = True

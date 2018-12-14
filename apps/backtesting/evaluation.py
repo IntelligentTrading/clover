@@ -758,8 +758,3 @@ class Evaluation(ABC):
 
 
 
-class StrategyDecision:
-    BUY = "BUY"
-    SELL = "SELL"
-    IGNORE = None
-

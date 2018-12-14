@@ -67,7 +67,7 @@ class GeneticTickerStrategy(TickerStrategy):
                             ticker_data.counter_currency, ticker_data.source, ticker_data.resample_period)
             decision = StrategyDecision(ticker_data.timestamp, ticker_data.transaction_currency,
                                         ticker_data.counter_currency,
-                                        self.source, StrategyDecision.BUY, signal)
+                                        ticker_data.source, StrategyDecision.BUY, signal)
         elif outcome == self.gp_object.function_provider.sell:
             signal = Signal("Genetic", -1, None, 3, 3, ticker_data.close_price, 0, ticker_data.timestamp, None,
                             ticker_data.transaction_currency,
