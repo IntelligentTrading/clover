@@ -22,7 +22,9 @@ class TickProviderHeartbeat(TickProvider):
             # get the price for our transaction_currency-counter_currency pair
             # mock data for now
 
+            logging.info('♡♡♡♡                                                         ♡♡♡♡')
             logging.info(f'♡_.~"~._.~"~._(heart tick: {datetime_from_timestamp(datetime.datetime.now().timestamp())})_.~"~._.~"~._♡')
+            logging.info('♡♡♡♡                                                         ♡♡♡♡')
 
             for ticker in self.ticker_list:
                 transaction_currency, counter_currency = ticker.split('_')
