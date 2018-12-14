@@ -2,6 +2,7 @@ import numpy as np
 import inspect
 from collections import namedtuple
 from abc import ABC, abstractmethod
+from apps.backtesting.data_sources import redis_db
 
 class FunctionProvider(ABC):
 
@@ -192,17 +193,37 @@ class CachedDataTAProvider(TAProvider):
         return self.data.price_data.index.get_loc(input[0])
 
 
-class RedisDummyTAProvider(TAProvider):
+class RedisTAProvider(TAProvider):
 
     def get_indicator(self, indicator_name, input):
         timestamp = self._get_timestamp(input)
-        # query Redis to get indicator_name at timestamp
-        return 35
+        transaction_currency, counter_currency = input[1:3]
+        indicator_value = redis_db.get_indicator(
+            timestamp=timestamp,
+            indicator_name='rsi',  # TODO @tomcounsell ensure we have data for all indicator_names
+            transaction_currency=transaction_currency,
+            counter_currency=counter_currency,
+            resample_period=5
+        )
+
+        return 25 # TODO remove mock values once Redis is filled with actual data
 
     def get_indicator_at_previous_timestamp(self, indicator_name, input):
         timestamp = self._get_timestamp(input)
-        # query Redis to get indicator_name at timestamp-1
-        return 28
+        transaction_currency, counter_currency = input[1:3]
+        indicator_value = redis_db.get_indicator_at_previous_timestamp(
+            timestamp=timestamp,
+            indicator_name=indicator_name,  # TODO @tomcounsell ensure we have data for all indicator_names
+            transaction_currency=transaction_currency,
+            counter_currency=counter_currency,
+            resample_period=5
+        )
+
+        return 30  # TODO remove mock values once Redis is filled with actual data
+
+
+
+
 
 
 class TAProviderCollection(FunctionProvider):

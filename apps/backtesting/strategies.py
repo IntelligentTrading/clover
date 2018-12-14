@@ -14,9 +14,9 @@ class StrategyDecision:
     """
     A class that encapsulates decision produced by a strategy.
     """
-    BUY = "BUY"
-    SELL = "SELL"
-    IGNORE = None
+    BUY = 1
+    SELL = -1
+    IGNORE = 0
 
     def __init__(self, timestamp, transaction_currency=None, counter_currency=None, source=None, outcome=None, signal=None):
         assert outcome in (StrategyDecision.BUY, StrategyDecision.SELL, StrategyDecision.IGNORE)
@@ -35,6 +35,16 @@ class StrategyDecision:
 
     def ignore(self):
         return self.outcome == StrategyDecision.IGNORE
+
+    def __str__(self):
+        if self.outcome == self.BUY:
+            return 'BUY'
+        elif self.outcome == self.SELL:
+            return 'SELL'
+        elif self.outcome == self.IGNORE:
+            return 'IGNORE'
+        else:
+            return '<error> invalid outcome'
 
 @total_ordering
 class Strategy(ABC):

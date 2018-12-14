@@ -447,6 +447,17 @@ class RedisDB(Database):
         )['values']
         return float(prices[-1]) if len(prices) else None
 
+
+    def get_latest_price(self, transaction_currency, counter_currency="BTC", normalize=False):
+
+        prices = PriceStorage.query(
+            ticker=f'{transaction_currency}_{counter_currency}',
+            exchange="binance",
+            index="close_price",
+        )
+        return float(prices['values'][-1]), prices['latest_timestamp'] if len(prices) else (None, None)
+
+
     def get_price_nearest_to_timestamp(self, transaction_currency, timestamp, source, counter_currency,
                                        max_delta_seconds_past=60*60,
                                        max_delta_seconds_future=60*5):
@@ -491,13 +502,13 @@ class RedisDB(Database):
             return results['latest_timestamp']
 
 
-    def get_indicator(self, indicator_name, transaction_currency, counter_currency, timestamp, resample_period, source):
+    def get_indicator(self, indicator_name, transaction_currency, counter_currency, timestamp, resample_period, source='binance'):
         # query Redis to get indicator value at timestamp
 
         params = dict(
             ticker=f'{transaction_currency}_{counter_currency}',
             exchange="binance",
-            timestamp=timestamp.timestamp(),
+            timestamp=timestamp,
             periods_key = resample_period//5
         )
 
@@ -528,7 +539,7 @@ class RedisDB(Database):
 
     def get_indicator_at_previous_timestamp(self, indicator_name, transaction_currency, counter_currency, timestamp, resample_period, source):
         self.get_indicator(indicator_name, transaction_currency, counter_currency,
-                           (timestamp - timedelta(seconds=resample_period)),
+                           (timestamp - timedelta(seconds=resample_period*60)),
                            resample_period, source)
 
 
