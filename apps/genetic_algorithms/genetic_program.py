@@ -392,12 +392,12 @@ class GeneticProgram:
 
         else:
             strategy = GeneticTickerStrategy(tree=individual,
-                                             transaction_currency=data.transaction_currency,
-                                             counter_currency=data.counter_currency,
-                                             source=data.source,
-                                             resample_period=data.resample_period,
                                              gp_object=self)
-            tick_provider = PriceDataframeTickProvider(data.price_data)
+            tick_provider = PriceDataframeTickProvider(data.price_data,
+                                                       transaction_currency=data.transaction_currency,
+                                                       counter_currency=data.counter_currency,
+                                                       source=data.source,
+                                                       resample_period=data.resample_period, )
 
             # create a new tick based backtester
             evaluation = TickDrivenBacktester(
