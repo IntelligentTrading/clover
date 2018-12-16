@@ -186,3 +186,19 @@ if LOCAL:
         logger.error("Could not successfully import local_settings.py. This is necessary if you are running locally. This file should be in version control.")
         raise
 
+# mapping from bin size to a name short/medium
+# CHANGES TO THESE VALUES REQUIRE MAKING AND RUNNING DB MIGRATIONS
+PERIODS_LIST = list([60,240,1440])  # minutes, so 1hr, 4hr, 24hr
+# CHANGES TO THESE VALUES REQUIRE MAKING AND RUNNING DB MIGRATIONS
+(SHORT, MEDIUM, LONG) = PERIODS_LIST
+HORIZONS_TIME2NAMES = {
+    SHORT:'short',
+    MEDIUM:'medium',
+    LONG:'long'
+}
+
+# list of the exchanges on which we generate signals. Make it in sync with same list in Data app settings
+#EXCHANGE_MARKETS = ('poloniex', 'binance', 'bittrex', 'bitfinex', 'kucoin')
+EXCHANGE_MARKETS = ('poloniex', 'binance', 'bittrex')
+
+LOAD_TALIB = True

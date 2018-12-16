@@ -141,7 +141,12 @@ class Data:
             start_time=self.start_time,
             end_time=self.end_time,
             source=self.source,
-            tick_provider=PriceDataframeTickProvider(self.price_data),
+            tick_provider=PriceDataframeTickProvider(self.price_data,
+                                                     transaction_currency=self.transaction_currency,
+                                                     counter_currency=self.counter_currency,
+                                                     source=self.source,
+                                                     resample_period=self.resample_period,
+                                                     ),
             database=self.database
         )
         return benchmark
