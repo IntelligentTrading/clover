@@ -5,7 +5,7 @@
         "counter_currency": "USDT",
         "start_time": "{start_time}",
         "end_time": "{end_time}",
-        "resample_period": 60,
+        "resample_period": 5,
         "source": 0
         }}
     ],
