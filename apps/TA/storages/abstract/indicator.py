@@ -215,6 +215,9 @@ class IndicatorStorage(TickerStorage):
             raise IndicatorException("save error, missing data")
 
         self.db_key_suffix = f'{str(self.periods)}'
+        if not 'publish' in kwargs:
+            kwargs['publish'] = True
+
         save_result = super().save(*args, **kwargs)
         try:
             self.produce_signal()
