@@ -16,25 +16,6 @@ class SignalSubscriber(IndicatorSubscriber):
     storage_class = IndicatorStorage  # override with applicable storage class
 
 
-    def pre_handle(self, channel, data, *args, **kwargs):
-        super().pre_handle(channel, data, *args, **kwargs)
-
-
-
-class DogeSubscriber(SignalSubscriber):
-    class_describer = "signal_subscriber"
-    classes_subscribing_to = [
-        willr.WillrStorage # the last one
-    ]
-    storage_class = IndicatorStorage  # override with applicable storage class
-
-    # estimate when TA should be finished
-    # activate the doges 🐕🐕🐕
-    # votes = {}
-    # for ticker in ['BTC_USDT']:
-    #     votes['BTC_USDT'] = sum(doge.vote("BTC_USDT") * doge.weight for doge in living_doges)
-
-
 class DogeStorage(IndicatorStorage):
 
     # todo: abstract this for programatic implementation
@@ -51,3 +32,17 @@ class DogeStorage(IndicatorStorage):
             return BULLISH
         else:
             return BEARISH
+
+
+class DogeSubscriber(SignalSubscriber):
+
+    storage_class = DogeStorage  # override with applicable storage class
+
+    # estimate when TA should be finished
+    # activate the doges 🐕🐕🐕
+    # votes = {}
+    # for ticker in ['BTC_USDT']:
+    #     votes['BTC_USDT'] = sum(doge.vote("BTC_USDT") * doge.weight for doge in living_doges)
+
+    def pre_handle(self, channel, data, *args, **kwargs):
+        super().pre_handle(channel, data, *args, **kwargs)

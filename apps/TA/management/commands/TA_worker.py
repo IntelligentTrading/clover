@@ -44,9 +44,7 @@ class Command(BaseCommand):
         logger.info("Starting TA worker.")
 
         subscribers = {}
-        all_subscriber_classes = []
-        all_subscriber_classes.append(get_subscriber_classes())
-        all_subscriber_classes.append(get_doge_subscriber_classes())
+        all_subscriber_classes = get_subscriber_classes() + get_doge_subscriber_classes()
         for subscriber_class in all_subscriber_classes:
             subscribers[subscriber_class.__name__] = subscriber_class()
             logger.debug(f'added subscriber {subscriber_class}')
@@ -100,8 +98,9 @@ def get_subscriber_classes():
     ]
 
 def get_doge_subscriber_classes():
-    from apps.doge.doge_TA_actors import *
+    # from apps.doge.doge_TA_actors import DogeSubscriber
 
     return [
         # place your doges here
+        # DogeSubscriber,
     ]
