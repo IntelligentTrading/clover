@@ -4,7 +4,6 @@ import time
 from django.core.management.base import BaseCommand
 
 from apps.TA.storages.utils.memory_cleaner import redisCleanup
-from settings.rabbitmq import WorkQueue
 from settings.redis_db import database
 
 logger = logging.getLogger(__name__)
@@ -45,7 +44,8 @@ class Command(BaseCommand):
         logger.info("Starting TA worker.")
 
         subscribers = {}
-        for subscriber_class in get_subscriber_classes():
+        all_subscriber_classes = get_subscriber_classes() + get_doge_subscriber_classes()
+        for subscriber_class in all_subscriber_classes:
             subscribers[subscriber_class.__name__] = subscriber_class()
             logger.debug(f'added subscriber {subscriber_class}')
             logger.debug(f'new subscriber is {subscribers[subscriber_class.__name__]}')
@@ -60,6 +60,7 @@ class Command(BaseCommand):
                 # logger.debug(f'checking subscription {class_name}: {subscribers[class_name]}')
                 try:
                     subscribers[class_name]()  # run subscriber class
+
                 except Exception as e:
                     logger.error(str(e))
                     logger.debug(subscribers[class_name].__dict__)
@@ -67,46 +68,39 @@ class Command(BaseCommand):
                 time.sleep(0.001)  # be nice to the system :)
 
 
-    def new_handle(self, *args, **options):
-        topics = [subscriber_class.class_describer for subscriber_class in get_subscriber_classes()]
-
-        work_queues = []
-        for topic in set(topics):
-            work_queues.append(WorkQueue(topic=topic))
-        for queue in work_queues:
-            queue.process_tasks_async()
-
-        while True:
-            time.sleep(5)  # wait for the world to end
-
-
 def get_subscriber_classes():
-
-    from apps.TA.storages.data.price import PriceSubscriber
-    # from apps.TA.storages.data.volume import VolumeSubscriber
-    # only PriceStorage:close_price is publishing. All other p and v indexes are muted
 
     from apps.TA.indicators.overlap import sma, ema, wma, dema, tema, trima, bbands, ht_trendline, kama, midprice
     from apps.TA.indicators.momentum import adx, adxr, apo, aroon, aroonosc, bop, cci, cmo, dx, macd, mom, ppo, \
         roc, rocr, rsi, stoch, stochf, stochrsi, trix, ultosc, willr
 
     return [
-        PriceSubscriber,
-        # VolumeSubscriber,  # the PriceSubscriber handles volume resampling
 
         # OVERLAP INDICATORS
         # midprice.MidpriceSubscriber,
         sma.SmaSubscriber, ema.EmaSubscriber, wma.WmaSubscriber,
         # dema.DemaSubscriber, tema.TemaSubscriber, trima.TrimaSubscriber, kama.KamaSubscriber,
         bbands.BbandsSubscriber,
-        # ht_trendline.HtTrendlineSubscriber,
+        ht_trendline.HtTrendlineSubscriber,
 
         # # MOMENTUM INDICATORS
-        # adx.AdxSubscriber, adxr.AdxrSubscriber, apo.ApoSubscriber, aroon.AroonSubscriber, aroonosc.AroonOscSubscriber,
+        adx.AdxSubscriber,
+        # adxr.AdxrSubscriber, apo.ApoSubscriber, aroon.AroonSubscriber, aroonosc.AroonOscSubscriber,
         # bop.BopSubscriber, cci.CciSubscriber, cmo.CmoSubscriber, dx.DxSubscriber,
         macd.MacdSubscriber,
         # # mfi.MfiSubscriber,
-        # mom.MomSubscriber, ppo.PpoSubscriber, roc.RocSubscriber, rocr.RocrSubscriber, rsi.RsiSubscriber,
+        # mom.MomSubscriber, ppo.PpoSubscriber, roc.RocSubscriber, rocr.RocrSubscriber,
+        rsi.RsiSubscriber,
         # stoch.StochSubscriber, stochf.StochfSubscriber, stochrsi.StochrsiSubscriber,
-        # trix.TrixSubscriber, ultosc.UltoscSubscriber, willr.WillrSubscriber,
+        # trix.TrixSubscriber, ultosc.UltoscSubscriber,
+        willr.WillrSubscriber, # the last one (if changes, change in SignalSubscriber default subscription)
+
+    ]
+
+def get_doge_subscriber_classes():
+    # from apps.doge.doge_TA_actors import DogeSubscriber
+
+    return [
+        # place your doges here
+        # DogeSubscriber,
     ]
