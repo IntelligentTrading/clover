@@ -86,6 +86,7 @@ LOCAL_APPS = [
     # 'apps.user',
     'apps.common',
     'apps.communication',
+    'apps.TA',
     'apps.portfolio',
     'apps.doge'
 ]
