@@ -14,19 +14,19 @@ class AdxStorage(IndicatorStorage):
     class_periods_list = [14,]
     requisite_pv_indexes = ["high_price", "low_price", "close_price"]
 
-    def compute_value_with_requisite_indexes(self, requisite_pv_index_arrrays: dict, periods: int = 0) -> str:
+    def compute_value_with_requisite_indexes(self, requisite_pv_index_arrays: dict, periods: int = 0) -> str:
         """
 
-        :param requisite_pv_index_arrrays:
+        :param requisite_pv_index_arrays:
         :param periods:
         :return:
         """
         periods = periods or self.periods
 
         adx_value = talib.ADX(
-            requisite_pv_index_arrrays["high_price"],
-            requisite_pv_index_arrrays["low_price"],
-            requisite_pv_index_arrrays["close_price"],
+            requisite_pv_index_arrays["high_price"],
+            requisite_pv_index_arrays["low_price"],
+            requisite_pv_index_arrays["close_price"],
             timeperiod=periods
         )[-1]
 
