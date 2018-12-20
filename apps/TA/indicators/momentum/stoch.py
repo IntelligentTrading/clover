@@ -46,5 +46,5 @@ class StochSubscriber(IndicatorSubscriber):
             # logger.debug(f'savingStoch value {slowk}, {slowd} for {self.ticker} on {periods} periods')
 
             new_stoch_storage.periods = periods
-            new_stoch_storage.value = f'{slowd}:{slowd}'
+            new_stoch_storage.value = f'{slowk}:{slowd}'
             new_stoch_storage.save()

@@ -3,6 +3,7 @@ import inspect
 from collections import namedtuple
 from abc import ABC, abstractmethod
 from apps.backtesting.data_sources import redis_db
+from apps.TA import PERIODS_4HR
 
 class FunctionProvider(ABC):
 
@@ -195,20 +196,38 @@ class CachedDataTAProvider(TAProvider):
 
 class RedisTAProvider(TAProvider):
 
-    def get_indicator(self, indicator_name, input):
+    default_indicator_periods = {
+        'sma20': 20,
+        'sma50': 50,
+        'sma200': 200,
+        'ema20': 20,
+        'ema50': 50,
+        'ema200': 200,
+        'rsi': 1,
+        'bb_up': 5,
+        'bb_mid': 5,
+        'bb_low': 5,
+        'macd_value': 26,
+        'macd_signal': 26,
+        'macd_hist': 26,
+        'adx': 1,
+        'slowd': 5
+    }
+
+    def get_indicator(self, indicator_name, input, horizon):
         timestamp = self._get_timestamp(input)
         transaction_currency, counter_currency = input[1:3]
         indicator_value = redis_db.get_indicator(
             timestamp=timestamp,
-            indicator_name='rsi',  # TODO @tomcounsell ensure we have data for all indicator_names
+            indicator_name=indicator_name,  # TODO @tomcounsell ensure we have data for all indicator_names
             transaction_currency=transaction_currency,
             counter_currency=counter_currency,
-            resample_period=5
+            resample_period=horizon * self.default_indicator_periods['indicator_name']
         )
 
         return 25 # TODO remove mock values once Redis is filled with actual data
 
-    def get_indicator_at_previous_timestamp(self, indicator_name, input):
+    def get_indicator_at_previous_timestamp(self, indicator_name, input, horizon):
         timestamp = self._get_timestamp(input)
         transaction_currency, counter_currency = input[1:3]
         indicator_value = redis_db.get_indicator_at_previous_timestamp(
@@ -216,7 +235,7 @@ class RedisTAProvider(TAProvider):
             indicator_name=indicator_name,  # TODO @tomcounsell ensure we have data for all indicator_names
             transaction_currency=transaction_currency,
             counter_currency=counter_currency,
-            resample_period=5
+            resample_period=horizon * self.default_indicator_periods['indicator_name']
         )
 
         return 30  # TODO remove mock values once Redis is filled with actual data

@@ -46,7 +46,7 @@ class DogeTrainer:
                               hof_size=10)  # we will have one central json with all the parameters
 
         # run experiments
-        e.run_experiments(keep_record=True) # if we can run it in parallel, otherwise call e.run_experiments()
+        e.run_experiments(keep_record=True)
 
         logging.info('>>>>>>> GP training completed.')
 
@@ -97,12 +97,16 @@ class DogeTrainer:
         :param end_timestamp:
         :return:
         """
-        # TODO: replace with datetime.now() and similar beautiful stuff
+        # TODO: replace with datetime.now() and similar beautiful stuff once Redis is working
         training_period = Period('2018/12/01 00:00:00 UTC', '2018/12/07 00:00:00 UTC')
         trainer = DogeTrainer(redis_db)
-        start_time = redis_db.get_nearest_db_timestamp(training_period.start_time, 'BTC', 'USDT', None, None)
-        end_time = redis_db.get_nearest_db_timestamp(training_period.end_time, 'BTC', 'USDT', None, None)
-        trainer.retrain_doges(start_time, end_time, 10)
+
+        # start_time = redis_db.get_nearest_db_timestamp(start_timestamp, 'BTC', 'USDT', None, None)
+        # end_time = redis_db.get_nearest_db_timestamp(end_timestamp, 'BTC', 'USDT', None, None)
+        start_time = redis_db.get_nearest_db_timestamp(training_period.start_time, 'BTC', 'USDT')
+        end_time = redis_db.get_nearest_db_timestamp(training_period.end_time, 'BTC', 'USDT')
+
+        trainer.retrain_doges(start_time, end_time, max_doges_to_save=10)
 
         #trader = DogeTrader(database=redis_db)
 
