@@ -28,8 +28,8 @@ class AbstractSubscriber(ABC):
             logger.info(f'{self.__class__.__name__} subscribed to '
                         f'{s_class.__name__} channel')
 
-    def __call__(self):
-        data_event = self.pubsub.get_message()
+    def __call__(self, data_event=None):
+        data_event = data_event or self.pubsub.get_message()
         if not data_event:
             return
         if not data_event.get('type') == 'message':
@@ -42,7 +42,7 @@ class AbstractSubscriber(ABC):
         #   'pattern': None,
         #   'channel': b'PriceStorage',
         #   'data': b'{
-        #       "key": f'{self.ticker}:{self.exchange}:PriceStorage:{periods}',
+        #       "key": f'{self.ticker}:{self.exchange}:PriceStorage:{index}',
         #       "name": "9545225909:1533883300",
         #       "score": "1533883300"
         #   }'
