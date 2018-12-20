@@ -1,10 +1,8 @@
 from settings import LOAD_TALIB
-
 if LOAD_TALIB:
-    import talib
+    import math, talib
 
-from apps.TA import HORIZONS
-from apps.TA.storages.abstract.indicator import IndicatorStorage
+from apps.TA.storages.abstract.indicator import IndicatorStorage, BULLISH, BEARISH, OTHER
 from apps.TA.storages.abstract.indicator_subscriber import IndicatorSubscriber
 from apps.TA.storages.data.price import PriceStorage
 from settings import logger
@@ -12,39 +10,46 @@ from settings import logger
 
 class StochStorage(IndicatorStorage):
 
+    class_periods_list = [5,]
+    requisite_pv_indexes = ["high_price", "low_price", "close_price"]
+
+    def compute_value_with_requisite_indexes(self, requisite_pv_index_arrrays: dict, periods: int = 0) -> str:
+        """
+
+        :param requisite_pv_index_arrrays:
+        :param periods:
+        :return:
+        """
+
+        periods = periods or self.periods
+        slowk, slowd = talib.STOCH(
+            requisite_pv_index_arrrays["high_price"],
+            requisite_pv_index_arrrays["low_price"],
+            requisite_pv_index_arrrays["close_price"],
+            fastk_period=periods, slowk_period=periods*3/5,
+            slowk_matype=0, slowd_period=periods*3/5, slowd_matype=0
+        )[-1]
+
+        stoch_values = f'{slowk}:{slowd}'
+
+        logger.debug(f"Stoch computed: {stoch_values}")
+
+        if math.isnan(slowk) or math.isnan(slowd):
+            return ""
+
+        return stoch_values
+
+
     def produce_signal(self):
-        pass
+        """
+        defining the criteria for sending signals
+
+        :return: None
+        """
+        if "this indicator" == "interesting":
+            self.send_signal(trend=BULLISH)
 
 
 class StochSubscriber(IndicatorSubscriber):
-    classes_subscribing_to = [
-        PriceStorage
-    ]
-
-    def handle(self, channel, data, *args, **kwargs):
-
-        self.index = self.key_suffix
-
-        if str(self.index) is not "close_price":
-            logger.debug(f'index {self.index} is not close_price ...ignoring...')
-            return
-
-        new_stoch_storage = StochStorage(ticker=self.ticker,
-                                     exchange=self.exchange,
-                                     timestamp=self.timestamp)
-
-        for horizon in HORIZONS:
-            periods = horizon * 5
-
-            high_value_np_array = new_stoch_storage.get_denoted_price_array("high_price", periods)
-            low_value_np_array = new_stoch_storage.get_denoted_price_array("low_price", periods)
-            close_value_np_array = new_stoch_storage.get_denoted_price_array("close_price", periods)
-
-            slowk, slowd = talib.STOCH(high_value_np_array, low_value_np_array, close_value_np_array,
-                                       fastk_period=horizon*5, slowk_period=horizon*3,
-                                       slowk_matype=0, slowd_period=horizon*3, slowd_matype=0)[-1]
-            # logger.debug(f'savingStoch value {slowk}, {slowd} for {self.ticker} on {periods} periods')
-
-            new_stoch_storage.periods = periods
-            new_stoch_storage.value = f'{slowk}:{slowd}'
-            new_stoch_storage.save()
+    classes_subscribing_to = [PriceStorage]
+    storage_class = StochStorage

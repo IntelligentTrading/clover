@@ -1,7 +1,6 @@
 from settings import LOAD_TALIB
-
 if LOAD_TALIB:
-    import talib
+    import math, talib
 
 from apps.TA import HORIZONS
 from apps.TA.storages.abstract.indicator import IndicatorStorage, BULLISH, BEARISH
@@ -12,38 +11,34 @@ from settings import logger
 
 class WillrStorage(IndicatorStorage):
 
-    def produce_signal(self):
-        pass
+    class_periods_list = [14,]
+    requisite_pv_indexes = ["high_price", "low_price", "close_price"]
+
+
+    def compute_value_with_requisite_indexes(self, requisite_pv_index_arrrays: dict, periods: int = 0) -> str:
+        """
+
+        :param requisite_pv_index_arrrays:
+        :param periods:
+        :return:
+        """
+        periods = periods or self.periods
+
+        willr_value = talib.WILLR(
+            requisite_pv_index_arrrays["high_price"],
+            requisite_pv_index_arrrays["low_price"],
+            requisite_pv_index_arrrays["close_price"],
+            timeperiod=periods
+        )[-1]
+
+        logger.debug(f"Willr computed: {willr_value}")
+
+        if math.isnan(willr_value):
+            return ""
+
+        return  str(willr_value)
 
 
 class WillrSubscriber(IndicatorSubscriber):
-    classes_subscribing_to = [
-        PriceStorage
-    ]
-
-    def handle(self, channel, data, *args, **kwargs):
-
-        self.index = self.key_suffix
-
-        if str(self.index) is not "close_price":
-            logger.debug(f'index {self.index} is not close_price ...ignoring...')
-            return
-
-        new_willr_storage = WillrStorage(ticker=self.ticker,
-                                     exchange=self.exchange,
-                                     timestamp=self.timestamp)
-
-        for horizon in HORIZONS:
-            periods = horizon * 14
-
-            high_value_np_array = new_willr_storage.get_denoted_price_array("high_price", periods)
-            low_value_np_array = new_willr_storage.get_denoted_price_array("low_price", periods)
-            close_value_np_array = new_willr_storage.get_denoted_price_array("close_price", periods)
-
-            willr_value = talib.WILLR(high_value_np_array, low_value_np_array, close_value_np_array,
-                                      timeperiod=horizon*14)[-1]
-            # logger.debug(f'savingWillr value {willr_value} for {self.ticker} on {periods} periods')
-
-            new_willr_storage.periods = periods
-            new_willr_storage.value = float(willr_value)
-            new_willr_storage.save()
+    classes_subscribing_to = [PriceStorage]
+    storage_class = WillrStorage
