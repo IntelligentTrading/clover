@@ -490,7 +490,7 @@ class RedisDB(Database):
         return prices[-1] if len(prices) else None
 
 
-    def get_nearest_db_timestamp(self, timestamp, transaction_currency, counter_currency, source, resample_period):
+    def get_nearest_db_timestamp(self, timestamp, transaction_currency, counter_currency, source=None, resample_period=None):
 
         timestamp_tolerance = 60*5
 
@@ -515,7 +515,7 @@ class RedisDB(Database):
             periods_key = resample_period//5
         )
 
-        from apps.TA.indicators.momentum import rsi, stochrsi, adx, macd, mom
+        from apps.TA.indicators.momentum import rsi, stochrsi, adx, macd, mom, stoch
         from apps.TA.indicators.overlap import sma, ema, wma, bbands, ht_trendline
 
         storage_class = {
@@ -523,16 +523,41 @@ class RedisDB(Database):
             'stoch_rsi': stochrsi.StochrsiStorage,
             'adx': adx.AdxStorage,
             'macd': macd.MacdStorage,
+            'macd_value': macd.MacdStorage,
+            'macd_signal': macd.MacdStorage,
+            'macd_hist': macd.MacdStorage,
             'mom': mom.MomStorage,
             'sma': sma.SmaStorage,
             'ema': ema.EmaStorage,
             'wma': wma.WmaStorage,
             'bbands': bbands.BbandsStorage,
+            'bb_up': bbands.BbandsStorage,
+            'bb_mid': bbands.BbandsStorage,
+            'bb_low': bbands.BbandsStorage,
             'ht_trendline': ht_trendline.HtTrendlineStorage,
+            'slowd': stoch.StochStorage,
+
         }
 
         try:
             results = storage_class[indicator_name].query(**params)
+            if len(results['values']):
+                result = results['values'][-1].split(':')
+                if indicator_name == 'bb_up':
+                    return result[0]
+                elif indicator_name == 'bb_mid':
+                    return result[1]
+                elif indicator_name == 'bb_low':
+                    return result[2]
+                elif indicator_name == 'macd_value':
+                    return result[0]
+                elif indicator_name == 'macd_signal':
+                    return result[1]
+                elif indicator_name == 'macd_hist':
+                    return result[2]
+                elif indicator_name == 'slowd':
+                    return result[1]
+
             return results['values'][-1] if len(results['values']) else None
 
         except IndexError:
