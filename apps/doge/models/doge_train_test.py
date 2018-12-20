@@ -98,7 +98,7 @@ class DogeTrainer:
         :return:
         """
         # TODO: replace with datetime.now() and similar beautiful stuff
-        training_period = Period('2018/02/01 00:00:00 UTC', '2018/02/07 00:00:00 UTC')
+        training_period = Period('2018/12/01 00:00:00 UTC', '2018/12/07 00:00:00 UTC')
         trainer = DogeTrainer(redis_db)
         start_time = redis_db.get_nearest_db_timestamp(training_period.start_time, 'BTC', 'USDT', None, None)
         end_time = redis_db.get_nearest_db_timestamp(training_period.end_time, 'BTC', 'USDT', None, None)

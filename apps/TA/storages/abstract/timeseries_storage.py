@@ -124,6 +124,7 @@ class TimeseriesStorage(KeyValueStorage):
             'latest_timestamp': cls.timestamp_from_score(max_score),
             'periods_range': periods_range,
             'period_size': 300,
+            'scores': []
         }
 
         if not len(query_response):
