@@ -2,12 +2,15 @@ from apps.TA.resources.abstract_subscriber import SubscriberException
 from apps.TA.storages.abstract.indicator import IndicatorStorage, BULLISH, BEARISH
 from apps.TA.storages.abstract.indicator_subscriber import IndicatorSubscriber
 from apps.TA.indicators.momentum import willr
+from apps.doge.models.doge_train_test import DogeCommittee
+from settings import logger
 
 
 class SignalSubscriberException(SubscriberException):
     pass
 
 
+#
 class SignalSubscriber(IndicatorSubscriber):
     class_describer = "signal_subscriber"
     classes_subscribing_to = [
@@ -37,6 +40,28 @@ class DogeStorage(IndicatorStorage):
 class DogeSubscriber(SignalSubscriber):
 
     storage_class = DogeStorage  # override with applicable storage class
+
+    def handle(self, channel, data, *args, **kwargs):
+
+        self.index = self.key_suffix
+
+        if str(self.index) is not "close_price":
+            logger.debug(f'index {self.index} is not close_price ...ignoring...')
+            return
+
+        # get current votes
+        committee = DogeCommittee()  # TODO: create only once and reuse
+
+        transaction_currency, counter_currency = self.ticker.split('_')
+        ticker_votes, weights = committee.vote(transaction_currency, counter_currency)
+        weighted_vote = sum([ticker_votes[i]*weights[i] for i in range(len(ticker_votes))]) / sum(weights)
+
+        new_doge_storage = DogeStorage(ticker=self.ticker,
+                                         exchange=self.exchange,
+                                         timestamp=self.timestamp,)
+        new_doge_storage.value = weighted_vote
+        new_doge_storage.save(publish=True)
+
 
     # estimate when TA should be finished
     # activate the doges 🐕🐕🐕

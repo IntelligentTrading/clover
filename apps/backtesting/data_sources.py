@@ -412,6 +412,9 @@ class RedisDB(Database):
 
         # assert len(close_prices['scores']) == len(high_prices['scores']) TODO @tomcounsell make this work, currently missing data!
 
+        if close_prices['values_count'] == 0:
+            logging.error('No close prices returned!')
+
         timestamps = [PriceStorage.timestamp_from_score(float(score)) for score in close_prices['scores']]
         close_prices = list(map(float, close_prices['values']))
         high_prices = high_prices['values']
