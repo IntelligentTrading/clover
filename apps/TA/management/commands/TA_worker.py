@@ -91,7 +91,8 @@ def get_subscriber_classes():
         # # mfi.MfiSubscriber,
         # mom.MomSubscriber, ppo.PpoSubscriber, roc.RocSubscriber, rocr.RocrSubscriber,
         rsi.RsiSubscriber,
-        # stoch.StochSubscriber, stochf.StochfSubscriber, stochrsi.StochrsiSubscriber,
+        stoch.StochSubscriber,
+        # stochf.StochfSubscriber, stochrsi.StochrsiSubscriber,
         # trix.TrixSubscriber, ultosc.UltoscSubscriber,
         willr.WillrSubscriber, # the last one (if changes, change in SignalSubscriber default subscription)
 
