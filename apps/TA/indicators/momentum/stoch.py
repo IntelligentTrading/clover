@@ -13,19 +13,19 @@ class StochStorage(IndicatorStorage):
     class_periods_list = [5,]
     requisite_pv_indexes = ["high_price", "low_price", "close_price"]
 
-    def compute_value_with_requisite_indexes(self, requisite_pv_index_arrrays: dict, periods: int = 0) -> str:
+    def compute_value_with_requisite_indexes(self, requisite_pv_index_arrays: dict, periods: int = 0) -> str:
         """
 
-        :param requisite_pv_index_arrrays:
+        :param requisite_pv_index_arrays:
         :param periods:
         :return:
         """
 
         periods = periods or self.periods
         slowk, slowd = talib.STOCH(
-            requisite_pv_index_arrrays["high_price"],
-            requisite_pv_index_arrrays["low_price"],
-            requisite_pv_index_arrrays["close_price"],
+            requisite_pv_index_arrays["high_price"],
+            requisite_pv_index_arrays["low_price"],
+            requisite_pv_index_arrays["close_price"],
             fastk_period=periods, slowk_period=periods*3/5,
             slowk_matype=0, slowd_period=periods*3/5, slowd_matype=0
         )[-1]
