@@ -512,7 +512,7 @@ class RedisDB(Database):
             ticker=f'{transaction_currency}_{counter_currency}',
             exchange="binance",
             timestamp=timestamp,
-            periods_key = resample_period//5
+            periods_key = resample_period
         )
 
         from apps.TA.indicators.momentum import rsi, stochrsi, adx, macd, mom, stoch
