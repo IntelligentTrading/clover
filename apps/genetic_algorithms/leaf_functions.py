@@ -3,7 +3,7 @@ import inspect
 from collections import namedtuple
 from abc import ABC, abstractmethod
 from apps.backtesting.data_sources import redis_db
-from apps.TA import PERIODS_4HR
+from apps.TA import PERIODS_4HR, PERIODS_1HR
 
 class FunctionProvider(ABC):
 
@@ -214,20 +214,28 @@ class RedisTAProvider(TAProvider):
         'slowd': 5
     }
 
-    def get_indicator(self, indicator_name, input, horizon):
+    def get_indicator(self, indicator_name, input, horizon=PERIODS_1HR): # TODO ensure the horizon can be changed
         timestamp = self._get_timestamp(input)
         transaction_currency, counter_currency = input[1:3]
+        indicator_name = 'sma20' # TODO remove
+
+        if indicator_name.startswith('sma'):
+            indicator_period = int(indicator_name[3:])
+            indicator_name = 'sma'
+        else:
+            indicator_period = self.default_indicator_periods[indicator_name]
+
         indicator_value = redis_db.get_indicator(
             timestamp=timestamp,
             indicator_name=indicator_name,  # TODO @tomcounsell ensure we have data for all indicator_names
             transaction_currency=transaction_currency,
             counter_currency=counter_currency,
-            resample_period=horizon * self.default_indicator_periods['indicator_name']
+            resample_period=horizon * indicator_period
         )
 
         return 25 # TODO remove mock values once Redis is filled with actual data
 
-    def get_indicator_at_previous_timestamp(self, indicator_name, input, horizon):
+    def get_indicator_at_previous_timestamp(self, indicator_name, input, horizon=PERIODS_1HR):
         timestamp = self._get_timestamp(input)
         transaction_currency, counter_currency = input[1:3]
         indicator_value = redis_db.get_indicator_at_previous_timestamp(
