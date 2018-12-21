@@ -8,6 +8,7 @@ from apps.backtesting.backtester_ticks import TickDrivenBacktester
 from apps.backtesting.data_sources import postgres_db
 from apps.backtesting.charting import time_series_chart
 from apps.TA import HORIZONS, PERIODS_4HR
+from apps.backtesting.utils import time_performance
 
 
 # temporarily suspend strategies logging warnings: buy&hold strategy triggers warnings
@@ -63,9 +64,11 @@ class Data:
 
         self._compute_ta_indicators()
 
+    @time_performance
     def _fill_indicator_values(self, indicator_name, indicator_period=1):
         result = []
-        for timestamp in self.price_data.index.values:
+        for i, timestamp in enumerate(self.price_data.index.values):
+            logging.info(f'Retrieving value {i}')
             indicator = self.database.get_indicator(
                 indicator_name,
                 self.transaction_currency,
@@ -94,7 +97,9 @@ class Data:
         """
 
 
+        logging.info('Retrieving RSI values...')
         self.rsi = self._fill_indicator_values('rsi')
+        logging.info('Retrieved RSI values.')
         self.sma20 = self._fill_indicator_values('sma', 20)
         self.ema20 = self._fill_indicator_values('ema', 20)
         self.sma50 = self._fill_indicator_values('sma', 50)
