@@ -17,7 +17,7 @@ class ExampleIndicatorStorage(IndicatorStorage):
     class_periods_list = EXAMPLE_INDICATOR_PERIODS_LIST
     requisite_pv_indexes = ["close_price", "high_price"]
 
-    def compute_value_with_requisite_indexes(self, requisite_pv_index_arrrays: dict, periods: int = 0) -> str:
+    def compute_value_with_requisite_indexes(self, requisite_pv_index_arrays: dict, periods: int = 0) -> str:
         """
         with cls.requisite_pv_indexes set
 
@@ -28,8 +28,8 @@ class ExampleIndicatorStorage(IndicatorStorage):
         periods = periods or self.periods  # best practice to keep this line
 
         example_indicator_value = talib.EXAMPLE(
-            requisite_pv_index_arrrays["close_price"],  # 'close_price' is set as a requirement on line 17
-            requisite_pv_index_arrrays["high_price"],  # 'close_price' is set as a requirement on line 17
+            requisite_pv_index_arrays["close_price"],  # 'close_price' is set as a requirement on line 17
+            requisite_pv_index_arrays["high_price"],  # 'close_price' is set as a requirement on line 17
             timeperiod=periods  # usually you are sampling the indicator on the same set of periods as the pv data
         )[-1]  # talib will return an array, so just take the last value
 
@@ -68,8 +68,8 @@ class FooStorage(IndicatorStorage):
     class_periods_list = [10, 20]
     requisite_pv_indexes = ["close_price", "close_volume"]
 
-    def compute_value_with_requisite_indexes(self, requisite_pv_index_arrrays: dict, periods: int = 0) -> str:
-        foo_value = talib.FOO(requisite_pv_index_arrrays["close_price"], requisite_pv_index_arrrays["close_volume"], timeperiod=periods or self.periods)[-1]
+    def compute_value_with_requisite_indexes(self, requisite_pv_index_arrays: dict, periods: int = 0) -> str:
+        foo_value = talib.FOO(requisite_pv_index_arrays["close_price"], requisite_pv_index_arrays["close_volume"], timeperiod=periods or self.periods)[-1]
         return str(foo_value) if not math.isnan(foo_value) else ""
 
     def produce_signal(self):

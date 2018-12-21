@@ -13,7 +13,7 @@ class MacdStorage(IndicatorStorage):
     class_periods_list = [26]
     requisite_pv_indexes = ["close_price"]
 
-    def compute_value_with_requisite_indexes(self, requisite_pv_index_arrrays: dict, periods: int = 0) -> str:
+    def compute_value_with_requisite_indexes(self, requisite_pv_index_arrays: dict, periods: int = 0) -> str:
         """
         with cls.requisite_pv_indexes set
 
@@ -27,13 +27,14 @@ class MacdStorage(IndicatorStorage):
         signalperiod = periods*9/26
 
         macd_value, macdsignal, macdhist = talib.MACD(
-            requisite_pv_index_arrrays["close_price"],
+            requisite_pv_index_arrays["close_price"],
             fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=signalperiod
         )
 
         logger.debug(f"Macd computed: {macd_value[-1]}:{macdsignal[-1]}:{macdhist[-1]}")
 
-        if math.isnan(sum([macd_value[-1], macdsignal[-1], macdhist[-1]])): return ""
+        if math.isnan(sum([macd_value[-1], macdsignal[-1], macdhist[-1]])):
+            return ""
 
         return f"{macd_value[-1]}:{macdsignal[-1]}:{macdhist[-1]}"
 

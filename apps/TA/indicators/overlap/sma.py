@@ -16,16 +16,19 @@ class SmaStorage(IndicatorStorage):
     class_periods_list = SMA_LIST
     requisite_pv_indexes = ["close_price"]
 
-    def compute_value_with_requisite_indexes(self, requisite_pv_index_arrrays: dict, periods: int = 0) -> str:
+    def compute_value_with_requisite_indexes(self, requisite_pv_index_arrays: dict, periods: int = 0) -> str:
         """
         with cls.requisite_pv_indexes set
 
-        :param index_value_arrrays: a dict with keys matching requisite+pv_indexes and values from self.get_denoted_price_array()
+        :param requisite_pv_index_arrays: a dict with keys matching requisite+pv_indexes and values from self.get_denoted_price_array()
         :param periods: number of periods to compute value for
         :return:
         """
         periods = periods or self.periods
-        sma_value = talib.SMA(requisite_pv_index_arrrays["close_price"], timeperiod=periods)[-1]
+        sma_value = talib.SMA(
+            requisite_pv_index_arrays["close_price"],
+            timeperiod=periods
+        )[-1]
 
         logger.debug(f"SMA computed: {sma_value}")
 

@@ -24,7 +24,7 @@ class BbandsStorage(IndicatorStorage):
         return self.width
 
 
-    def compute_value_with_requisite_indexes(self, requisite_pv_index_arrrays: dict, periods: int = 0) -> str:
+    def compute_value_with_requisite_indexes(self, requisite_pv_index_arrays: dict, periods: int = 0) -> str:
         """
         with cls.requisite_pv_indexes set
 
@@ -35,7 +35,7 @@ class BbandsStorage(IndicatorStorage):
         periods = periods or self.periods
 
         upperband, middleband, lowerband = talib.BBANDS(
-            requisite_pv_index_arrrays["close_price"],
+            requisite_pv_index_arrays["close_price"],
             timeperiod=periods,
             nbdevup=2, nbdevdn=2, matype=0
         )
