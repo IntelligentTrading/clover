@@ -22,9 +22,13 @@ class RsiStorage(IndicatorStorage):
         """
         periods = periods or self.periods
 
+        logger.debug(len(requisite_pv_index_arrays["close_price"]))
+        logger.debug(periods)
+
+
         rsi_value = talib.RSI(
             requisite_pv_index_arrays["close_price"],
-            timeperiod=periods
+            timeperiod=periods-1
         )[-1]
 
         logger.debug(f"RSI computed: {rsi_value}")
@@ -34,40 +38,40 @@ class RsiStorage(IndicatorStorage):
 
         return str(rsi_value)
 
-    def get_rsi_strength(self) -> int:
-        rsi = int(self.value)
-        if rsi is None or rsi <= 0.0 or rsi >= 100.0:
-            return None
-
-        assert (rsi > 0.0) & (rsi < 100.0), '>>> ERROR: RSI has extreme value of 0 or 100, highly unlikely'
-
-        logger.debug(f"RSI={rsi}")
-
-        rsi_strength = 0
-        if rsi >= 80:
-            rsi_strength = -3  # Extremely overbought
-        elif rsi >= 75:
-            rsi_strength = -2  # very overbought
-        elif rsi >= 70:
-            rsi_strength = -1  # overbought
-        elif rsi <= 20:
-            rsi_strength = 3  # Extremely oversold
-        elif rsi <= 25:
-            rsi_strength = 2  # very oversold
-        elif rsi <= 30:
-            rsi_strength = 1  # oversold
-        return rsi_strength
-
-    def produce_signal(self):
-        import numpy as np
-
-        rsi_strength = self.get_rsi_strength()
-        if rsi_strength != 0:
-            self.send_signal(
-                trend=(BULLISH if rsi_strength > 0 else BEARISH),
-                strength_value=int(np.abs(rsi_strength)),  # should be 1,2,or3
-                strength_max=int(3),
-            )
+    # def get_rsi_strength(self) -> int:
+    #     rsi = int(self.value)
+    #     if rsi is None or rsi <= 0.0 or rsi >= 100.0:
+    #         return None
+    #
+    #     assert (rsi > 0.0) & (rsi < 100.0), '>>> ERROR: RSI has extreme value of 0 or 100, highly unlikely'
+    #
+    #     logger.debug(f"RSI={rsi}")
+    #
+    #     rsi_strength = 0
+    #     if rsi >= 80:
+    #         rsi_strength = -3  # Extremely overbought
+    #     elif rsi >= 75:
+    #         rsi_strength = -2  # very overbought
+    #     elif rsi >= 70:
+    #         rsi_strength = -1  # overbought
+    #     elif rsi <= 20:
+    #         rsi_strength = 3  # Extremely oversold
+    #     elif rsi <= 25:
+    #         rsi_strength = 2  # very oversold
+    #     elif rsi <= 30:
+    #         rsi_strength = 1  # oversold
+    #     return rsi_strength
+    #
+    # def produce_signal(self):
+    #     import numpy as np
+    #
+    #     rsi_strength = self.get_rsi_strength()
+    #     if rsi_strength != 0:
+    #         self.send_signal(
+    #             trend=(BULLISH if rsi_strength > 0 else BEARISH),
+    #             strength_value=int(np.abs(rsi_strength)),  # should be 1,2,or3
+    #             strength_max=int(3),
+    #         )
 
 
 class RsiSubscriber(IndicatorSubscriber):
