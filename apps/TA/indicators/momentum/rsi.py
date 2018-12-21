@@ -26,7 +26,7 @@ class RsiStorage(IndicatorStorage):
 
         rsi_value = talib.RSI(
             requisite_pv_index_arrays["close_price"],
-            timeperiod=periods
+            timeperiod=periods+1
         )[-1]
 
         logger.debug(f"RSI computed: {rsi_value}")
