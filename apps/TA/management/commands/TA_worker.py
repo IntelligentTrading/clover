@@ -75,8 +75,6 @@ def get_subscriber_classes():
     from apps.TA.indicators.momentum import adx, adxr, apo, aroon, aroonosc, bop, cci, cmo, dx, macd, mom, ppo, \
         roc, rocr, rsi, stoch, stochf, stochrsi, trix, ultosc, willr
 
-    return []
-
     return [
 
         # OVERLAP INDICATORS
