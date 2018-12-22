@@ -57,6 +57,9 @@ def get_allocations_from_doge(at_datetime=None):
     }
 
 
+    # TODO remove mock data
+    now_datetime = datetime.fromtimestamp(DogeStorage.timestamp_from_score(189215))
+
     for ticker in tickers:
         for horizon in horizons:
             # find the latest vote
@@ -65,8 +68,16 @@ def get_allocations_from_doge(at_datetime=None):
                 periods_range=horizon * 60 / 5  # TODO fix
             )
 
+            # TODO: remove this mock data
+
+            query_result = {
+                'scores': [189213, 189214, 189215],
+                'values': [0.27, 0.55, -0.34],
+            }
+
             for score, weighted_vote in zip(query_result['scores'], query_result['values']):
                 timestamp = DogeStorage.datetime_from_score(score)
+
 
                 time_weight = float(1) - (
                         (now_datetime - timestamp).total_seconds() / (

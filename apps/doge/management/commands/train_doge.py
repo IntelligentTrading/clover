@@ -3,6 +3,7 @@ from apps.doge.models.doge_train_test import DogeTrainer
 import time
 
 ONE_WEEK = 60*60*24*7
+ONE_DAY = 60*60*24
 
 class Command(BaseCommand):
 
