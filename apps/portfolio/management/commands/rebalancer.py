@@ -11,6 +11,7 @@ from django.core.management.base import BaseCommand
 from apps.portfolio.models import Portfolio
 from apps.portfolio.models.allocation import ITF1HR, ITF6HR, ITF24HR, ITF_PACKS
 from apps.portfolio.services.signals import get_allocations_from_signals, SHORT_HORIZON, MEDIUM_HORIZON, LONG_HORIZON
+from apps.portfolio.services.doge_votes import get_allocations_from_doge
 from apps.portfolio.services.trading import set_portfolio
 
 logger = logging.getLogger(__name__)
@@ -36,10 +37,15 @@ def balance_portfolios():
 
     ITF_PACK_HORIZONS = {ITF1HR: SHORT_HORIZON, ITF6HR: MEDIUM_HORIZON, ITF24HR: LONG_HORIZON}
 
+    # TODO @tomcounsell do something with this :)
+    ITF_doge_binance_allocations = get_allocations_from_doge(at_datetime=datetime.now())
+
     ITF_binance_allocations = {
         itf_group: get_allocations_from_signals(horizon=horizon, at_datetime=datetime.now())
         for itf_group, horizon in ITF_PACK_HORIZONS.items()
     }
+
+
     for portfolio in Portfolio.objects.all():
         if portfolio.recently_rebalanced:
             continue
