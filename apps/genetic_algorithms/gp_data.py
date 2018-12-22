@@ -7,8 +7,10 @@ from apps.backtesting.tick_provider import PriceDataframeTickProvider
 from apps.backtesting.backtester_ticks import TickDrivenBacktester
 from apps.backtesting.data_sources import postgres_db
 from apps.backtesting.charting import time_series_chart
-from apps.TA import HORIZONS, PERIODS_4HR
+from apps.TA import HORIZONS, PERIODS_4HR, PERIODS_1HR
 from apps.backtesting.utils import time_performance
+
+DEBUG = True
 
 
 # temporarily suspend strategies logging warnings: buy&hold strategy triggers warnings
@@ -42,7 +44,7 @@ class Data:
         self.start_crypto = start_crypto
         self.source = source
         self.database = database
-        self.horizon = PERIODS_4HR
+        self.horizon = PERIODS_1HR
 
 
         self.price_data = self.database.get_resampled_prices_in_range\
@@ -66,9 +68,9 @@ class Data:
 
     @time_performance
     def _fill_indicator_values(self, indicator_name, indicator_period=1):
+        logging.info(f'Retrieving values for {indicator_name}, indicator_period={indicator_period}')
         result = []
         for i, timestamp in enumerate(self.price_data.index.values):
-            logging.info(f'Retrieving value {i}')
             indicator = self.database.get_indicator(
                 indicator_name,
                 self.transaction_currency,
@@ -76,7 +78,14 @@ class Data:
                 timestamp,
                 resample_period=self.horizon * indicator_period,
                 source='binance')
+            logging.info(f'Retrieved value {i}: {indicator}')
             result.append(float(indicator) if indicator is not None else None)
+
+            break
+
+            if indicator is None and DEBUG:
+                logging.info('Empty indicator value, exiting...')
+                break
         return result
 
 
@@ -97,9 +106,8 @@ class Data:
         """
 
 
-        logging.info('Retrieving RSI values...')
-        self.rsi = self._fill_indicator_values('rsi')
-        logging.info('Retrieved RSI values.')
+        self.rsi = self._fill_indicator_values('rsi', 14)
+        """
         self.sma20 = self._fill_indicator_values('sma', 20)
         self.ema20 = self._fill_indicator_values('ema', 20)
         self.sma50 = self._fill_indicator_values('sma', 50)
@@ -108,10 +116,11 @@ class Data:
         self.ema200 = self._fill_indicator_values('ema', 200)
         self.ema21 = self._fill_indicator_values('ema', 21)
         self.ema55 = self._fill_indicator_values('ema', 55)
+        """
         self.bb_up = self._fill_indicator_values('bb_up', 5)
-        self.bb_up = self._fill_indicator_values('bb_mid', 5)
-        self.bb_up = self._fill_indicator_values('bb_low', 5)
-        self.bb_width = self.bb_up - self.bb_low
+        self.bb_mid = self._fill_indicator_values('bb_mid', 5)
+        self.bb_low = self._fill_indicator_values('bb_low', 5)
+        self.bb_width = [up - low for up, low in zip(self.bb_up, self.bb_low)]
         self.min_bbw_180 = np.array(
             list(map(min, [self.bb_width[i:i + 180] for i in range(len(self.bb_width) - 180 + 1)])))
         self.min_bbw_180 = self.min_bbw_180[len(self.min_bbw_180) - (len(prices)):]

@@ -97,7 +97,7 @@ class TimeseriesStorage(KeyValueStorage):
             except:
                 value, timestamp = "unknown", JAN_1_2017_TIMESTAMP
 
-            min_score = max_score = cls.score_from_timestamp(timestamp)
+            min_score = max_score = cls.score_from_timestamp(timestamp)  # TODO @tomcounsell bug here, query returns scores, not timestamps
 
         else:
             # compress timestamps to scores
@@ -136,9 +136,17 @@ class TimeseriesStorage(KeyValueStorage):
             if len(query_response) < periods_range + 1:
                 return_dict["warning"] = "fewer values than query's periods_range"
 
-            values = [value_score.decode("utf-8").split(":")[0] for value_score in query_response]
-            scores = [value_score.decode("utf-8").split(":")[1] for value_score in query_response]
+
+
+            # TODO @tomcounsell this does not work for Bbands and other indicators where we have more than one value
+            # e.g. bb_low:bb_mid:bb_high:score
+            # values = [value_score.decode("utf-8").split(":")[0] for value_score in query_response]
+            # scores = [value_score.decode("utf-8").split(":")[1] for value_score in query_response]
             # todo: double check that [-1] in list is most recent timestamp
+
+
+            values = [value_score.decode("utf-8")[:value_score.decode("utf-8").rfind(':')] for value_score in query_response]
+            scores = [value_score.decode("utf-8")[value_score.decode("utf-8").rfind(':')+1:] for value_score in query_response]
 
             return_dict.update({
                 'values': values,

@@ -4,6 +4,7 @@ import time
 from django.core.management.base import BaseCommand
 
 from apps.TA.storages.utils.memory_cleaner import redisCleanup
+from apps.doge.doge_TA_actors import DogeSubscriber
 from settings.redis_db import database
 
 logger = logging.getLogger(__name__)
@@ -74,6 +75,8 @@ def get_subscriber_classes():
     from apps.TA.indicators.momentum import adx, adxr, apo, aroon, aroonosc, bop, cci, cmo, dx, macd, mom, ppo, \
         roc, rocr, rsi, stoch, stochf, stochrsi, trix, ultosc, willr
 
+    return []
+
     return [
 
         # OVERLAP INDICATORS
@@ -102,6 +105,5 @@ def get_doge_subscriber_classes():
     # from apps.doge.doge_TA_actors import DogeSubscriber
 
     return [
-        # place your doges here
-        # DogeSubscriber,
+        DogeSubscriber,
     ]

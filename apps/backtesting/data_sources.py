@@ -505,6 +505,63 @@ class RedisDB(Database):
             return results['latest_timestamp']
 
 
+    @staticmethod
+    def self_test(transaction_currency, counter_currency):
+        # query Redis to get indicator value at timestamp
+        from settings.redis_db import database
+
+        params = dict(
+            ticker=f'{transaction_currency}_{counter_currency}',
+            exchange="binance",
+         )
+
+        from apps.TA.indicators.momentum import rsi, stochrsi, adx, macd, mom, stoch
+        from apps.TA.indicators.overlap import sma, ema, wma, bbands, ht_trendline
+        from apps.backtesting.utils import datetime_from_timestamp
+
+        storage_class = {
+            'rsi': rsi.RsiStorage,
+            'stoch_rsi': stochrsi.StochrsiStorage,
+            'adx': adx.AdxStorage,
+            'macd': macd.MacdStorage,
+            'mom': mom.MomStorage,
+            'sma': sma.SmaStorage,
+            'ema': ema.EmaStorage,
+            'wma': wma.WmaStorage,
+            'bbands': bbands.BbandsStorage,
+            'ht_trendline': ht_trendline.HtTrendlineStorage,
+            'slowd': stoch.StochStorage,
+        }
+
+        params = dict(
+            ticker=f'{transaction_currency}_{counter_currency}',
+            exchange="binance",
+         )
+
+        for indicator_type in storage_class:
+            sorted_set_key = storage_class[indicator_type].compile_db_key(key=None,
+                                                                          key_prefix=f"{params['ticker']}:{params['exchange']}:",
+                                                                          key_suffix='*')
+            print(f'Processing indicator {sorted_set_key}')
+            if len(database.keys(sorted_set_key)) == 0:
+                print('   no data.')
+            for key in database.keys(sorted_set_key):
+                query_response = database.zrange(key, 0, -1)
+                if len(query_response) == 0:
+                    print(f'   {key}: no data')
+                    continue
+                try:
+                    score_start = query_response[0].decode("utf-8").split(":")[-1]
+                    score_end = query_response[-1].decode("utf-8").split(":")[-1]
+                    time_start = datetime_from_timestamp(storage_class[indicator_type].timestamp_from_score(score_start))
+                    time_end = datetime_from_timestamp(storage_class[indicator_type].timestamp_from_score(score_end))
+                    num_values = len(query_response)
+                    print(f'   {key}: {num_values} values, start time = {time_start}, end time = {time_end}')
+                except Exception as e:
+                    logging.info(f'Error decoding input: {str(e)}')
+        return
+
+
     def get_indicator(self, indicator_name, transaction_currency, counter_currency, timestamp, resample_period, source='binance'):
         # query Redis to get indicator value at timestamp
 
@@ -735,3 +792,6 @@ class RedisDummyDB(Database):
 
 postgres_db = PostgresDatabaseConnection()
 redis_db = RedisDB()
+
+if __name__ == '__main__':
+    redis_db.self_test('BTC', 'USDT')

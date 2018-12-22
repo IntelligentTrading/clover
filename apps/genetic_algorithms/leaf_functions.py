@@ -203,7 +203,7 @@ class RedisTAProvider(TAProvider):
         'ema20': 20,
         'ema50': 50,
         'ema200': 200,
-        'rsi': 1,
+        'rsi': 14,
         'bb_up': 5,
         'bb_mid': 5,
         'bb_low': 5,
@@ -217,7 +217,6 @@ class RedisTAProvider(TAProvider):
     def get_indicator(self, indicator_name, input, horizon=PERIODS_1HR): # TODO ensure the horizon can be changed
         timestamp = self._get_timestamp(input)
         transaction_currency, counter_currency = input[1:3]
-        indicator_name = 'sma20' # TODO remove
 
         if indicator_name.startswith('sma'):
             indicator_period = int(indicator_name[3:])
