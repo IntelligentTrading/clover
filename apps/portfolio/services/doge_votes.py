@@ -42,12 +42,18 @@ def get_allocations_from_doge(at_datetime=None):
 
     BTC_minimum_reserve = 0.0090
     BNB_minimum_reserve = 0.0010
+    USDT_minimum_reserve = 0.0
 
     tickers_dict = {
         "BTC_USDT": {
             "coin": "BTC",
             "vote": 0,
             "portion": BTC_minimum_reserve,  # hold by default
+        },
+        "USDT_BTC": {
+            "coin": "USDT",
+            "vote": 0,
+            "portion": USDT_minimum_reserve,  # hold by default
         },
         "BNB_BTC": {
             "coin": "BNB",
@@ -65,11 +71,10 @@ def get_allocations_from_doge(at_datetime=None):
             # find the latest vote
             query_result = DogeStorage.query(
                 ticker=ticker, exchange=exchange, timestamp=now_datetime.timestamp(),
-                periods_range=horizon * 60 / 5  # TODO fix
+                periods_range=PERIODS_1HR*horizon_periods[horizon]
             )
 
             # TODO: remove this mock data
-
             query_result = {
                 'scores': [189213, 189214, 189215],
                 'values': [0.27, 0.55, -0.34],
@@ -84,11 +89,24 @@ def get_allocations_from_doge(at_datetime=None):
                         timedelta(hours=1) * horizon_periods[horizon] *
                         horizon_life_spans[horizon]).total_seconds())
 
+                # re-normalize weighted vote to interval [0, 1]
+                weighted_vote = (1.0 + weighted_vote) / 2
                 vote = float(weighted_vote) * horizon_weights[horizon] * time_weight
+
                 if ticker in tickers_dict:
                     tickers_dict[ticker]["vote"] += vote
                 else:
                     tickers_dict[ticker] = {"vote": vote}
+
+                # counter-ticker sum
+                counter_ticker = f'{ticker.split("_")[1]}_{ticker.split("_")[0]}'
+
+                # note: vote and counter_vote sum to time_weight, not to 1, modify if needed
+                counter_vote = (1 - weighted_vote) * time_weight
+                if counter_ticker in tickers_dict:
+                    tickers_dict[counter_ticker]["vote"] += counter_vote
+                else:
+                    tickers_dict[counter_ticker] = {"vote": counter_vote}
 
 
     # Remove tickers with negative votes
