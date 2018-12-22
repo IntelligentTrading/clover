@@ -14,7 +14,7 @@
      ],
 
     "fitness_functions": ["ff_benchmarkdiff"],
-    "grammar_version": "gv5",
+    "grammar_version": "gv6",
     "num_generations": 3,
 
     "mating_probabilities": [
