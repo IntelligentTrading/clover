@@ -101,7 +101,7 @@ class DogeTrainer:
         trainer = DogeTrainer(redis_db)
 
         # TODO: replace with datetime.now() and similar beautiful stuff once Redis is working
-        training_period = Period('2018/10/25 00:00:00 UTC', '2018/10/26 00:00:00 UTC')
+        training_period = Period('2018/10/25 12:00:00 UTC', '2018/10/26 00:00:00 UTC')
 
         start_time = redis_db.get_nearest_db_timestamp(training_period.start_time, 'BTC', 'USDT')
         end_time = redis_db.get_nearest_db_timestamp(training_period.end_time, 'BTC', 'USDT')

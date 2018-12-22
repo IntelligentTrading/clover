@@ -78,13 +78,11 @@ class Data:
                 timestamp,
                 resample_period=self.horizon * indicator_period,
                 source='binance')
-            logging.info(f'Retrieved value {i}: {indicator}')
+            # logging.info(f'Retrieved value {i}: {indicator}')
             result.append(float(indicator) if indicator is not None else None)
 
-            break
-
             if indicator is None and DEBUG:
-                logging.info('Empty indicator value, exiting...')
+                logging.warning('Empty indicator value, exiting...')
                 break
         return result
 
@@ -107,23 +105,23 @@ class Data:
 
 
         self.rsi = self._fill_indicator_values('rsi', 14)
-        """
         self.sma20 = self._fill_indicator_values('sma', 20)
         self.ema20 = self._fill_indicator_values('ema', 20)
         self.sma50 = self._fill_indicator_values('sma', 50)
         self.ema50 = self._fill_indicator_values('ema', 50)
         self.sma200 = self._fill_indicator_values('sma', 200)
         self.ema200 = self._fill_indicator_values('ema', 200)
-        self.ema21 = self._fill_indicator_values('ema', 21)
-        self.ema55 = self._fill_indicator_values('ema', 55)
-        """
+        # self.ema21 = self._fill_indicator_values('ema', 21)
+        # self.ema55 = self._fill_indicator_values('ema', 55)
         self.bb_up = self._fill_indicator_values('bb_up', 5)
         self.bb_mid = self._fill_indicator_values('bb_mid', 5)
         self.bb_low = self._fill_indicator_values('bb_low', 5)
         self.bb_width = [up - low for up, low in zip(self.bb_up, self.bb_low)]
-        self.min_bbw_180 = np.array(
-            list(map(min, [self.bb_width[i:i + 180] for i in range(len(self.bb_width) - 180 + 1)])))
-        self.min_bbw_180 = self.min_bbw_180[len(self.min_bbw_180) - (len(prices)):]
+
+        # TODO re-enable the BB squeeze
+        # self.min_bbw_180 = np.array(
+        #     list(map(min, [self.bb_width[i:i + 180] for i in range(len(self.bb_width) - 180 + 1)])))
+        # self.min_bbw_180 = self.min_bbw_180[len(self.min_bbw_180) - (len(prices)):]
 
         self.macd = self._fill_indicator_values('macd_value', 26)
         self.macd_signal = self._fill_indicator_values('macd_signal', 26)
