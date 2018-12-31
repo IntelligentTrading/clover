@@ -1,5 +1,5 @@
 from apps.TA.resources.abstract_subscriber import SubscriberException
-from apps.TA.storages.abstract.indicator import IndicatorStorage, BULLISH, BEARISH
+from apps.TA.storages.abstract.indicator import IndicatorStorage, BULLISH, BEARISH, OTHER
 from apps.TA.storages.abstract.indicator_subscriber import IndicatorSubscriber
 from apps.TA.indicators.momentum import willr
 from apps.doge.models.doge_train_test import DogeCommittee
@@ -31,10 +31,14 @@ class DogeStorage(IndicatorStorage):
         # todo: query for TA values
         # todo: compute decision tree
 
-        if True:
+        doge_says = "ruff-ruff"
+
+        if doge_says == "ruff-ruff":
             return BULLISH
-        else:
+        elif doge_says == "bow-wow":
             return BEARISH
+        else:
+            return OTHER
 
 
 class DogeSubscriber(SignalSubscriber):
