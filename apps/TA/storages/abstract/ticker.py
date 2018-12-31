@@ -13,7 +13,6 @@ class IndicatorException(TAException):
 class TickerStorage(TimeseriesStorage):
     """
     stores timeseries data on tickers in a sorted set unique to each ticker and exchange
-    todo: split the db by each exchange source
     """
     class_describer = "ticker"
     value_sig_figs = 6
