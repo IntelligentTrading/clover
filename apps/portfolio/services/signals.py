@@ -81,7 +81,7 @@ def get_allocations_from_signals(horizon="all", at_datetime=None):
                 "source": source,
                 "startdate": search_startdate.strftime('%Y-%m-%dT%H:%M:%S'),
                 "page_size": 1000,
-                "resample_period": 240,  # todo: bug here (blame Karla)
+                "resample_period": horizon*60,
             })
         signals += r.json()["results"]
 
