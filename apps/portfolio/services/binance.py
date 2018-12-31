@@ -20,7 +20,8 @@ binance_coins = [
     'PPT', 'ZEC', 'KMD', 'SNGLS', 'DNT', 'QTUM', 'FUEL',
     'WTC', 'IOST', 'MOD', 'POA', 'RCN', 'POWR', 'RPX', 'MCO', 'XVG', 'SNT',
     'POE', 'BLZ', 'QTUM', 'XRP', 'ADX', 'WAN', 'VIB',
-    'EOS', 'TRIG', 'NEO', 'ETH', 'ENG', 'CDT', 'ONT', 'LINK', 'QLC', 'BCH', 'XVG', 'NULS', 'GTO', 'CLOAK', 'CLOAK'
+    'EOS', 'TRIG', 'NEO', 'ETH', 'ENG', 'CDT', 'ONT', 'LINK', 'QLC', 'BCH', 'XVG', 'NULS', 'GTO', 'CLOAK', 'CLOAK',
+    'VTHO',
 ]
 binance_coins = list(set(binance_coins))
 
