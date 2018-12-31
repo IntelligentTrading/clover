@@ -14,64 +14,59 @@ class SignalSubscriberException(SubscriberException):
 class SignalSubscriber(IndicatorSubscriber):
     class_describer = "signal_subscriber"
     classes_subscribing_to = [
-        willr.WillrStorage # the last one
+        willr.WillrStorage  # the last one
     ]
     storage_class = IndicatorStorage  # override with applicable storage class
 
 
 class DogeStorage(IndicatorStorage):
-
     # todo: abstract this for programatic implementation
     requisite_TA_storages = ["rsi", "sma"]  # example
 
+    def produce_signal(self):
+        if self.vote_trend and abs(self.vote) >= 25:
+            self.send_signal(trend=self.vote_trend)
 
-    def vote(self, ticker):  # 🐕
 
-        # todo: load decision tree
-        # todo: query for TA values
-        # todo: compute decision tree
+    @property
+    def vote_trend(self):
+        if not self.value:
+            return None
 
-        doge_says = "ruff-ruff"
-
-        if doge_says == "ruff-ruff":
+        if self.value > 0:
             return BULLISH
-        elif doge_says == "bow-wow":
+        elif self.value < 0:
             return BEARISH
         else:
             return OTHER
 
+    @property
+    def vote(self):
+        return self.value
+
 
 class DogeSubscriber(SignalSubscriber):
-
     storage_class = DogeStorage  # override with applicable storage class
 
+    def __init__(self, *args, **kwargs):
+        self.committee = DogeCommittee()
+        # todo: set an expiry for the committee on the same schedule as training
+        # todo: ideally, a new training would expire all previous committees, see common.behaviours.expirable
+        super().__init__(*args, **kwargs)
+
     def handle(self, channel, data, *args, **kwargs):
-
-        self.index = self.key_suffix
-
-        if str(self.index) is not "close_price":
-            logger.debug(f'index {self.index} is not close_price ...ignoring...')
-            return
-
-        # get current votes
-        committee = DogeCommittee()  # TODO: create only once and reuse
-
         transaction_currency, counter_currency = self.ticker.split('_')
-        ticker_votes, weights = committee.vote(transaction_currency, counter_currency)
-        weighted_vote = sum([ticker_votes[i]*weights[i] for i in range(len(ticker_votes))]) / sum(weights)
 
         new_doge_storage = DogeStorage(ticker=self.ticker,
-                                         exchange=self.exchange,
-                                         timestamp=self.timestamp,)
-        new_doge_storage.value = weighted_vote
+                                       exchange=self.exchange,
+                                       timestamp=self.timestamp, )
+
+        ticker_votes, weights = self.committee.vote(transaction_currency, counter_currency)
+        # weighted_vote = sum([ticker_votes[i] * weights[i] for i in range(len(ticker_votes))]) / sum(weights)
+
+        new_doge_storage.value = (sum(ticker_votes) * 100 / len(ticker_votes))  # normalize to +-100 scale
         new_doge_storage.save(publish=True)
 
-
-    # estimate when TA should be finished
-    # activate the doges 🐕🐕🐕
-    # votes = {}
-    # for ticker in ['BTC_USDT']:
-    #     votes['BTC_USDT'] = sum(doge.vote("BTC_USDT") * doge.weight for doge in living_doges)
 
     def pre_handle(self, channel, data, *args, **kwargs):
         super().pre_handle(channel, data, *args, **kwargs)
