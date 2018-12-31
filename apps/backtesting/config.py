@@ -10,7 +10,9 @@ mysql_database_config = {
 '''
 import redis
 
-postgres_connection_string = "host='localhost' dbname='itf_11_27' user='postgres' password='itfscience'"
+from settings import karlas_special_postgres_connection_string
+
+postgres_connection_string = karlas_special_postgres_connection_string
 
 
 backtesting_cols_to_names = {
