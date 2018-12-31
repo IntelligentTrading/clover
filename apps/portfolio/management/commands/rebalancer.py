@@ -9,7 +9,7 @@ import threading
 from django.core.management.base import BaseCommand
 
 from apps.portfolio.models import Portfolio
-from apps.portfolio.models.allocation import ITF1HR, ITF6HR, ITF24HR, ITF_PACKS
+from apps.portfolio.models.allocation import ITF1HR, ITF6HR, ITF24HR, ITFPRIV, MOONDOGE, ITF_PACKS
 from apps.portfolio.services.signals import get_allocations_from_signals, SHORT_HORIZON, MEDIUM_HORIZON, LONG_HORIZON
 from apps.portfolio.services.doge_votes import get_allocations_from_doge
 from apps.portfolio.services.trading import set_portfolio
@@ -37,7 +37,6 @@ def balance_portfolios():
 
     ITF_PACK_HORIZONS = {ITF1HR: SHORT_HORIZON, ITF6HR: MEDIUM_HORIZON, ITF24HR: LONG_HORIZON}
 
-    # TODO @tomcounsell do something with this :)
     ITF_doge_binance_allocations = get_allocations_from_doge(at_datetime=datetime.now())
 
     ITF_binance_allocations = {
@@ -62,9 +61,19 @@ def balance_portfolios():
             for alloc in portfolio.target_allocation:
                 if alloc['coin'] in ITF_PACKS:
                     itf_pack = alloc['coin']
+
+                    if itf_pack in [ITF1HR, ITF6HR, ITF24HR]:
+                        insertion_allocations = ITF_binance_allocations[itf_pack]
+                    elif itf_pack == MOONDOGE:
+                        insertion_allocations = ITF_doge_binance_allocations
+                    elif itf_pack == ITFPRIV:
+                        continue  # yet to be implemented
+                    else:
+                        continue
+
                     target_allocation = merge_allocations(
                         base_allocation=target_allocation,
-                        insert_allocation=ITF_binance_allocations[itf_pack],
+                        insert_allocation=insertion_allocations,
                         merge_coin=itf_pack
                     )
 
