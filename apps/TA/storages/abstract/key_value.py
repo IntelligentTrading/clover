@@ -48,8 +48,6 @@ class KeyValueStorage(ABC):
                 key_prefix=self.db_key_prefix,
                 key_suffix=self.db_key_suffix
             )
-            # todo: add this line for using env in key
-            # + f':{SIMULATED_ENV if SIMULATED_ENV != "PRODUCTION" else ""}'
         )
 
     def save(self, pipeline=None, *args, **kwargs):

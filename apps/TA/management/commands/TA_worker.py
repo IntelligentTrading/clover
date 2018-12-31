@@ -16,27 +16,13 @@ except:
     earliest_price_score = TimeseriesStorage.score_from_timestamp(int(time.time()))
 
 
-# todo for making this more efficient
-# ✅ - only 5min price history, all else can be generated on demand
-# ✅ def compress(timestamp): return (timestamp - JAN_1_2017_TIMESTAMP)/300
-# 🚫 - floor all prices to 6 sig-figs (saving up to 6 digits for XX_USDT prices) on TickerStorage
-# ✅  - but maybe no because we like operating with satoshis always
-# ✅ - cast scores on indicators to integers (saving 2 digits)
-# ✅ - use rabbitmq as a centralized task queue so workers can scale horizontally
-# ✅ - reduce number of tickers being processed
-# 
-# firehose download historical data
-# resampling and missing data
-# Get pubsub thing working
+# TODO:
 # Send signals to SNS
-# Confirm new signals are same as old
+# Confirm TA signals are same as old
 # Fully replace old signals with new
-# turn signals into votes for portfolio
-# Autotrade on portfolio
-#
-# Next week:
-# Push all updates live
 # Stop using old Aurora database
+# turn signals into votes for portfolio
+
 
 class Command(BaseCommand):
     help = 'Run Redis Subscribers for TA'
