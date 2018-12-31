@@ -118,3 +118,4 @@ node_modules/
 *.rdb
 static/theme-dashboard.zip
 .idea/
+Pipfile
