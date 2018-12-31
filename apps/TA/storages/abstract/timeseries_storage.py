@@ -24,6 +24,7 @@ class TimeseriesStorage(KeyValueStorage):
 
     """
     class_describer = "timeseries"
+    value = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
