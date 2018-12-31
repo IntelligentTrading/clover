@@ -1,6 +1,5 @@
 from django.db import models
 from unixtimestampfield.fields import UnixTimeStampField
-# from apps.common.behaviors import Timestampable TODO: @tomcounsell do we need this?
 
 
 METRIC_IDS = {
@@ -13,7 +12,7 @@ GP_TRAINING_CONFIG = os.path.join(BASE, 'doge_config.json')
 
 
 
-class Doge(models.Model):
+class Doge(models.Model):  #todo: can use Timestampable and/or Expirable from common.behaviors
     train_start_timestamp = UnixTimeStampField()    # timestamp of the first data point in the training dataset
     train_end_timestamp = UnixTimeStampField()      # timestamp of the last data point in the training dataset
     experiment_id = models.TextField()              # a string representation of the experiment showing the tickers
@@ -37,6 +36,3 @@ class Doge(models.Model):
         doge.metric_id = metric_id
         doge.metric_value = metric_value
         doge.save()
-
-
-
