@@ -45,13 +45,13 @@ def get_allocations_from_signals(horizon="all", at_datetime=None):
 
     horizon_periods = {
         SHORT_HORIZON: 1,
-        MEDIUM_HORIZON: 6,
+        MEDIUM_HORIZON: 4,
         LONG_HORIZON: 24,
     }
     horizon_life_spans = {
-        SHORT_HORIZON: 6,
-        MEDIUM_HORIZON: 6,
-        LONG_HORIZON: 6,
+        SHORT_HORIZON: 4,
+        MEDIUM_HORIZON: 4,
+        LONG_HORIZON: 4,
     }
     horizon_weights = {
         SHORT_HORIZON: 1,
