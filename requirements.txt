@@ -39,12 +39,15 @@ jmespath==0.9.3
 jsonfield==2.0.2
 kombu==4.2.1
 multidict==4.4.2
+numpy==1.15.4
 oauthlib==2.1.0
+pandas==0.23.4
 parso==0.3.1
+pathos
 pexpect==4.6.0
 pickleshare==0.7.5
 prompt-toolkit==2.0.6
-psycopg2==2.7.5
+psycopg2-binary==2.7.6.1
 ptyprocess==0.6.0
 pycares==2.3.0
 Pygments==2.2.0
@@ -62,7 +65,9 @@ simplejson==3.16.0
 six==1.11.0
 sqlparse==0.2.4
 static3==0.7.0
+TA-Lib==0.4.17
 toolz==0.9.0
+tqdm==4.28.1
 traitlets==4.3.2
 typing==3.6.6
 uhashring==1.1
