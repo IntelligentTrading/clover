@@ -101,13 +101,12 @@ class DogeTrainer:
         trainer = DogeTrainer(redis_db)
 
         # TODO: replace with datetime.now() and similar beautiful stuff once Redis is working
-        training_period = Period('2018/10/25 12:00:00 UTC', '2018/10/26 00:00:00 UTC')
+        # training_period = Period('2018/10/25 12:00:00 UTC', '2018/10/26 00:00:00 UTC')
+        # start_timestamp = training_period.start_time
+        # end_timestamp = training_period
 
-        start_time = redis_db.get_nearest_db_timestamp(training_period.start_time, 'BTC', 'USDT')
-        end_time = redis_db.get_nearest_db_timestamp(training_period.end_time, 'BTC', 'USDT')
-
-        #start_time = redis_db.get_nearest_db_timestamp(start_timestamp, 'BTC', 'USDT', None, None)
-        #end_time = redis_db.get_nearest_db_timestamp(end_timestamp, 'BTC', 'USDT', None, None)
+        start_time = redis_db.get_nearest_db_timestamp(start_timestamp, 'BTC', 'USDT', None, None)
+        end_time = redis_db.get_nearest_db_timestamp(end_timestamp, 'BTC', 'USDT', None, None)
 
         trainer.retrain_doges(start_time, end_time, max_doges_to_save=10)
 
@@ -258,6 +257,8 @@ class DogeTradingManager(TickListener):
         votes, weights = self.doge_committee.vote(ticker_data.transaction_currency,
                                                   ticker_data.counter_currency,
                                                   ticker_data.timestamp)
+
+        weights = [w if w != 0 else w+0.0001 for w in weights]  # TODO: smarter way to check for weights 0?
 
         weighted_votes = [weight*votes[i] for i, weight in enumerate(weights)]
 
