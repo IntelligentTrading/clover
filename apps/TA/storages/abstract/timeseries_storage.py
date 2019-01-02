@@ -20,10 +20,9 @@ class TimeseriesException(TAException):
 class TimeseriesStorage(KeyValueStorage):
     """
     stores things in a sorted set unique to each ticker and exchange
-    todo: split the db by each exchange source
-
     """
     class_describer = "timeseries"
+    value = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -93,35 +92,35 @@ class TimeseriesStorage(KeyValueStorage):
         if not timestamp:
             query_response = database.zrange(sorted_set_key, -1, -1)
             try:
-                [value, timestamp] = query_response[0].decode("utf-8").split(":")
+                [value, score] = query_response[0].decode("utf-8").split(":")
+                timestamp = cls.timestamp_from_score(score)
             except:
-                value, timestamp = "unknown", JAN_1_2017_TIMESTAMP
+                timestamp = JAN_1_2017_TIMESTAMP
 
-            min_score = max_score = cls.score_from_timestamp(timestamp)  # TODO @tomcounsell bug here, query returns scores, not timestamps
+            min_timestamp = max_timestamp = timestamp
+
 
         else:
             # compress timestamps to scores
             target_score = cls.score_from_timestamp(timestamp)
             score_tolerance = cls.periods_from_seconds(timestamp_tolerance)
 
-            # logger.debug(f"querying for key {sorted_set_key} with score {target_score} and back {periods_range} periods")
+            # logger.debug(f"querying for key {sorted_set_key} \
+            # with score {target_score} and back {periods_range} periods")
 
             min_score, max_score = (target_score - score_tolerance - periods_range), (target_score + score_tolerance)
+            min_timestamp,  max_timestamp = cls.timestamp_from_score(min_score), cls.timestamp_from_score(max_score)
 
             query_response = database.zrangebyscore(sorted_set_key, min_score, max_score)
-
-        # OLD example query_response = [b'0.06288:1532163247']
-        # which came from f'{self.value}:{str(self.unix_timestamp)}'
-
-        # NEW example query_response = [b'0.06288:1532163247']
-        # which came from f'{self.value}:{str(score)}' where score = (self.timestamp-JAN_1_2017_TIMESTAMP)/300
+            # example query_response = [b'0.06288:210156.0']
+            # which came from f'{self.value}:{str(score)}' where score = (self.timestamp-JAN_1_2017_TIMESTAMP)/300
 
         return_dict = {
             'values': [],
             'values_count': 0,
             'timestamp': timestamp,
-            'earliest_timestamp': cls.timestamp_from_score(min_score),
-            'latest_timestamp': cls.timestamp_from_score(max_score),
+            'earliest_timestamp': min_timestamp,
+            'latest_timestamp': max_timestamp,
             'periods_range': periods_range,
             'period_size': 300,
             'scores': []
@@ -136,14 +135,10 @@ class TimeseriesStorage(KeyValueStorage):
             if len(query_response) < periods_range + 1:
                 return_dict["warning"] = "fewer values than query's periods_range"
 
+            values = [value_score.decode("utf-8").rsplit(":", 1)[0] for value_score in query_response]
+            scores = [value_score.decode("utf-8").rsplit(":", 1)[1] for value_score in query_response]
 
-
-            # TODO @tomcounsell this does not work for Bbands and other indicators where we have more than one value
-            # e.g. bb_low:bb_mid:bb_high:score
-            # values = [value_score.decode("utf-8").split(":")[0] for value_score in query_response]
-            # scores = [value_score.decode("utf-8").split(":")[1] for value_score in query_response]
             # todo: double check that [-1] in list is most recent timestamp
-
 
             values = [value_score.decode("utf-8")[:value_score.decode("utf-8").rfind(':')] for value_score in query_response]
             scores = [value_score.decode("utf-8")[value_score.decode("utf-8").rfind(':')+1:] for value_score in query_response]

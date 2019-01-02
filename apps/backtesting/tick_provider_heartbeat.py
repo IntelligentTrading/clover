@@ -9,7 +9,7 @@ from apps.backtesting.utils import datetime_from_timestamp
 
 class TickProviderHeartbeat(TickProvider):
 
-    def __init__(self, heartbeat_period_secs, ticker_list=['BTC_USDT', 'ETH_BTC'], database=redis_db):
+    def __init__(self, heartbeat_period_secs, ticker_list=['BTC_USDT'], database=redis_db):
 
         super().__init__()
         self.heartbeat_period_secs = heartbeat_period_secs
