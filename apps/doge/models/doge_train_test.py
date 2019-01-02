@@ -238,7 +238,7 @@ class DogeTradingManager(TickListener):
         tick_provider_heartbeat = TickProviderHeartbeat(
             heartbeat_period_secs=heartbeat_period_secs,
             database=database,
-            ticker_list=['BTC_USDT', 'ETH_BTC', 'OMG_BTC']
+            ticker_list=['BTC_USDT']
         )
         tick_provider_heartbeat.add_listener(self)
         tick_provider_heartbeat.run()
