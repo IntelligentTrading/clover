@@ -446,7 +446,7 @@ class RedisDB(Database):
             exchange=source,
             index="close_price",
             timestamp=timestamp,
-            timestamp_tolerance = 0
+            timestamp_tolerance=0
         )['values']
         return float(prices[-1]) if len(prices) else None
 

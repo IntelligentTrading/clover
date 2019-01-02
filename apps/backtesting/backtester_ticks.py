@@ -66,7 +66,7 @@ class TickDrivenBacktester(Evaluation, TickListener):
                                                     start_time,
                                                     end_time, database=database)
         benchmark_strategy = BuyAndHoldTimebasedStrategy(start_time, end_time, transaction_currency, counter_currency,
-                                                         source=0)
+                                                         source=source)
         benchmark_order_generator = OrderGenerator.ALTERNATING
 
         benchmark = TickDrivenBacktester(
