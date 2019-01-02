@@ -21,7 +21,7 @@ pd.options.mode.chained_assignment = None
 class Evaluation(ABC):
 
     def __init__(self, strategy, transaction_currency, counter_currency,
-                 start_cash, start_crypto, start_time, end_time, source=0,
+                 start_cash, start_crypto, start_time, end_time, source="binance",
                  resample_period=60, evaluate_profit_on_last_order=True, verbose=True,
                  benchmark_backtest=None, time_delay=0, slippage=0, order_generator=OrderGenerator.ALTERNATING,
                  database=postgres_db):
