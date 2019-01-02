@@ -428,7 +428,7 @@ class RedisDB(Database):
         return df
 
 
-    def get_nearest_resampled_price(self, timestamp, transaction_currency, counter_currency, resample_period, source, normalize):
+    def get_nearest_resampled_price(self, timestamp, transaction_currency, counter_currency, resample_period, source, normalize=False):
         prices = PriceStorage.query(
             ticker=f'{transaction_currency}_{counter_currency}',
             exchange="binance",
@@ -439,11 +439,11 @@ class RedisDB(Database):
         return prices[-1] if len(prices) else None
 
 
-    def get_price(self, transaction_currency, timestamp, source, counter_currency="BTC", normalize=True):
+    def get_price(self, transaction_currency, timestamp, source="binance", counter_currency="BTC", normalize=False):
 
         prices = PriceStorage.query(
             ticker=f'{transaction_currency}_{counter_currency}',
-            exchange="binance",
+            exchange=source,
             index="close_price",
             timestamp=timestamp,
             timestamp_tolerance = 0
@@ -531,6 +531,7 @@ class RedisDB(Database):
             'bbands': bbands.BbandsStorage,
             'ht_trendline': ht_trendline.HtTrendlineStorage,
             'slowd': stoch.StochStorage,
+            'close_price': PriceStorage
         }
 
         params = dict(
@@ -565,6 +566,11 @@ class RedisDB(Database):
     def get_indicator(self, indicator_name, transaction_currency, counter_currency, timestamp, resample_period, source='binance'):
         # query Redis to get indicator value at timestamp
 
+        if indicator_name == 'close_price':
+            return self.get_price(transaction_currency=transaction_currency,
+                                  counter_currency=counter_currency,
+                                  timestamp=timestamp)
+
         params = dict(
             ticker=f'{transaction_currency}_{counter_currency}',
             exchange="binance",
@@ -593,7 +599,6 @@ class RedisDB(Database):
             'bb_low': bbands.BbandsStorage,
             'ht_trendline': ht_trendline.HtTrendlineStorage,
             'slowd': stoch.StochStorage,
-
         }
 
         try:
@@ -601,31 +606,35 @@ class RedisDB(Database):
             if len(results['values']):
                 result = results['values'][-1].split(':')
                 if indicator_name == 'bb_up':
-                    return result[0]
+                    return float(result[0])
                 elif indicator_name == 'bb_mid':
-                    return result[1]
+                    return float(result[1])
                 elif indicator_name == 'bb_low':
-                    return result[2]
+                    return float(result[2])
                 elif indicator_name == 'macd_value':
-                    return result[0]
+                    return float(result[0])
                 elif indicator_name == 'macd_signal':
-                    return result[1]
+                    return float(result[1])
                 elif indicator_name == 'macd_hist':
-                    return result[2]
+                    return float(result[2])
                 elif indicator_name == 'slowd':
-                    return result[1]
+                    return float(result[1])
 
-            return results['values'][-1] if len(results['values']) else None
+            return float(results['values'][-1]) if len(results['values']) else None
 
         except IndexError:
             return "unknown indicator_name"
         except Exception as e:
             raise e
 
-    def get_indicator_at_previous_timestamp(self, indicator_name, transaction_currency, counter_currency, timestamp, resample_period, source):
-        self.get_indicator(indicator_name, transaction_currency, counter_currency,
-                           (timestamp - timedelta(seconds=resample_period*60)),
+    def get_indicator_at_previous_timestamp(self, indicator_name, transaction_currency, counter_currency, timestamp, resample_period, source="binance"):
+        indicator_value = self.get_indicator(indicator_name, transaction_currency, counter_currency,
+                           (timestamp - 5*60), # TODO check if this hardcoding is OK
                            resample_period, source)
+
+        if indicator_value is None:
+            logging.debug(f"Indicator {indicator_name} not found at timestamp {timestamp} (previous)")
+        return indicator_value
 
 
 

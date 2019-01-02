@@ -211,7 +211,8 @@ class RedisTAProvider(TAProvider):
         'macd_signal': 26,
         'macd_hist': 26,
         'adx': 1,
-        'slowd': 5
+        'slowd': 5,
+        'close_price': 1,
     }
 
     def get_indicator(self, indicator_name, input, horizon=PERIODS_1HR): # TODO ensure the horizon can be changed
@@ -232,7 +233,7 @@ class RedisTAProvider(TAProvider):
             resample_period=horizon * indicator_period
         )
 
-        return 25 # TODO remove mock values once Redis is filled with actual data
+        return indicator_value # 25 # TODO remove mock values once Redis is filled with actual data
 
     def get_indicator_at_previous_timestamp(self, indicator_name, input, horizon=PERIODS_1HR):
         timestamp = self._get_timestamp(input)
@@ -242,10 +243,10 @@ class RedisTAProvider(TAProvider):
             indicator_name=indicator_name,  # TODO @tomcounsell ensure we have data for all indicator_names
             transaction_currency=transaction_currency,
             counter_currency=counter_currency,
-            resample_period=horizon * self.default_indicator_periods['indicator_name']
+            resample_period=horizon * self.default_indicator_periods[indicator_name]
         )
 
-        return 30  # TODO remove mock values once Redis is filled with actual data
+        return indicator_value #30  # TODO remove mock values once Redis is filled with actual data
 
 
 
