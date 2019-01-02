@@ -376,7 +376,7 @@ class RedisDB(Database):
         pass
 
     def get_resampled_prices_in_range(self, start_time, end_time,
-                                      transaction_currency, counter_currency, candle_duration_minutes=5,
+                                      transaction_currency, counter_currency, horizon,
                                       source="binance", normalize=False):
         """
 
@@ -390,7 +390,9 @@ class RedisDB(Database):
         :return: a dataframe with open, high, low and closing price and close volume
         """
 
-        periods_range = (end_time - start_time) // (candle_duration_minutes*60)
+        # TODO add support for horizon
+
+        periods_range = (end_time - start_time) // (5*60)
 
         close_prices = PriceStorage.query(
             ticker=f'{transaction_currency}_{counter_currency}',
@@ -480,23 +482,14 @@ class RedisDB(Database):
     def get_timestamp_n_ticks_earlier(self, timestamp, n, transaction_currency, counter_currency, source, resample_period):
         return timestamp - n*60*5
 
-        prices = PriceStorage.query(
-            ticker=f'{transaction_currency}_{counter_currency}',
-            exchange="binance",
-            index="close_price",
-            timestamp=timestamp - (resample_period*n),
-            timestamp_tolerance=0
-        )['values']
-        return prices[-1] if len(prices) else None
 
-
-    def get_nearest_db_timestamp(self, timestamp, transaction_currency, counter_currency, source=None, resample_period=None):
+    def get_nearest_db_timestamp(self, timestamp, transaction_currency, counter_currency, source="binance"):
 
         timestamp_tolerance = 60*5
 
         results = PriceStorage.query(
             ticker=f'{transaction_currency}_{counter_currency}',
-            exchange="binance",
+            exchange=source,
             index="close_price",
             timestamp=timestamp,
             timestamp_tolerance=timestamp_tolerance
@@ -637,166 +630,6 @@ class RedisDB(Database):
         return indicator_value
 
 
-
-class RedisDummyDB(Database):
-
-    # TODO: replace all SQL queries with Redis queries
-
-    # TODO: adapt or remove
-    def __init__(self):
-        self.conn = psycopg2.connect(postgres_connection_string)
-        self.cursor = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-
-    # TODO: remove these three methods, they're needed for Postgres
-    def get_cursor(self):
-        return self.cursor
-
-    def get_connection(self):
-        return self.conn
-
-    def execute(self, statement, params):
-        self.cursor.execute(statement, params)
-        return self.cursor
-
-
-    def get_resampled_prices_in_range(self, start_time, end_time, transaction_currency,
-                                      counter_currency, resample_period, source=0, normalize=True):
-        resampled_price_range_query = """SELECT timestamp, close_price, high_price, low_price, close_volume
-                                         FROM indicator_priceresampl 
-                                         WHERE transaction_currency = %s 
-                                         AND counter_currency = %s 
-                                         AND source = %s 
-                                         AND timestamp >= %s AND timestamp <= %s
-                                         AND resample_period = %s
-                                         AND close_price is not null
-                                         ORDER BY timestamp ASC"""
-        counter_currency_id = CounterCurrency[counter_currency].value
-        connection = self.get_connection()
-        price_data = pd.read_sql(resampled_price_range_query, con=connection, params=(transaction_currency,
-                                                                                      counter_currency_id,
-                                                                                      source,
-                                                                                      start_time,
-                                                                                      end_time,
-                                                                                      resample_period),
-                                 index_col="timestamp")
-        if normalize:
-            price_data.loc[:, 'close_price'] /= 1E8
-            price_data.loc[:, 'high_price'] /= 1E8
-            price_data.loc[:, 'low_price'] /= 1E8
-        return price_data
-
-
-    def get_nearest_resampled_price(self, timestamp, transaction_currency, counter_currency, resample_period, source, normalize):
-        query = """SELECT timestamp, close_price, high_price, low_price, close_volume
-                                         FROM indicator_priceresampl 
-                                         WHERE transaction_currency = %s 
-                                         AND counter_currency = %s 
-                                         AND source = %s 
-                                         AND timestamp >= %s
-                                         AND resample_period = %s
-                                         AND close_price is not null
-                                         ORDER BY timestamp ASC LIMIT 1"""
-        counter_currency_id = CounterCurrency[counter_currency].value
-        connection = self.get_connection()
-        price_data = pd.read_sql(query, con=connection, params=(transaction_currency,
-                                                                counter_currency_id,
-                                                                source,
-                                                                timestamp,
-                                                                resample_period), index_col="timestamp")
-        if normalize:
-            price_data.loc[:, 'close_price'] /= 1E8
-            price_data.loc[:, 'high_price'] /= 1E8
-            price_data.loc[:, 'low_price'] /= 1E8
-        return price_data
-
-
-    # these are non-resampled prices
-    def get_price(self, currency, timestamp, source, counter_currency="BTC", normalize=True):
-        price_query = """SELECT price FROM indicator_price 
-                                    WHERE transaction_currency = %s
-                                    AND timestamp = %s
-                                    AND source = %s
-                                    AND counter_currency = %s;"""
-
-        if currency == counter_currency:
-            return 1
-        counter_currency_id = CounterCurrency[counter_currency].value
-        cursor = self.execute(price_query, params=(currency, timestamp, source, counter_currency_id))
-
-        price = cursor.fetchall()
-        if cursor.rowcount == 0:
-            price = self.get_price_nearest_to_timestamp(currency, timestamp, source, counter_currency)
-        else:
-            assert cursor.rowcount == 1
-            price = price[0][0]
-
-        if normalize:
-            return price / 1E8
-        else:
-            return price
-
-
-    price_in_range_query_asc = """SELECT price, timestamp 
-                                   FROM indicator_price 
-                                   WHERE transaction_currency = %s AND counter_currency = %s 
-                                        AND source = %s AND timestamp >= %s 
-                                        AND timestamp <= %s ORDER BY timestamp ASC"""
-    price_in_range_query_desc = """SELECT price, timestamp 
-                                   FROM indicator_price 
-                                   WHERE transaction_currency = %s AND counter_currency = %s 
-                                        AND source = %s AND timestamp >= %s 
-                                        AND timestamp <= %s ORDER BY timestamp DESC"""
-
-    def get_price_nearest_to_timestamp(self, currency, timestamp, source, counter_currency,
-                                       max_delta_seconds_past=60*60,
-                                       max_delta_seconds_future=60*5):
-
-        counter_currency_id = CounterCurrency[counter_currency].value
-        cursor = self.execute(self.price_in_range_query_desc, params=(currency, counter_currency_id, source,
-                                                     timestamp - max_delta_seconds_past, timestamp))
-        history = cursor.fetchall()
-        cursor = self.execute(self.price_in_range_query_asc, params=(currency, counter_currency_id, source,
-                                                              timestamp, timestamp + max_delta_seconds_future))
-        future = cursor.fetchall()
-
-        if len(history) == 0:
-
-            self.log_price_error(f"No historical price data for {currency}-{counter_currency} in "
-                            f"{max_delta_seconds_past/60} minutes before timestamp {timestamp}...",
-                            counter_currency)
-
-            if len(future) == 0:
-                self.log_price_error("No future data found.", counter_currency)
-                raise NoPriceDataException()
-            else:
-                logging.warning("Returning future price...")
-
-                return future[0][0]
-        else:
-            logging.debug("Returning historical price data for timestamp {} (difference of {} minutes)"
-                  .format(timestamp,(timestamp - history[0][1])/60))
-            return history[0][0]
-
-
-    def get_timestamp_n_ticks_earlier(self, timestamp, n, transaction_currency, counter_currency, source, resample_period):
-        query = """SELECT DISTINCT timestamp 
-                   FROM indicator_priceresampl 
-                   WHERE timestamp < %s AND transaction_currency = %s AND counter_currency = %s 
-                   AND source=%s AND resample_period=%s ORDER BY timestamp DESC LIMIT %s
-        """
-        counter_currency_id = CounterCurrency[counter_currency].value
-        cursor = self.execute(query, params=(timestamp, transaction_currency, counter_currency_id, source, resample_period, n,))
-        data = cursor.fetchall()
-        assert len(data) == n
-        return data[-1][0]
-
-    def get_indicator(self, indicator_name, transaction_currency, counter_currency, resample_period, source):
-        # query Redis to get indicator value at timestamp
-        pass
-
-    def get_indicator_at_previous_timestamp(self, indicator_name, transaction_currency, counter_currency, resample_period, source):
-        # query Redis to get indicator_name at timestamp-1
-        pass
 
 
 postgres_db = PostgresDatabaseConnection()

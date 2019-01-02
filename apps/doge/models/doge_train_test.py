@@ -105,8 +105,8 @@ class DogeTrainer:
         # start_timestamp = training_period.start_time
         # end_timestamp = training_period
 
-        start_time = redis_db.get_nearest_db_timestamp(start_timestamp, 'BTC', 'USDT', None, None)
-        end_time = redis_db.get_nearest_db_timestamp(end_timestamp, 'BTC', 'USDT', None, None)
+        start_time = redis_db.get_nearest_db_timestamp(start_timestamp, 'BTC', 'USDT')
+        end_time = redis_db.get_nearest_db_timestamp(end_timestamp, 'BTC', 'USDT')
 
         trainer.retrain_doges(start_time, end_time, max_doges_to_save=10)
 

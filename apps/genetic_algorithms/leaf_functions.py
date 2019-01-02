@@ -233,7 +233,7 @@ class RedisTAProvider(TAProvider):
             resample_period=horizon * indicator_period
         )
 
-        return indicator_value # 25 # TODO remove mock values once Redis is filled with actual data
+        return indicator_value
 
     def get_indicator_at_previous_timestamp(self, indicator_name, input, horizon=PERIODS_1HR):
         timestamp = self._get_timestamp(input)
@@ -246,7 +246,7 @@ class RedisTAProvider(TAProvider):
             resample_period=horizon * self.default_indicator_periods[indicator_name]
         )
 
-        return indicator_value #30  # TODO remove mock values once Redis is filled with actual data
+        return indicator_value
 
 
 
