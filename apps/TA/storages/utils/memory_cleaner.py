@@ -73,7 +73,6 @@ def redisCleanup():
 
     if STAGE:
         # remove all poloniex and bittrex data for now
-        # todo: remove this and make sure it's not necessary
         for key in database.keys("*:poloniex:*"):
             database.delete(key)
         for key in database.keys("*:bittrex:*"):

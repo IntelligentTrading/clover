@@ -13,7 +13,8 @@ from django.db import models
 
 ITF1HR, ITF6HR, ITF24HR = "ITF1HR", "ITF6HR", "ITF24HR"
 ITFPRIV = "ITFPRIV"
-ITF_PACKS = [ITF1HR, ITF6HR, ITF24HR,]  # ITFPRIV,
+MOONDOGE = "🐕🍀🐕"
+ITF_PACKS = [ITF1HR, ITF6HR, ITF24HR, ITFPRIV, MOONDOGE]
 
 class Allocation(models.Model):
 
