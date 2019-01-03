@@ -12,6 +12,8 @@ from apps.genetic_algorithms.gp_artemis import ExperimentManager
 from apps.genetic_algorithms.gp_utils import Period
 from apps.genetic_algorithms.leaf_functions import RedisTAProvider
 from apps.TA import HORIZONS, PERIODS_4HR, PERIODS_1HR
+from settings import DOGE_RETRAINING_PERIOD_SECONDS
+import time
 
 class DogeTrainer:
     """
@@ -158,7 +160,7 @@ class DogeCommittee:
     The committee is built out of the latest GPs in the database.
     """
 
-    def __init__(self, database=redis_db, max_doges=100):
+    def __init__(self, database=redis_db, max_doges=100, ttl=DOGE_RETRAINING_PERIOD_SECONDS):
         with open(GP_TRAINING_CONFIG, 'r') as f:
             self.gp_training_config_json = f.read()
 
@@ -167,6 +169,12 @@ class DogeCommittee:
         doge_strategies = self._load_latest_doge_strategies(database)
         self.doge_strategies = doge_strategies if len(doge_strategies) <= max_doges else doge_strategies[:max_doges]
         self.periods = PERIODS_1HR  # TODO remove this hardcoding if we decide to use more horizons
+        self._init_time = time.time()
+        self._ttl = ttl
+
+    @property
+    def expired(self):
+        return time.time() - self._init_time > self._ttl
 
 
     def _load_latest_doge_strategies(self, database):
