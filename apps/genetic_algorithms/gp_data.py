@@ -116,7 +116,7 @@ class Data:
         self.bb_up = self._fill_indicator_values('bb_up', 5)
         self.bb_mid = self._fill_indicator_values('bb_mid', 5)
         self.bb_low = self._fill_indicator_values('bb_low', 5)
-        self.bb_width = [up - low for up, low in zip(self.bb_up, self.bb_low)]
+        self.bb_width = [(up - low)/mid for up, low, mid in zip(self.bb_up, self.bb_low, self.bb_mid)]
 
         # TODO re-enable the BB squeeze
         # self.min_bbw_180 = np.array(

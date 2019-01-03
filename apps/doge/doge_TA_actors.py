@@ -53,15 +53,17 @@ class DogeSubscriber(SignalSubscriber):
         # todo: set an expiry for the committee on the same schedule as training
         # todo: ideally, a new training would expire all previous committees, see common.behaviours.expirable
         super().__init__(*args, **kwargs)
+        logger.info("                                                      (😎 IT IS THE LAST ONE 😎)")
 
     def handle(self, channel, data, *args, **kwargs):
         transaction_currency, counter_currency = self.ticker.split('_')
 
         new_doge_storage = DogeStorage(ticker=self.ticker,
                                        exchange=self.exchange,
-                                       timestamp=self.timestamp, )
+                                       timestamp=self.timestamp,
+                                       periods=self.committee.periods)
 
-        ticker_votes, weights = self.committee.vote(transaction_currency, counter_currency)
+        ticker_votes, weights = self.committee.vote(transaction_currency, counter_currency, self.timestamp)
         # weighted_vote = sum([ticker_votes[i] * weights[i] for i in range(len(ticker_votes))]) / sum(weights)
 
         new_doge_storage.value = (sum(ticker_votes) * 100 / len(ticker_votes))  # normalize to +-100 scale

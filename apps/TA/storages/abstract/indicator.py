@@ -208,9 +208,13 @@ class IndicatorStorage(TickerStorage):
     def save(self, *args, **kwargs):
 
         # check meets basic requirements for saving
-        if not all([self.ticker, self.exchange,
-                    self.periods, self.value,
-                    self.unix_timestamp]):
+        # if not all([self.ticker, self.exchange,    # @tomcounsell: cool, but fails if value is 0.0
+        #            self.periods, self.value,
+        #             self.unix_timestamp]):
+        if not (all([self.ticker, self.exchange,     # an ugly fix 🤢
+                    self.periods,
+                    self.unix_timestamp]) and self.value is not None):
+
             logger.error("incomplete information, cannot save \n" + str(self.__dict__))
             raise IndicatorException("save error, missing data")
 
