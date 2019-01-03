@@ -63,22 +63,15 @@ def get_allocations_from_doge(at_datetime=None):
     }
 
 
-    # TODO remove mock data
-    now_datetime = datetime.fromtimestamp(DogeStorage.timestamp_from_score(189215))
-
     for ticker in tickers:
         for horizon in horizons:
             # find the latest vote
             query_result = DogeStorage.query(
                 ticker=ticker, exchange=exchange, timestamp=now_datetime.timestamp(),
-                periods_range=PERIODS_1HR*horizon_periods[horizon]
+                periods_range=PERIODS_1HR*horizon_periods[horizon],
+                periods_key=PERIODS_1HR*horizon_periods[horizon]
             )
 
-            # TODO: remove this mock data
-            query_result = {
-                'scores': [189213, 189214, 189215],
-                'values': [0.27, 0.55, -0.34],
-            }
 
             for score, weighted_vote in zip(query_result['scores'], query_result['values']):
                 timestamp = DogeStorage.datetime_from_score(score)
@@ -90,7 +83,7 @@ def get_allocations_from_doge(at_datetime=None):
                         horizon_life_spans[horizon]).total_seconds())
 
                 # re-normalize weighted vote to interval [0, 1]
-                weighted_vote = (1.0 + weighted_vote) / 2
+                weighted_vote = (1.0 + float(weighted_vote)) / 2
                 vote = float(weighted_vote) * horizon_weights[horizon] * time_weight
 
                 if ticker in tickers_dict:
@@ -145,15 +138,6 @@ def get_allocations_from_doge(at_datetime=None):
     allocations_list = [{"coin": coin, "portion": (portion // 0.0001 / 10000)} for coin, portion in allocations_dict.items()]
     logging.debug(f'Final SUM of allocations: {round(sum([a["portion"] for a in allocations_list])*100,3)}%')
 
+
     return allocations_list
 
-
-def get_counter_currency_name(counter_currency_index):
-    (BTC, ETH, USDT, XMR) = list(range(4))
-    COUNTER_CURRENCY_CHOICES = (
-        (BTC, 'BTC'),
-        (ETH, 'ETH'),
-        (USDT, 'USDT'),
-        (XMR, 'XMR'),
-    )
-    return next((cc_name for index, cc_name in COUNTER_CURRENCY_CHOICES if index == counter_currency_index), None)
