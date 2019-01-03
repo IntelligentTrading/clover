@@ -11,6 +11,7 @@ from apps.genetic_algorithms.genetic_program import GeneticTickerStrategy
 from apps.genetic_algorithms.gp_artemis import ExperimentManager
 from apps.genetic_algorithms.gp_utils import Period
 from apps.genetic_algorithms.leaf_functions import RedisTAProvider
+from apps.TA import HORIZONS, PERIODS_4HR, PERIODS_1HR
 
 class DogeTrainer:
     """
@@ -165,6 +166,7 @@ class DogeCommittee:
         self.function_provider = RedisTAProvider()
         doge_strategies = self._load_latest_doge_strategies(database)
         self.doge_strategies = doge_strategies if len(doge_strategies) <= max_doges else doge_strategies[:max_doges]
+        self.periods = PERIODS_1HR  # TODO remove this hardcoding if we decide to use more horizons
 
 
     def _load_latest_doge_strategies(self, database):
