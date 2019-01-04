@@ -15,6 +15,38 @@ from apps.TA import HORIZONS, PERIODS_4HR, PERIODS_1HR
 from settings import DOGE_RETRAINING_PERIOD_SECONDS
 import time
 from apps.TA.storages.abstract.timeseries_storage import TimeseriesStorage
+from collections import namedtuple
+
+
+class DogeRedisEntry:
+
+    def __init__(self, train_start_timestamp, train_end_timestamp,
+                 experiment_id, rank, representation, metric_id, metric_value):
+        self.train_start_timestamp = train_start_timestamp
+        self.train_end_timestamp = train_end_timestamp
+        self.experiment_id = experiment_id
+        self.rank = rank
+        self.representation = representation
+        self.metric_id = metric_id
+        self.metric_value = metric_value
+
+
+    def redis_string(self):
+        return ":".join(map(str, [self.train_start_timestamp, self.train_end_timestamp, self.experiment_id, self.rank,
+                        self.representation, self.metric_id, self.metric_value]))
+
+    @staticmethod
+    def from_redis_string(redis_string):
+        train_start_timestamp, train_end_timestamp, \
+        experiment_id, rank, representation, metric_id, metric_value = redis_string.split(":")
+        return DogeRedisEntry(train_start_timestamp=int(train_start_timestamp),
+                              train_end_timestamp=int(train_end_timestamp),
+                              experiment_id=experiment_id,
+                              rank=int(rank),
+                              representation=representation,
+                              metric_id=int(metric_id),
+                              metric_value=float(metric_value))
+
 
 
 class DogeStorage(TimeseriesStorage):
@@ -81,15 +113,15 @@ class DogeTrainer:
             #                                representation=str(row.doge),
             #                                metric_id=METRIC_IDS['mean_profit'],
             #                                metric_value=row.mean_profit)
-            string_representations.append(self._generate_redis_string_representation(train_start_timestamp=start_timestamp,
-                                                                                     train_end_timestamp=end_timestamp,
-                                                                                     experiment_id=row.variant.name,
-                                                                                     rank=i,
-                                                                                     representation=str(row.doge),
-                                                                                     metric_id=METRIC_IDS['mean_profit'],
-                                                                                     metric_value=row.mean_profit))
+            string_representations.append(DogeRedisEntry(train_start_timestamp=start_timestamp,
+                                                         train_end_timestamp=end_timestamp,
+                                                         experiment_id=row.variant.name,
+                                                         rank=i,
+                                                         representation=str(row.doge),
+                                                         metric_id=METRIC_IDS['mean_profit'],
+                                                         metric_value=row.mean_profit).redis_string())
 
-        entry_to_save = ":".join(string_representations)
+        entry_to_save = "&".join(string_representations)
         new_doge_storage = DogeStorage(timestamp=end_timestamp)
         new_doge_storage.value = entry_to_save
         new_doge_storage.save(publish=True)
@@ -101,8 +133,7 @@ class DogeTrainer:
                         representation, metric_id, metric_value]))
 
     def _parse_redis_string_representation(self, redis_string):
-        train_start_timestamp, train_end_timestamp, \
-        experiment_id, rank, representation, metric_id, metric_value = redis_string.split(";")
+        return [DogeRedisEntry.from_redis_string(doge_entry) for doge_entry in redis_string.split(";")]
 
 
 
@@ -159,8 +190,8 @@ class DogeTrader:
         :param function_provider: an instance of the TAProvider class that provides TA values
         :param gp_training_config_json: a string representation of the training config json (loaded from GP_TRAINING_CONFIG file)
         """
-        self.train_start_timestamp = doge_object.train_start_timestamp.timestamp()
-        self.train_end_timestamp = doge_object.train_end_timestamp.timestamp()
+        self.train_start_timestamp = doge_object.train_start_timestamp
+        self.train_end_timestamp = doge_object.train_end_timestamp
         self.individual_str = doge_object.representation
         self.experiment_id = doge_object.experiment_id
         self.metric_id = doge_object.metric_id
@@ -214,8 +245,11 @@ class DogeCommittee:
         doge_traders = []
 
         # get doges out of DB
-        last_timestamp = Doge.objects.latest('train_end_timestamp').train_end_timestamp.timestamp()  # ah well :)
-        dogi = Doge.objects.filter(train_end_timestamp=last_timestamp) # .order_by('-metric_value') TODO: check if needed
+        # last_timestamp = Doge.objects.latest('train_end_timestamp').train_end_timestamp.timestamp()  # ah well :)
+        # dogi = Doge.objects.filter(train_end_timestamp=last_timestamp) # .order_by('-metric_value') TODO: check if needed
+
+        doge_str = DogeStorage.query()['values'][-1]
+        dogi = [DogeRedisEntry.from_redis_string(entry) for entry in doge_str.split("&")]
 
         for doge_object in dogi:
             doge = DogeTrader(database=database, doge_object=doge_object, function_provider=self.function_provider,
