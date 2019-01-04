@@ -19,7 +19,8 @@ class SignalSubscriber(IndicatorSubscriber):
     storage_class = IndicatorStorage  # override with applicable storage class
 
 
-class DogeStorage(IndicatorStorage):
+
+class DogeVoteStorage(IndicatorStorage):
     # todo: abstract this for programatic implementation
     requisite_TA_storages = ["rsi", "sma"]  # example
 
@@ -45,8 +46,9 @@ class DogeStorage(IndicatorStorage):
         return self.value
 
 
+
 class DogeSubscriber(SignalSubscriber):
-    storage_class = DogeStorage  # override with applicable storage class
+    storage_class = DogeVoteStorage  # override with applicable storage class
 
     def __init__(self, *args, **kwargs):
         self._reload_committee()
@@ -73,10 +75,10 @@ class DogeSubscriber(SignalSubscriber):
                     f'(it is now {time.time()})')
         transaction_currency, counter_currency = self.ticker.split('_')
 
-        new_doge_storage = DogeStorage(ticker=self.ticker,
-                                       exchange=self.exchange,
-                                       timestamp=self.timestamp,
-                                       periods=self.committee.periods)
+        new_doge_storage = DogeVoteStorage(ticker=self.ticker,
+                                           exchange=self.exchange,
+                                           timestamp=self.timestamp,
+                                           periods=self.committee.periods)
 
         ticker_votes, weights = self.committee.vote(transaction_currency, counter_currency, self.timestamp)
         # weighted_vote = sum([ticker_votes[i] * weights[i] for i in range(len(ticker_votes))]) / sum(weights)
