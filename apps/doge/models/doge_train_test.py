@@ -1,6 +1,6 @@
 import logging
 
-from apps.backtesting.data_sources import redis_db, postgres_db
+from apps.backtesting.data_sources import db_interface
 from apps.backtesting.tick_listener import TickListener
 from apps.backtesting.tick_provider_heartbeat import TickProviderHeartbeat
 from apps.backtesting.tick_provider import TickerData
@@ -101,15 +101,15 @@ class DogeTrainer:
         :return:
         """
 
-        trainer = DogeTrainer(redis_db)
+        trainer = DogeTrainer(db_interface)
 
         # TODO: replace with datetime.now() and similar beautiful stuff once Redis is working
         # training_period = Period('2018/10/25 12:00:00 UTC', '2018/10/26 00:00:00 UTC')
         # start_timestamp = training_period.start_time
         # end_timestamp = training_period
 
-        start_time = redis_db.get_nearest_db_timestamp(start_timestamp, 'BTC', 'USDT')
-        end_time = redis_db.get_nearest_db_timestamp(end_timestamp, 'BTC', 'USDT')
+        start_time = db_interface.get_nearest_db_timestamp(start_timestamp, 'BTC', 'USDT')
+        end_time = db_interface.get_nearest_db_timestamp(end_timestamp, 'BTC', 'USDT')
 
         trainer.retrain_doges(start_time, end_time, max_doges_to_save=10)
 
@@ -160,7 +160,7 @@ class DogeCommittee:
     The committee is built out of the latest GPs in the database.
     """
 
-    def __init__(self, database=redis_db, max_doges=100, ttl=DOGE_RETRAINING_PERIOD_SECONDS):
+    def __init__(self, database=db_interface, max_doges=100, ttl=DOGE_RETRAINING_PERIOD_SECONDS):
         with open(GP_TRAINING_CONFIG, 'r') as f:
             self.gp_training_config_json = f.read()
 
@@ -241,7 +241,7 @@ class DogeTradingManager(TickListener):
     trades on them using a DogeCommittee.
     """
 
-    def __init__(self, database=redis_db, heartbeat_period_secs=60):
+    def __init__(self, database=db_interface, heartbeat_period_secs=60):
 
         self.doge_committee = DogeCommittee(database)
 

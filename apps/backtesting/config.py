@@ -10,11 +10,6 @@ mysql_database_config = {
 '''
 import redis
 
-from settings import karlas_special_postgres_connection_string
-
-postgres_connection_string = karlas_special_postgres_connection_string
-
-
 backtesting_cols_to_names = {
     "strategy": "Strategy",
     "source": "Exchange",
