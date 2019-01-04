@@ -1,5 +1,7 @@
 import logging
 
+from apps.TA.storages.abstract.key_value import KeyValueStorage
+from apps.TA.storages.abstract.ticker import TickerStorage
 from apps.backtesting.data_sources import db_interface
 from apps.backtesting.tick_listener import TickListener
 from apps.backtesting.tick_provider_heartbeat import TickProviderHeartbeat
@@ -49,8 +51,35 @@ class DogeRedisEntry:
 
 
 
-class DogeStorage(TimeseriesStorage):
+class DogeStorage(KeyValueStorage):
+
+    # self.value = string_format_of_entire_decision_tree
+    # self.db_key_prefix = "ticker:exchange" # but we don't care, so don't distinguish!
+    # self.db_key_suffix = str(hash(self.value))[:8] #last 8 chars of the hash
+
     pass
+
+class DogePerformance(TickerStorage):
+    """
+        defines the performance score for a doge over time, unique per ticker
+    """
+    # self.key_suffix = doge_id
+    #
+    # self.ticker = ticker
+    # self.exchange = exchange
+    # self.value = performance_score
+    # self.timestamp
+
+
+class CommitteeStorage(TickerStorage):"""
+        defines which doges are valid for voting in the committee at the timestamp
+    """
+    #
+    # self.ticker = ticker
+    # self.exchange = exchange
+    # self.value = str(doge_id_list)
+    # self.timestamp = timestamp
+
 
 
 class DogeTrainer:
