@@ -22,6 +22,8 @@ from collections import namedtuple
 
 class DogeRedisEntry:
 
+    HASH_DIGITS_TO_KEEP = 8
+
     def __init__(self, train_start_timestamp, train_end_timestamp,
                  experiment_id, rank, representation, metric_id, metric_value):
         self.train_start_timestamp = train_start_timestamp
@@ -33,6 +35,7 @@ class DogeRedisEntry:
         self.metric_value = metric_value
 
 
+    @property
     def redis_string(self):
         return ":".join(map(str, [self.train_start_timestamp, self.train_end_timestamp, self.experiment_id, self.rank,
                         self.representation, self.metric_id, self.metric_value]))
@@ -48,6 +51,20 @@ class DogeRedisEntry:
                               representation=representation,
                               metric_id=int(metric_id),
                               metric_value=float(metric_value))
+
+    @property
+    def hash(self):
+        return hash(self.redis_string) % 10 ** self.HASH_DIGITS_TO_KEEP
+
+    def save_to_storage(self):
+        new_doge_storage = DogeStorage(value=self.redis_string, key_suffix=str(self.hash))
+        new_doge_storage.save()
+
+
+
+# self.value = string_format_of_entire_decision_tree
+# self.db_key_prefix = "ticker:exchange" # but we don't care, so don't distinguish!
+# self.db_key_suffix = str(hash(self.value))[:8] #last 8 chars of the hash
 
 
 
@@ -71,7 +88,8 @@ class DogePerformance(TickerStorage):
     # self.timestamp
 
 
-class CommitteeStorage(TickerStorage):"""
+class CommitteeStorage(TickerStorage):
+    """
         defines which doges are valid for voting in the committee at the timestamp
     """
     #
@@ -131,6 +149,7 @@ class DogeTrainer:
         logging.info('>>>>>>> Saving GPs to database...')
 
         string_representations = []
+        redis_entries = []
         for i, row in enumerate(doge_df.itertuples()):
             if i > max_doges_to_save:
                 break
@@ -142,19 +161,30 @@ class DogeTrainer:
             #                                representation=str(row.doge),
             #                                metric_id=METRIC_IDS['mean_profit'],
             #                                metric_value=row.mean_profit)
-            string_representations.append(DogeRedisEntry(train_start_timestamp=start_timestamp,
+            redis_entries.append(DogeRedisEntry(train_start_timestamp=start_timestamp,
                                                          train_end_timestamp=end_timestamp,
                                                          experiment_id=row.variant.name,
                                                          rank=i,
                                                          representation=str(row.doge),
                                                          metric_id=METRIC_IDS['mean_profit'],
-                                                         metric_value=row.mean_profit).redis_string())
+                                                         metric_value=row.mean_profit))
 
-        entry_to_save = "&".join(string_representations)
-        new_doge_storage = DogeStorage(timestamp=end_timestamp)
-        new_doge_storage.value = entry_to_save
-        new_doge_storage.save(publish=True)
+
+        # save individual doges
+        self._save_doges(redis_entries)
+
+        # save current committee
+        committee_str = ":".join(map(str, [redis_entry.hash for redis_entry in redis_entries]))
+        new_committee_storage = CommitteeStorage(timestamp=end_timestamp, ticker='BTC_USDT', exchange='binance')
+                                                                          # TODO remove this hardcoding once more tickers are supported
+        new_committee_storage.value = committee_str
+        new_committee_storage.save(publish=True)
         logging.info('>>>>>>> GPs saved to database.')
+
+    def _save_doges(self, redis_entries):
+        for redis_entry in redis_entries:
+            redis_entry.save_to_storage()
+
 
     def _generate_redis_string_representation(self, train_start_timestamp, train_end_timestamp,
                                               experiment_id, rank, representation, metric_id, metric_value):
