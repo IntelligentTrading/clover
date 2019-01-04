@@ -3,7 +3,7 @@ import json
 import itertools
 import numpy as np
 import pandas as pd
-from apps.backtesting.data_sources import postgres_db, redis_db
+from apps.backtesting.data_sources import db_interface, db_interface
 from apps.backtesting.utils import datetime_to_timestamp
 
 from artemis.experiments import experiment_root
@@ -55,7 +55,7 @@ class ExperimentManager:
         return hof, best
 
 
-    def __init__(self, experiment_container, read_from_file=True, database=postgres_db, hof_size=10, function_provider=None):
+    def __init__(self, experiment_container, read_from_file=True, database=db_interface, hof_size=10, function_provider=None):
         self.database = database
         self.hof_size = hof_size
         if read_from_file:
