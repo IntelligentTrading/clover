@@ -14,6 +14,12 @@ from apps.genetic_algorithms.leaf_functions import RedisTAProvider
 from apps.TA import HORIZONS, PERIODS_4HR, PERIODS_1HR
 from settings import DOGE_RETRAINING_PERIOD_SECONDS
 import time
+from apps.TA.storages.abstract.timeseries_storage import TimeseriesStorage
+
+
+class DogeStorage(TimeseriesStorage):
+    pass
+
 
 class DogeTrainer:
     """
@@ -63,19 +69,41 @@ class DogeTrainer:
         # write these doges to database
         logging.info('>>>>>>> Saving GPs to database...')
 
+        string_representations = []
         for i, row in enumerate(doge_df.itertuples()):
             if i > max_doges_to_save:
                 break
             # save experiment id and doge
-            Doge._create_instance_and_write(train_start_timestamp=start_timestamp,
-                                            train_end_timestamp=end_timestamp,
-                                            experiment_id=row.variant.name,
-                                            rank=i,
-                                            representation=str(row.doge),
-                                            metric_id=METRIC_IDS['mean_profit'],
-                                            metric_value=row.mean_profit)
+            # Doge._create_instance_and_write(train_start_timestamp=start_timestamp,
+            #                                train_end_timestamp=end_timestamp,
+            #                                experiment_id=row.variant.name,
+            #                                rank=i,
+            #                                representation=str(row.doge),
+            #                                metric_id=METRIC_IDS['mean_profit'],
+            #                                metric_value=row.mean_profit)
+            string_representations.append(self._generate_redis_string_representation(train_start_timestamp=start_timestamp,
+                                                                                     train_end_timestamp=end_timestamp,
+                                                                                     experiment_id=row.variant.name,
+                                                                                     rank=i,
+                                                                                     representation=str(row.doge),
+                                                                                     metric_id=METRIC_IDS['mean_profit'],
+                                                                                     metric_value=row.mean_profit))
 
+        entry_to_save = ":".join(string_representations)
+        new_doge_storage = DogeStorage(timestamp=end_timestamp)
+        new_doge_storage.value = entry_to_save
+        new_doge_storage.save(publish=True)
         logging.info('>>>>>>> GPs saved to database.')
+
+    def _generate_redis_string_representation(self, train_start_timestamp, train_end_timestamp,
+                                              experiment_id, rank, representation, metric_id, metric_value):
+        return ";".join(map(str, [train_start_timestamp, train_end_timestamp, experiment_id, rank,
+                        representation, metric_id, metric_value]))
+
+    def _parse_redis_string_representation(self, redis_string):
+        train_start_timestamp, train_end_timestamp, \
+        experiment_id, rank, representation, metric_id, metric_value = redis_string.split(";")
+
 
 
     @staticmethod
