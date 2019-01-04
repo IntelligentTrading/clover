@@ -215,6 +215,7 @@ class RedisTAProvider(TAProvider):
         'close_price': 1,
     }
 
+
     def get_indicator(self, indicator_name, input, horizon=PERIODS_1HR): # TODO ensure the horizon can be changed
         timestamp = self._get_timestamp(input)
         transaction_currency, counter_currency = input[1:3]
@@ -235,6 +236,7 @@ class RedisTAProvider(TAProvider):
 
         return indicator_value
 
+
     def get_indicator_at_previous_timestamp(self, indicator_name, input, horizon=PERIODS_1HR):
         timestamp = self._get_timestamp(input)
         transaction_currency, counter_currency = input[1:3]
@@ -247,10 +249,6 @@ class RedisTAProvider(TAProvider):
         )
 
         return indicator_value
-
-
-
-
 
 
 class TAProviderCollection(FunctionProvider):
@@ -292,8 +290,4 @@ def {function_name}(self, input):
     def __str__(self):
         return ','.join([f'{key.transaction_currency}-{key.counter_currency}-{key.start_time}-{key.end_time}'
                          for key in self.providers.keys()])
-
-
-
-
 

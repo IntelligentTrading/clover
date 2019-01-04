@@ -81,7 +81,7 @@ def get_subscriber_classes():
         # stoch.StochSubscriber,
         # stochf.StochfSubscriber, stochrsi.StochrsiSubscriber,
         # trix.TrixSubscriber, ultosc.UltoscSubscriber,
-        willr.WillrSubscriber, # the last one (if changes, change in SignalSubscriber default subscription)
+        willr.WillrSubscriber,  # the last one (if changes, change in SignalSubscriber default subscription)
 
     ]
 
