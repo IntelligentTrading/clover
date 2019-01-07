@@ -715,6 +715,25 @@ class ExperimentManager:
         gp = e.build_genetic_program(data=None, function_provider=e.function_provider, db_record=e.get_db_record_from_experiment_id(experiment_id))
         return gp.individual_from_string(individual_str), gp
 
+    @staticmethod
+    def resurrect_better_doge(experiment_json, individual_str, function_provider):
+        experiment_json = json.loads(experiment_json)
+        grammar = Grammar.construct(
+            grammar_name=experiment_json['grammar_version'],
+            function_provider=function_provider,
+            ephemeral_suffix=experiment_json['grammar_version']
+        )
+        genetic_program = GeneticProgram(
+            data_collection=None,
+            function_provider=function_provider,
+            grammar=grammar,
+            fitness_function=experiment_json['fitness_functions'][0],
+            tree_depth=experiment_json['tree_depth'],
+            order_generator=experiment_json['order_generator']
+
+        )
+        return genetic_program.individual_from_string(individual_str), genetic_program
+
 
 
 class ExperimentDB:
