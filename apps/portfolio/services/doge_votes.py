@@ -11,7 +11,7 @@ from settings import ITF_CORE_API_URL, ITF_CORE_API_KEY
 (SHORT_HORIZON, MEDIUM_HORIZON, LONG_HORIZON) = list(range(3))
 (POLONIEX, BITTREX, BINANCE, BITFINEX, KUCOIN, GDAX, HITBTC) = list(range(7))
 from apps.TA import HORIZONS, PERIODS_1HR
-from apps.doge.doge_TA_actors import DogeVoteStorage
+from apps.doge.doge_TA_actors import CommitteeVoteStorage
 
 
 def get_allocations_from_doge(at_datetime=None):
@@ -66,7 +66,7 @@ def get_allocations_from_doge(at_datetime=None):
     for ticker in tickers:
         for horizon in horizons:
             # find the latest vote
-            query_result = DogeVoteStorage.query(
+            query_result = CommitteeVoteStorage.query(
                 ticker=ticker, exchange=exchange, timestamp=now_datetime.timestamp(),
                 periods_range=PERIODS_1HR*horizon_periods[horizon],
                 periods_key=PERIODS_1HR*horizon_periods[horizon]
@@ -74,7 +74,7 @@ def get_allocations_from_doge(at_datetime=None):
 
 
             for score, weighted_vote in zip(query_result['scores'], query_result['values']):
-                timestamp = DogeVoteStorage.datetime_from_score(score)
+                timestamp = CommitteeVoteStorage.datetime_from_score(score)
 
 
                 time_weight = float(1) - (
