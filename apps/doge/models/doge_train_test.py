@@ -26,7 +26,7 @@ class DogeRedisEntry:
         self.doge_str = doge_str
         self.metric_id = metric_id
         self.metric_value = metric_value
-        self.rank = rank
+        self.rank = rank  # TODO remove rank information if not needed
 
     @property
     def hash(self):
@@ -133,7 +133,7 @@ class DogeTrainer:
             if i > max_doges_to_save:
                 break
             redis_entries.append(
-                DogeRedisEntry(train_end_timestamp=start_timestamp, doge_str=str(row.doge),
+                DogeRedisEntry(train_end_timestamp=end_timestamp, doge_str=str(row.doge),
                                metric_id=METRIC_IDS['mean_profit'], metric_value=row.mean_profit, rank=i))
 
 
@@ -211,8 +211,7 @@ class DogeTrader:
         """
         return self.strategy.process_ticker(ticker_data)
 
-    @property
-    def latest_weight(self, timestamp=None, metric_id=0):
+    def weight_at_timestamp(self, timestamp=None, metric_id=0):
         result = DogePerformance.query(key_suffix=f'{str(self.hash)}:{metric_id}',
                                                    ticker='BTC_USDT',
                                                    exchange='binance',
@@ -250,15 +249,16 @@ class DogeCommittee:
         doge_traders = []
 
         # get doges out of DB
-        doge_committee_ids = CommitteeStorage.query(ticker='BTC_USDT', exchange='binance')['values'][-1].split(':')
+        # get the latest committee
+        query_response = CommitteeStorage.query(ticker='BTC_USDT', exchange='binance')
+        self.committee_timestamp = CommitteeStorage.timestamp_from_score(query_response['scores'][-1])
+        doge_committee_ids = query_response['values'][-1].split(':')
         for doge_id in doge_committee_ids:
             doge_storage = DogeStorage(key_suffix=doge_id)
             doge_str = doge_storage.get_value().decode('utf-8')
 
-            # TODO remove this when everything is stored properly
-            # doge_str = doge_str.split(':')[-3]
-
-            doge = DogeTrader(doge_str=doge_str, doge_id=doge_id, function_provider=self.function_provider,
+            doge = DogeTrader(doge_str=doge_str, doge_id=doge_id,
+                              function_provider=self.function_provider,
                               gp_training_config_json=self.gp_training_config_json)
             doge_traders.append(doge)
 
@@ -294,7 +294,7 @@ class DogeCommittee:
 
         for i, doge in enumerate(self.doge_traders):
             decision = doge.vote(ticker_data)
-            weight = doge.latest_weight
+            weight = doge.weight_at_timestamp(timestamp=self.committee_timestamp)
             print(f'  Doge {i} says: {str(decision)} (its weight is {weight:.2f})')
             votes.append(decision.outcome)
             weights.append(weight)
@@ -342,7 +342,6 @@ class DogeTradingManager(TickListener):
 
         logging.info(f'End decision for {ticker_data.transaction_currency}-{ticker_data.counter_currency} '
               f'at {datetime_from_timestamp(ticker_data.timestamp)}: {sum(weighted_votes)/sum(weights)}\n\n')
-
 
     def broadcast_ended(self):
         logging.info('Doges have spoken.')
