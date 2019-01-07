@@ -25,7 +25,6 @@ from functools import partial
 #from pathos.multiprocessing import ProcessingPool as Pool
 from apps.backtesting.utils import parallel_run
 from apps.genetic_algorithms.gp_utils import Period
-from apps.doge.models.doge import Doge
 
 
 SAVE_HOF_AND_BEST = True
@@ -576,6 +575,7 @@ class ExperimentManager:
         self.training_data[0].plot()
 
     def _load_rockstars(self, metric_id=0, limit_top=None):
+        return [] # TODO connect this to Redis
         # find the latest timestamp
         last_timestamp = Doge.objects.latest('train_end_timestamp').train_end_timestamp.timestamp()  # ah well :)
         dogi = Doge.objects.filter(train_end_timestamp=last_timestamp).order_by('-metric_value')
