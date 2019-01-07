@@ -241,7 +241,7 @@ class DogeTrader:
     (TODO: might reuse the Django Doge model class?)
     """
 
-    def __init__(self, doge_str, function_provider, gp_training_config_json):
+    def __init__(self, doge_str, doge_id, function_provider, gp_training_config_json):
         """
         Instantiates a doge trader.
         :param database: database instance from data_sources to use, either Redis (redis_db) or Postgres
@@ -249,29 +249,12 @@ class DogeTrader:
         :param function_provider: an instance of the TAProvider class that provides TA values
         :param gp_training_config_json: a string representation of the training config json (loaded from GP_TRAINING_CONFIG file)
         """
-        """
-        self.train_start_timestamp = doge_object.train_start_timestamp
-        self.train_end_timestamp = doge_object.train_end_timestamp
-        self.individual_str = doge_object.representation
-        self.experiment_id = doge_object.experiment_id
-        self.metric_id = doge_object.metric_id
-        self.metric_value = doge_object.metric_value
-        self.gp_training_config_json = gp_training_config_json
-        experiment_json = DogeTrainer.fill_json_template(self.gp_training_config_json,
-                                                         int(float(self.train_start_timestamp)),
-                                                         int(float(self.train_end_timestamp)))
-        #self.doge, self.gp = ExperimentManager.resurrect_doge(experiment_json, self.experiment_id, self.individual_str,
-        #                                                      database, function_provider)
-        """
+
         self.individual_str = doge_str
+        self.hash = doge_id
         self.gp_training_config_json = gp_training_config_json
-        experiment_json = DogeTrainer.fill_json_template(self.gp_training_config_json,
-                                                         0,
-                                                         0)
-
+        experiment_json = DogeTrainer.fill_json_template(self.gp_training_config_json, 0, 0)
         self.doge, self.gp = ExperimentManager.resurrect_better_doge(experiment_json, self.individual_str, function_provider)
-
-
         self.strategy = GeneticTickerStrategy(tree=self.doge, gp_object=self.gp)
 
     def vote(self, ticker_data):
@@ -280,6 +263,16 @@ class DogeTrader:
         :return: an instance of StrategyDecision class
         """
         return self.strategy.process_ticker(ticker_data)
+
+    @property
+    def latest_weight(self, timestamp=None, metric_id=0):
+        result = DogePerformance.query(key_suffix=f'{str(self.hash)}:{metric_id}',
+                                                   ticker='BTC_USDT',
+                                                   exchange='binance',
+                                                   timestamp=timestamp)
+        return float(result['values'][-1])
+
+
 
 
 class DogeCommittee:
@@ -314,11 +307,8 @@ class DogeCommittee:
         doge_traders = []
 
         # get doges out of DB
-        # last_timestamp = Doge.objects.latest('train_end_timestamp').train_end_timestamp.timestamp()  # ah well :)
-        # dogi = Doge.objects.filter(train_end_timestamp=last_timestamp) # .order_by('-metric_value') TODO: check if needed
 
         doge_committee_ids = CommitteeStorage.query(ticker='BTC_USDT', exchange='binance')['values'][-1].split(':')
-        doge_strs = []
         for doge_id in doge_committee_ids:
             doge_storage = DogeStorage(key_suffix=doge_id)
             doge_str = str(doge_storage.get_value())
@@ -326,7 +316,7 @@ class DogeCommittee:
             # TODO remove this when everything is stored properly
             doge_str = doge_str.split(':')[-3]
 
-            doge = DogeTrader(doge_str=doge_str, function_provider=self.function_provider,
+            doge = DogeTrader(doge_str=doge_str, doge_id=doge_id, function_provider=self.function_provider,
                               gp_training_config_json=self.gp_training_config_json)
             doge_traders.append(doge)
 
@@ -362,7 +352,7 @@ class DogeCommittee:
 
         for i, doge in enumerate(self.doge_strategies):
             decision = doge.vote(ticker_data)
-            weight = 1 # doge.metric_value TODO: fix this
+            weight = doge.latest_weight
             print(f'  Doge {i} says: {str(decision)} (its weight is {weight:.2f})')
             votes.append(decision.outcome)
             weights.append(weight)
