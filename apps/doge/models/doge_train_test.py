@@ -12,51 +12,29 @@ from apps.doge.models.doge import GP_TRAINING_CONFIG, METRIC_IDS
 from apps.genetic_algorithms.genetic_program import GeneticTickerStrategy
 from apps.genetic_algorithms.gp_artemis import ExperimentManager
 from apps.genetic_algorithms.leaf_functions import RedisTAProvider
-from apps.TA import HORIZONS, PERIODS_4HR, PERIODS_1HR
+from apps.TA import PERIODS_1HR
 from settings import DOGE_RETRAINING_PERIOD_SECONDS
 import time
-
 
 
 class DogeRedisEntry:
 
     HASH_DIGITS_TO_KEEP = 8
 
-    def __init__(self, train_start_timestamp, train_end_timestamp,
-                 experiment_id, rank, representation, metric_id, metric_value):
-        self.train_start_timestamp = train_start_timestamp
+    def __init__(self, train_end_timestamp, doge_str, metric_id, metric_value, rank):
         self.train_end_timestamp = train_end_timestamp
-        self.experiment_id = experiment_id
-        self.rank = rank
-        self.representation = representation
+        self.doge_str = doge_str
         self.metric_id = metric_id
         self.metric_value = metric_value
-
-
-    @property
-    def redis_string(self):
-        return ":".join(map(str, [self.train_start_timestamp, self.train_end_timestamp, self.experiment_id, self.rank,
-                        self.representation, self.metric_id, self.metric_value]))
-
-    @staticmethod
-    def from_redis_string(redis_string):
-        train_start_timestamp, train_end_timestamp, \
-        experiment_id, rank, representation, metric_id, metric_value = redis_string.split(":")
-        return DogeRedisEntry(train_start_timestamp=int(train_start_timestamp),
-                              train_end_timestamp=int(train_end_timestamp),
-                              experiment_id=experiment_id,
-                              rank=int(rank),
-                              representation=representation,
-                              metric_id=int(metric_id),
-                              metric_value=float(metric_value))
+        self.rank = rank
 
     @property
     def hash(self):
-        return hash(self.redis_string) % 10 ** self.HASH_DIGITS_TO_KEEP
+        return hash(self.doge_str) % 10 ** self.HASH_DIGITS_TO_KEEP
 
     def save_to_storage(self):
         # save the doge itself
-        new_doge_storage = DogeStorage(value=self.redis_string, key_suffix=str(self.hash))
+        new_doge_storage = DogeStorage(value=self.doge_str, key_suffix=str(self.hash))
         new_doge_storage.save()
 
         # save performance info
@@ -75,6 +53,7 @@ class DogeStorage(KeyValueStorage):
     # self.db_key_suffix = str(hash(self.value))[:8] #last 8 chars of the hash
 
     pass
+
 
 class DogePerformance(TickerStorage):
     """
@@ -153,21 +132,9 @@ class DogeTrainer:
         for i, row in enumerate(doge_df.itertuples()):
             if i > max_doges_to_save:
                 break
-            # save experiment id and doge
-            # Doge._create_instance_and_write(train_start_timestamp=start_timestamp,
-            #                                train_end_timestamp=end_timestamp,
-            #                                experiment_id=row.variant.name,
-            #                                rank=i,
-            #                                representation=str(row.doge),
-            #                                metric_id=METRIC_IDS['mean_profit'],
-            #                                metric_value=row.mean_profit)
-            redis_entries.append(DogeRedisEntry(train_start_timestamp=start_timestamp,
-                                                         train_end_timestamp=end_timestamp,
-                                                         experiment_id=row.variant.name,
-                                                         rank=i,
-                                                         representation=str(row.doge),
-                                                         metric_id=METRIC_IDS['mean_profit'],
-                                                         metric_value=row.mean_profit))
+            redis_entries.append(
+                DogeRedisEntry(train_end_timestamp=start_timestamp, doge_str=str(row.doge),
+                               metric_id=METRIC_IDS['mean_profit'], metric_value=row.mean_profit, rank=i))
 
 
         # save individual doges
@@ -184,17 +151,6 @@ class DogeTrainer:
     def _save_doges(self, redis_entries):
         for redis_entry in redis_entries:
             redis_entry.save_to_storage()
-
-
-    def _generate_redis_string_representation(self, train_start_timestamp, train_end_timestamp,
-                                              experiment_id, rank, representation, metric_id, metric_value):
-        return ";".join(map(str, [train_start_timestamp, train_end_timestamp, experiment_id, rank,
-                        representation, metric_id, metric_value]))
-
-    def _parse_redis_string_representation(self, redis_string):
-        return [DogeRedisEntry.from_redis_string(doge_entry) for doge_entry in redis_string.split(";")]
-
-
 
     @staticmethod
     def fill_json_template(gp_training_config_json, start_timestamp, end_timestamp):
@@ -221,40 +177,31 @@ class DogeTrainer:
 
         trainer = DogeTrainer(db_interface)
 
-        # TODO: replace with datetime.now() and similar beautiful stuff once Redis is working
-        # training_period = Period('2018/10/25 12:00:00 UTC', '2018/10/26 00:00:00 UTC')
-        # start_timestamp = training_period.start_time
-        # end_timestamp = training_period
-
         start_time = db_interface.get_nearest_db_timestamp(start_timestamp, 'BTC', 'USDT')
         end_time = db_interface.get_nearest_db_timestamp(end_timestamp, 'BTC', 'USDT')
 
         trainer.retrain_doges(start_time, end_time, max_doges_to_save=10)
-
-        #trader = DogeTrader(database=redis_db)
 
 
 class DogeTrader:
     """
     A class that encapsulates a single Doge that trades.
     NOTE: instantiated in DogeCommittee, no need to manually instantiate
-    (TODO: might reuse the Django Doge model class?)
     """
 
     def __init__(self, doge_str, doge_id, function_provider, gp_training_config_json):
         """
         Instantiates a doge trader.
-        :param database: database instance from data_sources to use, either Redis (redis_db) or Postgres
-        :param doge_object: a Django Doge object obtained by filtering the DB
+        :param doge_str: the decision tree in string format
         :param function_provider: an instance of the TAProvider class that provides TA values
         :param gp_training_config_json: a string representation of the training config json (loaded from GP_TRAINING_CONFIG file)
         """
 
-        self.individual_str = doge_str
+        self.doge_str = doge_str
         self.hash = doge_id
         self.gp_training_config_json = gp_training_config_json
         experiment_json = DogeTrainer.fill_json_template(self.gp_training_config_json, 0, 0)
-        self.doge, self.gp = ExperimentManager.resurrect_better_doge(experiment_json, self.individual_str, function_provider)
+        self.doge, self.gp = ExperimentManager.resurrect_better_doge(experiment_json, self.doge_str, function_provider)
         self.strategy = GeneticTickerStrategy(tree=self.doge, gp_object=self.gp)
 
     def vote(self, ticker_data):
@@ -273,8 +220,6 @@ class DogeTrader:
         return float(result['values'][-1])
 
 
-
-
 class DogeCommittee:
     """
     A class that encapsulates trading using a committee of GPs.
@@ -287,8 +232,8 @@ class DogeCommittee:
 
         self.max_doges = max_doges
         self.function_provider = RedisTAProvider()
-        doge_strategies = self._load_latest_doge_strategies(database)
-        self.doge_strategies = doge_strategies if len(doge_strategies) <= max_doges else doge_strategies[:max_doges]
+        doge_traders = self._load_latest_doge_traders()
+        self.doge_traders = doge_traders if len(doge_traders) <= max_doges else doge_traders[:max_doges]
         self.periods = PERIODS_1HR  # TODO remove this hardcoding if we decide to use more horizons
         self._init_time = time.time()
         self._ttl = ttl
@@ -297,24 +242,21 @@ class DogeCommittee:
     def expired(self):
         return time.time() - self._init_time > self._ttl
 
-
-    def _load_latest_doge_strategies(self, database):
+    def _load_latest_doge_traders(self):
         """
         Loads latest doge traders from the database.
-        :param database: the database to use
         :return: a list of DogeTrader objects
         """
         doge_traders = []
 
         # get doges out of DB
-
         doge_committee_ids = CommitteeStorage.query(ticker='BTC_USDT', exchange='binance')['values'][-1].split(':')
         for doge_id in doge_committee_ids:
             doge_storage = DogeStorage(key_suffix=doge_id)
-            doge_str = str(doge_storage.get_value())
+            doge_str = doge_storage.get_value().decode('utf-8')
 
             # TODO remove this when everything is stored properly
-            doge_str = doge_str.split(':')[-3]
+            # doge_str = doge_str.split(':')[-3]
 
             doge = DogeTrader(doge_str=doge_str, doge_id=doge_id, function_provider=self.function_provider,
                               gp_training_config_json=self.gp_training_config_json)
@@ -350,7 +292,7 @@ class DogeCommittee:
         votes = []
         weights = []
 
-        for i, doge in enumerate(self.doge_strategies):
+        for i, doge in enumerate(self.doge_traders):
             decision = doge.vote(ticker_data)
             weight = doge.latest_weight
             print(f'  Doge {i} says: {str(decision)} (its weight is {weight:.2f})')
