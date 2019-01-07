@@ -7,14 +7,20 @@ from apps.backtesting.tick_listener import TickListener
 from apps.backtesting.tick_provider_heartbeat import TickProviderHeartbeat
 from apps.backtesting.tick_provider import TickerData
 from apps.backtesting.utils import datetime_from_timestamp
-from apps.doge.models import Doge
-from apps.doge.models.doge import GP_TRAINING_CONFIG, METRIC_IDS
 from apps.genetic_algorithms.genetic_program import GeneticTickerStrategy
 from apps.genetic_algorithms.gp_artemis import ExperimentManager
 from apps.genetic_algorithms.leaf_functions import RedisTAProvider
 from apps.TA import PERIODS_1HR
 from settings import DOGE_RETRAINING_PERIOD_SECONDS
 import time
+
+METRIC_IDS = {
+    'mean_profit': 0,
+}
+import os.path
+BASE = os.path.dirname(os.path.abspath(__file__))
+
+GP_TRAINING_CONFIG = os.path.join(BASE, 'doge_config.json')
 
 
 class DogeRedisEntry:
@@ -92,7 +98,6 @@ class DogeTrainer:
         with open(GP_TRAINING_CONFIG, 'r') as f:
             self.gp_training_config_json = f.read()
         self.database = database
-
 
     def retrain_doges(self, start_timestamp, end_timestamp, max_doges_to_save=10):
         """
