@@ -1,17 +1,17 @@
 import logging
 
-from apps.TA.storages.abstract.key_value import KeyValueStorage
-from apps.TA.storages.abstract.ticker import TickerStorage
 from apps.backtesting.data_sources import db_interface
 from apps.backtesting.tick_listener import TickListener
 from apps.backtesting.tick_provider_heartbeat import TickProviderHeartbeat
 from apps.backtesting.tick_provider import TickerData
 from apps.backtesting.utils import datetime_from_timestamp
+from apps.doge.doge_TA_actors import DogeStorage, DogePerformance, CommitteeStorage, SignalSubscriber, \
+    CommitteeVoteStorage
 from apps.genetic_algorithms.genetic_program import GeneticTickerStrategy
 from apps.genetic_algorithms.gp_artemis import ExperimentManager
 from apps.genetic_algorithms.leaf_functions import RedisTAProvider
 from apps.TA import PERIODS_1HR
-from settings import DOGE_RETRAINING_PERIOD_SECONDS
+from settings import DOGE_RETRAINING_PERIOD_SECONDS, logger, SUPPORTED_DOGE_TICKERS
 import time
 
 METRIC_IDS = {
@@ -25,8 +25,6 @@ GP_TRAINING_CONFIG = os.path.join(BASE, 'doge_config.json')
 
 class DogeRedisEntry:
 
-    HASH_DIGITS_TO_KEEP = 8
-
     def __init__(self, train_end_timestamp, doge_str, metric_id, metric_value, rank):
         self.train_end_timestamp = train_end_timestamp
         self.doge_str = doge_str
@@ -36,7 +34,7 @@ class DogeRedisEntry:
 
     @property
     def hash(self):
-        return hash(self.doge_str) % 10 ** self.HASH_DIGITS_TO_KEEP
+        return DogeStorage.hash(self.doge_str)
 
     def save_to_storage(self):
         # save the doge itself
@@ -50,39 +48,6 @@ class DogeRedisEntry:
                                                        timestamp=self.train_end_timestamp,
                                                        value=self.metric_value)
         new_doge_performance_storage.save()
-
-
-class DogeStorage(KeyValueStorage):
-
-    # self.value = string_format_of_entire_decision_tree
-    # self.db_key_prefix = "ticker:exchange" # but we don't care, so don't distinguish!
-    # self.db_key_suffix = str(hash(self.value))[:8] #last 8 chars of the hash
-
-    pass
-
-
-class DogePerformance(TickerStorage):
-    """
-        defines the performance score for a doge over time, unique per ticker
-    """
-    # self.key_suffix = doge_id
-    #
-    # self.ticker = ticker
-    # self.exchange = exchange
-    # self.value = performance_score
-    # self.timestamp
-
-
-class CommitteeStorage(TickerStorage):
-    """
-        defines which doges are valid for voting in the committee at the timestamp
-    """
-    #
-    # self.ticker = ticker
-    # self.exchange = exchange
-    # self.value = str(doge_id_list)
-    # self.timestamp = timestamp
-
 
 
 class DogeTrainer:
@@ -112,6 +77,11 @@ class DogeTrainer:
         logging.info('>>>>>>> Starting GP training... ')
         logging.info(f'    >>> start_time = {datetime_from_timestamp(start_timestamp)}')
         logging.info(f'    >>> end_time = {datetime_from_timestamp(end_timestamp)}')
+
+        # DEBUG: loading rockstars
+        CommitteeStorage.load_rockstars(num_previous_committees_to_search=2, num_rockstars=5,
+                       ticker='BTC_USDT', exchange='binance', timestamp=end_timestamp)
+
 
         # create an experiment manager
         e = ExperimentManager(experiment_container=config_json, read_from_file=False, database=self.database,
@@ -218,9 +188,9 @@ class DogeTrader:
 
     def weight_at_timestamp(self, timestamp=None, metric_id=0):
         result = DogePerformance.query(key_suffix=f'{str(self.hash)}:{metric_id}',
-                                                   ticker='BTC_USDT',
-                                                   exchange='binance',
-                                                   timestamp=timestamp)
+                                       ticker='BTC_USDT',
+                                       exchange='binance',
+                                       timestamp=timestamp)
         return float(result['values'][-1])
 
 
@@ -350,3 +320,48 @@ class DogeTradingManager(TickListener):
 
     def broadcast_ended(self):
         logging.info('Doges have spoken.')
+
+
+class DogeSubscriber(SignalSubscriber):
+    storage_class = CommitteeVoteStorage  # override with applicable storage class
+
+    def __init__(self, *args, **kwargs):
+        self._reload_committee()
+        super().__init__(*args, **kwargs)
+        logger.info("                                                      (😎 IT IS THE LAST ONE 😎)")
+        logger.info(f'Initialized DogeSubscriber at {time.time()}')
+
+    def _reload_committee(self):
+        self.committee = DogeCommittee()
+
+    def handle(self, channel, data, *args, **kwargs):
+        # check if we received data for a ticker we support
+        if self.ticker not in SUPPORTED_DOGE_TICKERS:  # @tomcounsell please check if this is OK or I should register
+                                                       # for tickers of interest in some other way
+            logger.debug(f'Ticker {self.ticker} not in {SUPPORTED_DOGE_TICKERS}, skipping...')
+            return
+
+        # check if the committee has expired
+        if self.committee.expired:
+            logger.info('Doge committee expired, reloading...')
+            self._reload_committee()
+
+        logger.info(f'Doge subscriber invoked at {self.timestamp}, channel={str(channel)}, data={str(data)} '
+                    f'(it is now {time.time()})')
+        transaction_currency, counter_currency = self.ticker.split('_')
+
+        new_doge_storage = CommitteeVoteStorage(ticker=self.ticker,
+                                                exchange=self.exchange,
+                                                timestamp=self.timestamp,
+                                                periods=self.committee.periods)
+
+        ticker_votes, weights = self.committee.vote(transaction_currency, counter_currency, self.timestamp)
+        # weighted_vote = sum([ticker_votes[i] * weights[i] for i in range(len(ticker_votes))]) / sum(weights)
+
+        new_doge_storage.value = (sum(ticker_votes) * 100 / len(ticker_votes))  # normalize to +-100 scale
+        new_doge_storage.save(publish=True)
+        logger.info('Doge vote saved')
+
+
+    def pre_handle(self, channel, data, *args, **kwargs):
+        super().pre_handle(channel, data, *args, **kwargs)
