@@ -11,13 +11,11 @@ from apps.doge.models import Doge
 from apps.doge.models.doge import GP_TRAINING_CONFIG, METRIC_IDS
 from apps.genetic_algorithms.genetic_program import GeneticTickerStrategy
 from apps.genetic_algorithms.gp_artemis import ExperimentManager
-from apps.genetic_algorithms.gp_utils import Period
 from apps.genetic_algorithms.leaf_functions import RedisTAProvider
 from apps.TA import HORIZONS, PERIODS_4HR, PERIODS_1HR
 from settings import DOGE_RETRAINING_PERIOD_SECONDS
 import time
-from apps.TA.storages.abstract.timeseries_storage import TimeseriesStorage
-from collections import namedtuple
+
 
 
 class DogeRedisEntry:
@@ -57,15 +55,17 @@ class DogeRedisEntry:
         return hash(self.redis_string) % 10 ** self.HASH_DIGITS_TO_KEEP
 
     def save_to_storage(self):
+        # save the doge itself
         new_doge_storage = DogeStorage(value=self.redis_string, key_suffix=str(self.hash))
         new_doge_storage.save()
 
-
-
-# self.value = string_format_of_entire_decision_tree
-# self.db_key_prefix = "ticker:exchange" # but we don't care, so don't distinguish!
-# self.db_key_suffix = str(hash(self.value))[:8] #last 8 chars of the hash
-
+        # save performance info
+        new_doge_performance_storage = DogePerformance(key_suffix=f'{str(self.hash)}:{self.metric_id}',
+                                                       ticker='BTC_USDT',
+                                                       exchange='binance',
+                                                       timestamp=self.train_end_timestamp,
+                                                       value=self.metric_value)
+        new_doge_performance_storage.save()
 
 
 class DogeStorage(KeyValueStorage):
