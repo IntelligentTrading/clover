@@ -29,6 +29,11 @@ class DogeStorage(KeyValueStorage):
     def hash(doge_str):
         return hash(doge_str) % 10 ** DogeStorage.HASH_DIGITS_TO_KEEP
 
+    @staticmethod
+    def get_doge_str(doge_hash):
+        doge_storage = DogeStorage(key_suffix=doge_hash)
+        return doge_storage.get_value().decode('utf8')
+
 
 class DogePerformance(TickerStorage):
     """
@@ -75,8 +80,12 @@ class CommitteeStorage(TickerStorage):
                 weight = DogePerformance.weight_at_timestamp(doge_id, ticker, exchange, timestamp)
                 doge_ids.append(doge_id)
                 weights.append(weight)
+        doge_ids = [doge_id for _, doge_id in sorted(zip(weights, doge_ids))]
+        rockstar_ids = doge_ids[:num_rockstars]
+        doge_strs = [DogeStorage.get_doge_str(doge_hash) for doge_hash in doge_ids]
+        return doge_strs
 
-        return doge_ids[:num_rockstars]
+
 
 
 
