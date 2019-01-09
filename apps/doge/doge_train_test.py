@@ -23,7 +23,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 GP_TRAINING_CONFIG = os.path.join(BASE, 'doge_config.json')
 
 
-class DogeRedisEntry:
+class DogeRecord:
 
     def __init__(self, train_end_timestamp, doge_str, metric_id, metric_value, rank):
         self.train_end_timestamp = train_end_timestamp
@@ -112,8 +112,8 @@ class DogeTrainer:
             if i > max_doges_to_save:
                 break
             redis_entries.append(
-                DogeRedisEntry(train_end_timestamp=end_timestamp, doge_str=str(row.doge),
-                               metric_id=METRIC_IDS['mean_profit'], metric_value=row.mean_profit, rank=i))
+                DogeRecord(train_end_timestamp=end_timestamp, doge_str=str(row.doge),
+                           metric_id=METRIC_IDS['mean_profit'], metric_value=row.mean_profit, rank=i))
 
 
         # save individual doges
@@ -204,7 +204,7 @@ class DogeCommittee:
     The committee is built out of the latest GPs in the database.
     """
 
-    def __init__(self, database=db_interface, max_doges=100, ttl=DOGE_RETRAINING_PERIOD_SECONDS):
+    def __init__(self, max_doges=100, ttl=DOGE_RETRAINING_PERIOD_SECONDS):
         with open(GP_TRAINING_CONFIG, 'r') as f:
             self.gp_training_config_json = f.read()
 
@@ -290,7 +290,7 @@ class DogeTradingManager(TickListener):
 
     def __init__(self, database=db_interface, heartbeat_period_secs=60):
 
-        self.doge_committee = DogeCommittee(database)
+        self.doge_committee = DogeCommittee()
 
         tick_provider_heartbeat = TickProviderHeartbeat(
             heartbeat_period_secs=heartbeat_period_secs,
