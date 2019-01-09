@@ -208,4 +208,6 @@ LOAD_TALIB = True
 SUPPORTED_DOGE_TICKERS = ['BTC_USDT', ]
 
 # doge training schedule (how often to retrain and reinit the committee)
-DOGE_RETRAINING_PERIOD_SECONDS = 60
+DOGE_RETRAINING_PERIOD_SECONDS = 60*5
+DOGE_LOAD_ROCKSTARS = True
+DOGE_MAX_ROCKSTARS = 20

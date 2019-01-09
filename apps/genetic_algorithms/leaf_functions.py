@@ -219,7 +219,7 @@ class RedisTAProvider(TAProvider):
         timestamp = self._get_timestamp(input)
         transaction_currency, counter_currency = input[1:3]
 
-        if indicator_name.startswith('sma'):
+        if indicator_name.startswith('sma') or indicator_name.startswith('ema'):
             indicator_period = int(indicator_name[3:])
             indicator_name = 'sma'
         else:
