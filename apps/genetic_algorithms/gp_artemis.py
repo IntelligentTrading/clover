@@ -3,11 +3,11 @@ import json
 import itertools
 import numpy as np
 import pandas as pd
-from apps.backtesting.data_sources import db_interface, db_interface
+from apps.backtesting.data_sources import db_interface
 from apps.backtesting.utils import datetime_to_timestamp
 
 from artemis.experiments import experiment_root
-from artemis.experiments.experiments import clear_all_experiments, _GLOBAL_EXPERIMENT_LIBRARY
+from artemis.experiments.experiments import clear_all_experiments
 from collections import OrderedDict
 from apps.genetic_algorithms.gp_data import Data
 from apps.genetic_algorithms.genetic_program import GeneticProgram, FitnessFunction
@@ -15,7 +15,7 @@ from apps.genetic_algorithms.leaf_functions import TAProviderCollection
 from apps.genetic_algorithms.grammar import Grammar
 from apps.genetic_algorithms.chart_plotter import *
 from apps.backtesting.order_generator import OrderGenerator
-from apps.backtesting.config import INF_CASH, INF_CRYPTO, POOL_SIZE
+from apps.backtesting.config import INF_CASH, INF_CRYPTO
 from apps.backtesting.comparative_evaluation import ComparativeEvaluation, ComparativeReportBuilder
 #from data_sources import get_currencies_trading_against_counter
 from apps.backtesting.backtesting_runs import build_itf_baseline_strategies
@@ -27,9 +27,6 @@ from apps.backtesting.utils import parallel_run
 from apps.genetic_algorithms.gp_utils import Period
 
 
-SAVE_HOF_AND_BEST = True
-HOF_AND_BEST_FILENAME = 'rockstars.txt'
-LOAD_ROCKSTARS = True
 
 from apps.backtesting.utils import LogDuplicateFilter
 dup_filter = LogDuplicateFilter()
@@ -54,9 +51,12 @@ class ExperimentManager:
         return hof, best
 
 
-    def __init__(self, experiment_container, read_from_file=True, database=db_interface, hof_size=10, function_provider=None):
+    def __init__(self, experiment_container, read_from_file=True, database=db_interface, hof_size=10,
+                 function_provider=None, rockstars=[]):
         self.database = database
         self.hof_size = hof_size
+        self.rockstars = rockstars
+
         if read_from_file:
             with open(experiment_container) as f:
                 self.experiment_json = json.load(f)
@@ -92,6 +92,7 @@ class ExperimentManager:
         self._register_variants()
 
 
+
     def _fill_experiment_db(self):
         self.experiment_db = ExperimentDB()
 
@@ -100,13 +101,6 @@ class ExperimentManager:
                                      self.experiment_json["population_sizes"],
                                      self.experiment_json["fitness_functions"])
         for mating_prob, mutation_prob, population_size, fitness_function in variants:
-            if LOAD_ROCKSTARS:
-                grammar_version = self.experiment_json["grammar_version"]
-                rockstars = self._load_rockstars(limit_top=20)
-                logging.info(f'Loaded {len(rockstars)} rockstars for {grammar_version}, {fitness_function}.')
-            else:
-                rockstars = []
-
             self.experiment_db.add(
                 data=self.training_data,
                 function_provider=self.function_provider,
@@ -116,7 +110,7 @@ class ExperimentManager:
                 mutation_prob=mutation_prob,
                 population_size=population_size,
                 num_generations=self.experiment_json["num_generations"],
-                premade_individuals=self.experiment_json["premade_individuals"]+rockstars,
+                premade_individuals=self.experiment_json["premade_individuals"]+self.rockstars,
                 order_generator=self.experiment_json["order_generator"],
                 tree_depth=self.experiment_json["tree_depth"],
                 reseed_params=self.experiment_json["reseed_initial_population"]
@@ -573,19 +567,6 @@ class ExperimentManager:
 
     def plot_data(self):
         self.training_data[0].plot()
-
-    def _load_rockstars(self, metric_id=0, limit_top=None):
-        return [] # TODO connect this to Redis
-        # find the latest timestamp
-        last_timestamp = Doge.objects.latest('train_end_timestamp').train_end_timestamp.timestamp()  # ah well :)
-        dogi = Doge.objects.filter(train_end_timestamp=last_timestamp).order_by('-metric_value')
-
-        # collect string representations
-        individuals = [doge.representation for doge in dogi]
-        if limit_top is None:
-            return individuals
-        else:
-            return individuals[:min(len(individuals), limit_top)]
 
     def get_graph(self, individual):
         return get_dot_graph(individual)
