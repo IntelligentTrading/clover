@@ -35,7 +35,7 @@ class DogeStorage(KeyValueStorage):
 
     @staticmethod
     def get_doge_str(doge_hash):
-        doge_storage = DogeStorage(key_suffix=doge_hash)
+        doge_storage = DogeStorage(key_suffix=str(doge_hash))
         return doge_storage.get_value().decode('utf8')
 
 
@@ -108,6 +108,13 @@ class CommitteeStorage(TickerStorage):
         committee = CommitteeStorage.query(ticker=ticker, exchange=exchange, timestamp=timestamp,
                                             timestamp_tolerance=0)
         return committee['values'][-1].split(':')
+
+    @staticmethod
+    def generate_committee_images(timestamp=None, ticker='BTC_USDT', exchange='binance'):
+        for i, doge_hash in enumerate(CommitteeStorage.get_committee_hashes(timestamp, ticker, exchange)):
+            DogeStorage.save_doge_img(doge_hash, f'static/{i}.png')
+
+
 
 
 class CommitteeVoteStorage(IndicatorStorage):

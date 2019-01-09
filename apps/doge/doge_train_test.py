@@ -13,6 +13,7 @@ from apps.genetic_algorithms.leaf_functions import RedisTAProvider
 from apps.TA import PERIODS_1HR
 from settings import DOGE_RETRAINING_PERIOD_SECONDS, logger, SUPPORTED_DOGE_TICKERS, DOGE_LOAD_ROCKSTARS
 import time
+from apps.genetic_algorithms.chart_plotter import save_dot_graph
 
 METRIC_IDS = {
     'mean_profit': 0,
@@ -128,8 +129,9 @@ class DogeTrainer:
         logging.info('>>>>>>> GPs saved to database.')
 
     def _save_doges(self, redis_entries):
-        for redis_entry in redis_entries:
+        for i, redis_entry in enumerate(redis_entries):
             redis_entry.save_to_storage()
+            DogeStorage.save_doge_img(redis_entry.hash, out_filename=f'static/{i}')
 
     @staticmethod
     def fill_json_template(gp_training_config_json, start_timestamp, end_timestamp):
@@ -196,6 +198,10 @@ class DogeTrader:
                                        exchange='binance',
                                        timestamp=timestamp)
         return float(result['values'][-1])
+
+    def save_doge_img(self, out_filename, format='png'):
+        print(self.doge_str)
+        return save_dot_graph(self.doge, out_filename, format)
 
 
 class DogeCommittee:
@@ -280,6 +286,13 @@ class DogeCommittee:
 
         return votes, weights
 
+    def generate_doge_images(self):
+        for i, doge in enumerate(self.doge_traders):
+
+            doge.save_doge_img(out_filename=f'apps/doge/static/{i}')
+
+
+
 
 
 class DogeTradingManager(TickListener):
@@ -291,6 +304,7 @@ class DogeTradingManager(TickListener):
     def __init__(self, database=db_interface, heartbeat_period_secs=60):
 
         self.doge_committee = DogeCommittee()
+        self.doge_committee.generate_doge_images()
 
         tick_provider_heartbeat = TickProviderHeartbeat(
             heartbeat_period_secs=heartbeat_period_secs,
