@@ -20,6 +20,9 @@ class SignalSubscriber(IndicatorSubscriber):
 
 
 class DogeStorage(KeyValueStorage):
+    """
+        Stores doge decision trees as strings. The key is hash of the string.
+    """
     HASH_DIGITS_TO_KEEP = 8
 
     # self.value = string_format_of_entire_decision_tree
@@ -38,18 +41,16 @@ class DogeStorage(KeyValueStorage):
 
 class DogePerformance(TickerStorage):
     """
-        defines the performance score for a doge over time, unique per ticker
+        Defines the performance score for a doge obtained at the end of training period, unique per ticker
     """
-    # self.key_suffix = doge_id
-    #
+    # self.key_suffix = doge_hash
     # self.ticker = ticker
     # self.exchange = exchange
     # self.value = performance_score
-    # self.timestamp
-
+    # self.timestamp # end time of the training period
 
     @staticmethod
-    def weight_at_timestamp(doge_id, ticker, exchange, timestamp, metric_id=0):
+    def performance_at_timestamp(doge_id, ticker, exchange, timestamp, metric_id=0):
         result = DogePerformance.query(key_suffix=f'{doge_id}:{metric_id}',
                                        ticker=ticker,
                                        exchange=exchange,
@@ -59,7 +60,7 @@ class DogePerformance(TickerStorage):
 
 class CommitteeStorage(TickerStorage):
     """
-        defines which doges are valid for voting in the committee at the timestamp
+        Defines which doges are valid for voting in the committee at the timestamp
     """
     #
     # self.ticker = ticker
@@ -70,6 +71,15 @@ class CommitteeStorage(TickerStorage):
     @staticmethod
     def load_rockstars(num_previous_committees_to_search, max_num_rockstars,
                        ticker, exchange, timestamp):
+        """
+        Loads rockstars by searching existing previous committees and ranking the doges by performance.
+        :param num_previous_committees_to_search: number of previous committees to include in the search
+        :param max_num_rockstars: maximum rockstars to retrieve
+        :param ticker: ticker
+        :param exchange: exchange
+        :param timestamp: timestamp before which to query the committees
+        :return: a list of strings representing the retrieved rockstars
+        """
         committees = CommitteeStorage.query(ticker=ticker, exchange=exchange, timestamp=timestamp,
                                             timestamp_tolerance=DOGE_RETRAINING_PERIOD_SECONDS * num_previous_committees_to_search)
         doge_ids = []
@@ -78,7 +88,7 @@ class CommitteeStorage(TickerStorage):
             timestamp = CommitteeStorage.timestamp_from_score(score)
             committee_ids = committee_ids.split(':')
             for doge_id in committee_ids:
-                weight = DogePerformance.weight_at_timestamp(doge_id, ticker, exchange, timestamp)
+                weight = DogePerformance.performance_at_timestamp(doge_id, ticker, exchange, timestamp)
                 doge_ids.append(doge_id)
                 weights.append(weight)
         doge_ids = [doge_id for _, doge_id in sorted(zip(weights, doge_ids))]
@@ -86,11 +96,24 @@ class CommitteeStorage(TickerStorage):
         doge_strs = [DogeStorage.get_doge_str(doge_hash) for doge_hash in rockstar_ids]
         return doge_strs
 
-
-
+    @staticmethod
+    def get_committee_hashes(timestamp=None, ticker='BTC_USDT', exchange='binance'):
+        """
+        Retrieves committee hashes for a committee defined at timestamp.
+        :param timestamp: committee timestamp
+        :param ticker: ticker
+        :param exchange: exchange
+        :return: a list of doge hashes belonging to the specified committee
+        """
+        committee = CommitteeStorage.query(ticker=ticker, exchange=exchange, timestamp=timestamp,
+                                            timestamp_tolerance=0)
+        return committee['values'][-1].split(':')
 
 
 class CommitteeVoteStorage(IndicatorStorage):
+    """
+        Stores the combined vote of a doge committee at timestamp for a ticker at exchange.
+    """
     # todo: abstract this for programatic implementation
     requisite_TA_storages = ["rsi", "sma"]  # example
 
@@ -115,11 +138,4 @@ class CommitteeVoteStorage(IndicatorStorage):
     def vote(self):
         return self.value
 
-
-def clean_redis():
-    from settings.redis_db import database
-    for key in database.keys('*Doge*'):
-        database.delete(key)
-    for key in database.keys('*Committee*'):
-        database.delete(key)
 
