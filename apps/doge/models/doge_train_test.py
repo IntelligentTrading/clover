@@ -11,7 +11,7 @@ from apps.genetic_algorithms.genetic_program import GeneticTickerStrategy
 from apps.genetic_algorithms.gp_artemis import ExperimentManager
 from apps.genetic_algorithms.leaf_functions import RedisTAProvider
 from apps.TA import PERIODS_1HR
-from settings import DOGE_RETRAINING_PERIOD_SECONDS, logger, SUPPORTED_DOGE_TICKERS
+from settings import DOGE_RETRAINING_PERIOD_SECONDS, logger, SUPPORTED_DOGE_TICKERS, DOGE_LOAD_ROCKSTARS
 import time
 
 METRIC_IDS = {
@@ -79,13 +79,17 @@ class DogeTrainer:
         logging.info(f'    >>> end_time = {datetime_from_timestamp(end_timestamp)}')
 
         # DEBUG: loading rockstars
-        CommitteeStorage.load_rockstars(num_previous_committees_to_search=2, num_rockstars=5,
-                       ticker='BTC_USDT', exchange='binance', timestamp=end_timestamp)
+        rockstars = []
+        if DOGE_LOAD_ROCKSTARS:
+            from settings import DOGE_MAX_ROCKSTARS
+            rockstars = CommitteeStorage.load_rockstars(num_previous_committees_to_search=2, max_num_rockstars=5,
+                                                        ticker='BTC_USDT', exchange='binance', timestamp=end_timestamp)
+            logging.info(f'Loaded {len(rockstars)} rockstars.')
 
 
         # create an experiment manager
         e = ExperimentManager(experiment_container=config_json, read_from_file=False, database=self.database,
-                              hof_size=10)  # we will have one central json with all the parameters
+                              hof_size=10, rockstars=rockstars)  # we will have one central json with all the parameters
 
         # run experiments
         e.run_experiments(keep_record=True)

@@ -4,6 +4,7 @@ from apps.TA.storages.abstract.indicator_subscriber import IndicatorSubscriber
 from apps.TA.indicators.momentum import willr
 from apps.TA.storages.abstract.key_value import KeyValueStorage
 from apps.TA.storages.abstract.ticker import TickerStorage
+from settings import DOGE_RETRAINING_PERIOD_SECONDS
 
 
 class SignalSubscriberException(SubscriberException):
@@ -67,10 +68,10 @@ class CommitteeStorage(TickerStorage):
     # self.timestamp = timestamp
 
     @staticmethod
-    def load_rockstars(num_previous_committees_to_search, num_rockstars,
+    def load_rockstars(num_previous_committees_to_search, max_num_rockstars,
                        ticker, exchange, timestamp):
         committees = CommitteeStorage.query(ticker=ticker, exchange=exchange, timestamp=timestamp,
-                                            timestamp_tolerance=30000 * num_previous_committees_to_search)
+                                            timestamp_tolerance=DOGE_RETRAINING_PERIOD_SECONDS * num_previous_committees_to_search)
         doge_ids = []
         weights = []
         for committee_ids, score in zip(committees['values'], committees['scores']):
@@ -81,8 +82,8 @@ class CommitteeStorage(TickerStorage):
                 doge_ids.append(doge_id)
                 weights.append(weight)
         doge_ids = [doge_id for _, doge_id in sorted(zip(weights, doge_ids))]
-        rockstar_ids = doge_ids[:num_rockstars]
-        doge_strs = [DogeStorage.get_doge_str(doge_hash) for doge_hash in doge_ids]
+        rockstar_ids = doge_ids[:max_num_rockstars]
+        doge_strs = [DogeStorage.get_doge_str(doge_hash) for doge_hash in rockstar_ids]
         return doge_strs
 
 
