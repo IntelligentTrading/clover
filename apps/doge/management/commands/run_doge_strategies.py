@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from apps.doge.models.doge_train_test import DogeTradingManager
+from apps.doge.doge_train_test import DogeTradingManager
 
 
 class Command(BaseCommand):
