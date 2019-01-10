@@ -51,13 +51,17 @@ class KeyValueStorage(ABC):
         )
 
     def save(self, pipeline=None, *args, **kwargs):
-        # if not self.value:    @tomcounsell: again, this is a problem if value is 0.0
+
         if self.value is None:
-            raise StorageException("no value set, nothing to save!")
+            logger.warning("no value was set, nothing to save, but will save empty string anyway")
+
+        self.value = self.value or ""  # use empty string for None, False, etc
+
         if not self.force_save:
-            # validate some rules here?
+            #  todo: validate some rules here?
             pass
-        # logger.debug(f'savingkey, value: {self.get_db_key()}, {self.value}')
+
+        logger.debug(f'savingkey, value: {self.get_db_key()}, {self.value}')
         return database.set(self.get_db_key(), self.value)
 
     def get_value(self, db_key="", *args, **kwargs):

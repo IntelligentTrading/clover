@@ -18,6 +18,7 @@ class IndicatorSubscriber(TickerSubscriber):
         #     "name": "176760000:1532373300",
         #     "score": "1532373300"
         # }
+        self.data = data
 
         [self.ticker, self.exchange, object_class, self.key_suffix] = data["key"].split(":")
 
@@ -29,8 +30,12 @@ class IndicatorSubscriber(TickerSubscriber):
                            f'channel: {channel}, '
                            f'subscribing classes: {self.classes_subscribing_to}')
 
-        [value, score] = data["name"].split(":")
-        self.value, self.score = float(value), float(score)
+        [self.value, self.score] = data["name"].rsplit(":", 1)
+
+        self.score = float(self.score)
+        if not self.value or self.value == 'None':
+            self.value = None
+
 
         if not self.score == int(float(data["score"])):
             logger.warning(f'Unexpected that score in name {self.score} '
@@ -62,9 +67,12 @@ class IndicatorSubscriber(TickerSubscriber):
         :return:
         """
 
-        if self.key_suffix not in self.storage_class.requisite_pv_indexes:
-            logger.debug(f'index {self.key_suffix} is not in {self.storage_class.requisite_pv_indexes} ...ignoring...')
-            return
+        if len(self.storage_class.requisite_pv_indexes):
+            if self.key_suffix not in self.storage_class.requisite_pv_indexes:
+                logger.debug(f'index {self.key_suffix} is not in {self.storage_class.requisite_pv_indexes} ...ignoring...')
+                return ""
+            else:
+                # logger.debug(f'using indexes {self.storage_class.requisite_pv_indexes} for {self.storage_class.__name__} indicator')
+                pass
 
-        logger.debug(f'using indexes {self.storage_class.requisite_pv_indexes} for {self.storage_class.__name__} indicator')
         self.storage_class.compute_and_save_all_values_for_timestamp(self.ticker, self.exchange, self.timestamp)

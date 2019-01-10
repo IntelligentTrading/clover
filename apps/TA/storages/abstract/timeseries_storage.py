@@ -181,14 +181,17 @@ class TimeseriesStorage(KeyValueStorage):
         return z_add_data
 
     def save(self, publish=False, pipeline=None, *args, **kwargs):
-        # if not self.value:  @tomcounsell: again, this is a problem if value is 0.0
+
         if self.value is None:
-            raise StorageException("no value set, nothing to save!")
+            logger.warning("no value was set, nothing to save, but will save empty string anyway")
+
+        self.value = self.value or ""  # use empty string for None, False, etc
+
         if not self.force_save:
             # validate some rules here?
             pass
 
-        self.save_own_existance()
+        self.save_own_existance()  # todo: is this still necessary?
 
         z_add_data = self.get_z_add_data()
         # # logger.debug(f'savingdata with args {z_add_data}')
@@ -201,14 +204,18 @@ class TimeseriesStorage(KeyValueStorage):
         else:
             response = database.zadd(*z_add_data.values())
             # logger.debug("no pipeline, executing zadd command immediately.")
-            if publish: self.publish()
+            if publish:
+                self.publish()
             return response
 
     def publish(self, pipeline=None):
+        # logger.debug(f"publishing to channel: {self.__class__.__name__}")
+
         if pipeline:
             return pipeline.publish(self.__class__.__name__, json.dumps(self.get_z_add_data()))
         else:
             return database.publish(self.__class__.__name__, json.dumps(self.get_z_add_data()))
+
 
     def get_value(self, *args, **kwargs):
         TimeseriesException("function not yet implemented! ¯\_(ツ)_/¯ ")
