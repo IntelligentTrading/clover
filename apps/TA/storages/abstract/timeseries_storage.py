@@ -204,14 +204,18 @@ class TimeseriesStorage(KeyValueStorage):
         else:
             response = database.zadd(*z_add_data.values())
             # logger.debug("no pipeline, executing zadd command immediately.")
-            if publish: self.publish()
+            if publish:
+                self.publish()
             return response
 
     def publish(self, pipeline=None):
+        # logger.debug(f"publishing to channel: {self.__class__.__name__}")
+
         if pipeline:
             return pipeline.publish(self.__class__.__name__, json.dumps(self.get_z_add_data()))
         else:
             return database.publish(self.__class__.__name__, json.dumps(self.get_z_add_data()))
+
 
     def get_value(self, *args, **kwargs):
         TimeseriesException("function not yet implemented! ¯\_(ツ)_/¯ ")
