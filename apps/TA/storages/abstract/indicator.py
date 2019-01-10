@@ -2,6 +2,7 @@ import logging
 
 from apps.TA import TAException, HORIZONS
 from apps.TA.storages.abstract.ticker import TickerStorage
+
 # from apps.signal.models import Signal
 
 logger = logging.getLogger(__name__)
@@ -11,7 +12,6 @@ TRENDS = (BEARISH, BULLISH, OTHER) = (-1, 1, 0)
 
 class IndicatorException(TAException):
     pass
-
 
 
 class IndicatorStorage(TickerStorage):
@@ -24,7 +24,7 @@ class IndicatorStorage(TickerStorage):
     class_describer = "indicator"
     value_sig_figs = 6
 
-    class_periods_list = [1,]  # class should override this
+    class_periods_list = [1, ]  # class should override this
     # list of integers where for x: (1 <= x <= 200)
 
     requisite_pv_indexes = []  # class should override this.
@@ -122,12 +122,12 @@ class IndicatorStorage(TickerStorage):
             for index in self.requisite_pv_indexes:
                 index_value_arrays[index] = self.get_denoted_price_array(index, periods)
                 if not len(index_value_arrays[index]):
-                    logger.error(f"Error finding denoted price array for requisite index {index}. Returning empty value.")
+                    logger.error(
+                        f"Error finding denoted price array for requisite index {index}. Returning empty value.")
                     return ""
 
-        if min([len(array) for array in index_value_arrays]) < periods:
+        if min([len(array) for array in index_value_arrays] + [periods, ]) < periods:
             logger.warning("possibly not enough data to compute")
-
 
         return self.compute_value_with_requisite_indexes(index_value_arrays, periods)
 
@@ -198,7 +198,6 @@ class IndicatorStorage(TickerStorage):
         # volume_results_dict = VolumeStorage.query(ticker=self.ticker, exchange=self.exchange)
         # most_recent_volume = float(volume_results_dict ['values'][0])
 
-
         # todo: not applicable to Clover, use if replacing Core TA
         # return Signal.objects.create(
         #     timestamp=self.unix_timestamp,
@@ -219,7 +218,6 @@ class IndicatorStorage(TickerStorage):
         # check meets basic requirements for saving
         if not all([self.ticker, self.exchange,
                     self.periods, self.unix_timestamp]):
-
             logger.error("incomplete information, cannot save \n" + str(self.__dict__))
             raise IndicatorException("save error, missing data")
 
