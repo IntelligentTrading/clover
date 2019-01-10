@@ -28,6 +28,7 @@ class IndicatorStorage(TickerStorage):
     # list of integers where for x: (1 <= x <= 200)
 
     requisite_pv_indexes = []  # class should override this.
+    always_publish = True
 
     # may only include values in default_price_indexes or default_volume_indexes
     # eg. ["high_price", "low_price", "open_price", "close_price", "close_volume"]
@@ -124,6 +125,10 @@ class IndicatorStorage(TickerStorage):
                     logger.error(f"Error finding denoted price array for requisite index {index}. Returning empty value.")
                     return ""
 
+        if min([len(array) for array in index_value_arrays]) < periods:
+            logger.warning("possibly not enough data to compute")
+
+
         return self.compute_value_with_requisite_indexes(index_value_arrays, periods)
 
     def compute_value_with_requisite_indexes(self, requisite_pv_index_arrays: dict, periods: int = 0) -> str:
@@ -212,19 +217,15 @@ class IndicatorStorage(TickerStorage):
     def save(self, *args, **kwargs):
 
         # check meets basic requirements for saving
-        # if not all([self.ticker, self.exchange,    # @tomcounsell: cool, but fails if value is 0.0
-        #            self.periods, self.value,
-        #             self.unix_timestamp]):
-        if not (all([self.ticker, self.exchange,     # an ugly fix 🤢
-                    self.periods,
-                    self.unix_timestamp]) and self.value is not None):
+        if not all([self.ticker, self.exchange,
+                    self.periods, self.unix_timestamp]):
 
             logger.error("incomplete information, cannot save \n" + str(self.__dict__))
             raise IndicatorException("save error, missing data")
 
         self.db_key_suffix = f'{str(self.periods)}'
         if not 'publish' in kwargs:
-            kwargs['publish'] = True
+            kwargs['publish'] = self.always_publish
 
         save_result = super().save(*args, **kwargs)
         try:
