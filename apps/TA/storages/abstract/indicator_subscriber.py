@@ -30,9 +30,9 @@ class IndicatorSubscriber(TickerSubscriber):
                            f'channel: {channel}, '
                            f'subscribing classes: {self.classes_subscribing_to}')
 
-        [value, score] = data["name"].rsplit(":", 1)
+        [self.value, self.score] = data["name"].rsplit(":", 1)
 
-        self.score = float(score)
+        self.score = float(self.score)
         if not self.value or self.value == 'None':
             self.value = None
 
