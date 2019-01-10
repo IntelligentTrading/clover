@@ -209,25 +209,25 @@ class DogeCommittee:
     The committee is built out of the latest GPs in the database.
     """
 
-    def __init__(self, max_doges=100, ttl=DOGE_RETRAINING_PERIOD_SECONDS):
+    def __init__(self, init_time=None, max_doges=100, ttl=DOGE_RETRAINING_PERIOD_SECONDS):
         with open(GP_TRAINING_CONFIG, 'r') as f:
             self.gp_training_config_json = f.read()
 
         self.max_doges = max_doges
+        self._init_time = init_time if init_time else time.time()
         self.function_provider = RedisTAProvider()
-        doge_traders = self._load_latest_doge_traders()
+        doge_traders = self._load_doge_traders()
         self.doge_traders = doge_traders if len(doge_traders) <= max_doges else doge_traders[:max_doges]
         self.periods = PERIODS_1HR  # TODO remove this hardcoding if we decide to use more horizons
-        self._init_time = time.time()
         self._ttl = ttl
 
     @property
-    def expired(self):
-        return time.time() - self._init_time > self._ttl
+    def expired(self, at_timestamp):
+        return at_timestamp - self._init_time > self._ttl
 
-    def _load_latest_doge_traders(self):
+    def _load_doge_traders(self):
         """
-        Loads latest doge traders from the database.
+        Loads doge traders that belong to this committee (based on timestamp, self._init_time).
         :return: a list of DogeTrader objects
         """
         doge_traders = []
@@ -236,6 +236,8 @@ class DogeCommittee:
         # get the latest committee
         query_response = CommitteeStorage.query(ticker='BTC_USDT', exchange='binance')
         self.committee_timestamp = CommitteeStorage.timestamp_from_score(query_response['scores'][-1])
+        assert self._init_time == self.committee_timestamp  # for debugging
+
         doge_committee_ids = query_response['values'][-1].split(':')
         for doge_id in doge_committee_ids:
             doge_storage = DogeStorage(key_suffix=doge_id)
@@ -288,9 +290,6 @@ class DogeCommittee:
     def generate_doge_images(self):
         for i, doge in enumerate(self.doge_traders):
             doge.save_doge_img(out_filename=f'apps/doge/static/{i}')
-
-
-
 
 
 class DogeTradingManager(TickListener):
