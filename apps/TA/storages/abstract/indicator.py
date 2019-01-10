@@ -115,19 +115,19 @@ class IndicatorStorage(TickerStorage):
     def compute_value(self, periods: int = 0) -> str:
         periods = periods or self.periods
 
-        index_value_arrrays = {}
+        index_value_arrays = {}
         for index in self.requisite_pv_indexes:
-            index_value_arrrays[index] = self.get_denoted_price_array(index, periods)
-            if not len(index_value_arrrays[index]): return ""
+            index_value_arrays[index] = self.get_denoted_price_array(index, periods)
+            if not len(index_value_arrays[index]): return ""
 
-        return self.compute_value_with_requisite_indexes(index_value_arrrays, periods)
+        return self.compute_value_with_requisite_indexes(index_value_arrays, periods)
 
     def compute_value_with_requisite_indexes(self, requisite_pv_index_arrays: dict, periods: int = 0) -> str:
         """
         custom class should set cls.requisite_pv_indexes
         override this function with custom logic
 
-        :param index_value_arrrays: a dict with keys matching requisite+pv_indexes and values from self.get_denoted_price_array()
+        :param index_value_arrays: a dict with keys matching requisite+pv_indexes and values from self.get_denoted_price_array()
         :param periods: number of periods to compute value for
         :return:
         """
