@@ -40,11 +40,14 @@ class BbandsStorage(IndicatorStorage):
             nbdevup=2, nbdevdn=2, matype=0
         )
 
-        logger.debug(f"Bbands computed: {upperband[-1]}:{middleband[-1]}:{lowerband[-1]}")
+        self.value = f"{upperband[-1]}:{middleband[-1]}:{lowerband[-1]}"
 
-        if math.isnan(sum([upperband[-1], middleband[-1], lowerband[-1]])): return ""
+        logger.debug(f"Bbands computed: {self.value}")
 
-        return f"{upperband[-1]}:{middleband[-1]}:{lowerband[-1]}"
+        if math.isnan(sum([upperband[-1], middleband[-1], lowerband[-1]])):
+            return ""
+
+        return self.value
 
 
     # def produce_signal(self):  # OLD, logic moved to TA.indicators.events.BbandsSqueeze180MinStorage
