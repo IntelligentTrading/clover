@@ -1,7 +1,7 @@
 import time
 import datetime
 import pandas as pd
-from apps.backtesting.data_sources import postgres_db, redis_db
+from apps.backtesting.data_sources import db_interface
 from apps.backtesting.tick_provider import TickProvider, TickerData
 import logging
 from apps.backtesting.utils import datetime_from_timestamp
@@ -9,7 +9,7 @@ from apps.backtesting.utils import datetime_from_timestamp
 
 class TickProviderHeartbeat(TickProvider):
 
-    def __init__(self, heartbeat_period_secs, ticker_list=['BTC_USDT'], database=redis_db):
+    def __init__(self, heartbeat_period_secs, ticker_list=['BTC_USDT'], database=db_interface):
 
         super().__init__()
         self.heartbeat_period_secs = heartbeat_period_secs
