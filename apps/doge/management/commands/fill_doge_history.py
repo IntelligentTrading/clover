@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from apps.doge.doge_train_test import DogeHistorySimulator
 import time
+from apps.TA import PERIODS_1HR
 
 
 class Command(BaseCommand):
@@ -14,5 +15,6 @@ class Command(BaseCommand):
                                          time_to_retrain_seconds=60*30,
                                          ticker='BTC_USDT',
                                          exchange='binance',
+                                         horizon=PERIODS_1HR
                                          )
         simulator.fill_history()
