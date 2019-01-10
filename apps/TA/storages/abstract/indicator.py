@@ -116,9 +116,13 @@ class IndicatorStorage(TickerStorage):
         periods = periods or self.periods
 
         index_value_arrays = {}
-        for index in self.requisite_pv_indexes:
-            index_value_arrays[index] = self.get_denoted_price_array(index, periods)
-            if not len(index_value_arrays[index]): return ""
+
+        if len(self.requisite_pv_indexes):
+            for index in self.requisite_pv_indexes:
+                index_value_arrays[index] = self.get_denoted_price_array(index, periods)
+                if not len(index_value_arrays[index]):
+                    logger.error(f"Error finding denoted price array for requisite index {index}. Returning empty value.")
+                    return ""
 
         return self.compute_value_with_requisite_indexes(index_value_arrays, periods)
 
