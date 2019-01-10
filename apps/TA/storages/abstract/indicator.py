@@ -43,6 +43,9 @@ class IndicatorStorage(TickerStorage):
         # self.horizon = int(kwargs.get('horizon', 1))
         self.periods = int(kwargs.get('periods', 1))  # * self.horizon))
 
+        self.periods_key = kwargs.get("periods_key", "")
+        self.key_suffix = kwargs.get("key_suffix", "")
+
         # if self.periods // self.horizon == 0:
         #     raise IndicatorException(f'horizon {self.horizon} '
         #                              f'must be less than periods {self.periods} (or ==1)')
@@ -59,7 +62,9 @@ class IndicatorStorage(TickerStorage):
                 pass
             else:
                 self.value = self.query(
-                    ticker=self.ticker, exchange=self.exchange, timestamp=self.unix_timestamp
+                    ticker=self.ticker, exchange=self.exchange,
+                    timestamp=self.unix_timestamp,
+                    periods_key=self.periods_key, key_suffix=self.key_suffix
                 )['values'][-1]
             if not self.value:
                 self.value = self.compute_value()
