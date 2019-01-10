@@ -18,6 +18,7 @@ class IndicatorSubscriber(TickerSubscriber):
         #     "name": "176760000:1532373300",
         #     "score": "1532373300"
         # }
+        self.data = data
 
         [self.ticker, self.exchange, object_class, self.key_suffix] = data["key"].split(":")
 
@@ -29,7 +30,7 @@ class IndicatorSubscriber(TickerSubscriber):
                            f'channel: {channel}, '
                            f'subscribing classes: {self.classes_subscribing_to}')
 
-        [value, score] = data["name"].split(":")
+        [value, score] = data["name"].rsplit(":", 1)
         self.value, self.score = float(value), float(score)
 
         if not self.score == int(float(data["score"])):
