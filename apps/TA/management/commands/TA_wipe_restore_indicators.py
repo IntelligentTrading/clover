@@ -7,6 +7,7 @@ from django.core.management.base import BaseCommand
 
 from apps.TA.management.commands.TA_worker import get_subscriber_classes
 from apps.TA.storages.abstract.timeseries_storage import TimeseriesStorage
+from apps.common.utilities.multithreading import multithread_this_shit
 from settings.redis_db import database
 
 logger = logging.getLogger(__name__)
@@ -71,3 +72,32 @@ def forge_data_event(ticker, exchange, storage_class, index, value, score):
         'channel': bytes(str(storage_class), "utf-8"),
         'data': bytes(json.dumps(data), "utf-8")
     }
+
+def fill_data_gaps(force_fill=False):
+    method_params = []
+    from apps.TA.management.commands.TA_worker import get_subscriber_classes
+
+
+    for ticker in ["BTC_USDT", ]:  # ["*_USDT", "*_BTC"]:
+        for exchange in ["binance", ]:  # ["binance", "poloniex", "bittrex"]:
+            for storage_class_name in [subscriber_class.storage_class.__name__
+                                       for subscriber_class in get_subscriber_classes()]:
+                for key in database.keys(f"{ticker}*{exchange}*{storage_class_name}*"):
+                    [ticker, exchange, storage_class_name, key_suffixes] = key.decode("utf-8").split(":", 3)
+
+                    ugly_tuple = (ticker, exchange, storage_class_name, key_suffixes, bool(force_fill))
+                    method_params.append(ugly_tuple)
+
+    logger.info(f"{len(method_params)} tickers ready to fill gaps")
+
+    results = multithread_this_shit(condensed_fill_redis_TA_gaps, method_params)
+    missing_scores_count = sum([len(result) for result in results])
+    logger.warning(f"{missing_scores_count} scores could not be recovered and are still missing.")
+
+
+def condensed_fill_redis_TA_gaps(ugly_tuple):
+    (ticker, exchange, storage_class_name, key_suffixes, force_fill) = ugly_tuple
+    from apps.TA.storages.utils import missing_TA_data
+    return missing_TA_data.find_TA_storage_data_gaps(
+        ticker, exchange, storage_class_name, key_suffixes, force_fill=force_fill
+    )
