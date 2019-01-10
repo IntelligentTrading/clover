@@ -72,6 +72,7 @@ class IndicatorSubscriber(TickerSubscriber):
                 logger.debug(f'index {self.key_suffix} is not in {self.storage_class.requisite_pv_indexes} ...ignoring...')
                 return ""
             else:
-                logger.debug(f'using indexes {self.storage_class.requisite_pv_indexes} for {self.storage_class.__name__} indicator')
+                # logger.debug(f'using indexes {self.storage_class.requisite_pv_indexes} for {self.storage_class.__name__} indicator')
+                pass
 
         self.storage_class.compute_and_save_all_values_for_timestamp(self.ticker, self.exchange, self.timestamp)

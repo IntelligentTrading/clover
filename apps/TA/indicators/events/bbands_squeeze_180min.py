@@ -11,8 +11,9 @@ from settings import logger
 
 
 class BbandsSqueeze180MinStorage(IndicatorStorage):
-    class_periods_list = [180]
+    # class_periods_list = [1, ] Not applicable, only one width and squeeze for each Bband
     requisite_pv_indexes = []
+    always_publish = False
 
     def compute_value_with_requisite_indexes(self, requisite_pv_index_arrays: dict, periods: int = 0) -> str:
         """
@@ -28,11 +29,14 @@ class BbandsSqueeze180MinStorage(IndicatorStorage):
             ticker=self.ticker, exchange=self.exchange, timestamp=self.unix_timestamp
         ).get_width()
 
+        logger.debug(f"got width: {self.width}")
+
         if not self.width:
             return None
 
         query_result = BbandsStorage.query(
-            ticker=self.ticker, exchange=self.exchange, timestamp=self.unix_timestamp, periods=periods
+            ticker=self.ticker, exchange=self.exchange, timestamp=self.unix_timestamp, periods_key=periods,
+            periods=periods*180
         )
 
         if query_result['values_count'] < 180:
