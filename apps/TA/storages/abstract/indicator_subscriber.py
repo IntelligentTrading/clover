@@ -31,7 +31,11 @@ class IndicatorSubscriber(TickerSubscriber):
                            f'subscribing classes: {self.classes_subscribing_to}')
 
         [value, score] = data["name"].rsplit(":", 1)
-        self.value, self.score = float(value), float(score)
+
+        self.score = float(score)
+        if not self.value or self.value == 'None':
+            self.value = None
+
 
         if not self.score == int(float(data["score"])):
             logger.warning(f'Unexpected that score in name {self.score} '
