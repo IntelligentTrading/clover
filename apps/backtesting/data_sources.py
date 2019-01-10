@@ -418,13 +418,16 @@ class RedisDB(Database):
             logging.error('No close prices returned!')
 
         timestamps = [PriceStorage.timestamp_from_score(float(score)) for score in close_prices['scores']]
-        close_prices = list(map(float, close_prices['values']))
+        close_price_values = list(map(float, close_prices['values']))
+        scores = list(map(float, close_prices['scores']))
+
         high_prices = high_prices['values']
-        data = {'timestamp': timestamps, 'close_price': close_prices,
-                'high_price': close_prices, 'low_price': close_prices, 'close_volume': close_prices}
+        data = {'timestamp': timestamps, 'close_price': close_price_values,
+                'high_price': close_price_values, 'low_price': close_price_values,
+                'close_volume': close_price_values, 'score': scores}
                 # TODO fix stuff with missing high prices and other values
 
-        df = pd.DataFrame(data, columns=['timestamp', 'close_price', 'high_price', 'low_price', 'close_volume'])
+        df = pd.DataFrame(data, columns=['timestamp', 'close_price', 'high_price', 'low_price', 'close_volume', 'score'])
         df = df.set_index('timestamp')
 
         return df

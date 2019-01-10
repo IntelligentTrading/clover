@@ -397,22 +397,25 @@ class DummyDogeSubscriber(DogeSubscriber):
 
 class DogeHistorySimulator:
 
-    def __init__(self, start_time, end_time, training_period_length, time_to_retrain_seconds, ticker, exchange):
+    def __init__(self, start_time, end_time, training_period_length, time_to_retrain_seconds, ticker, exchange, horizon):
         self._start_time = db_interface.get_nearest_db_timestamp(start_time, ticker, exchange)
         self._end_time = db_interface.get_nearest_db_timestamp(end_time, ticker, exchange)
         self._training_period_length = training_period_length
         self._time_to_retrain_seconds = time_to_retrain_seconds
         self._ticker = ticker
         self._exchange = exchange
+        self._transaction_currency, self._counter_currency = ticker.split('_')
+        self._horizon = horizon
 
 
     def fill_history(self):
         karen = DogeTrainer(database=db_interface)  # see Karen Pryor
 
-        for training_start_time in \
-            range(self._start_time, self._end_time - self._training_period_length, self._time_to_retrain_seconds):
-            training_end_time = training_start_time + self._training_period_length
+        for training_end_time in range(self._end_time,
+                                       self._start_time + self._training_period_length,
+                                       -self._time_to_retrain_seconds):
             training_end_time = 1547132400  # debug stuff
+            training_start_time = training_end_time - self._training_period_length
 
             # check if a committee record already exists
             try:
@@ -427,18 +430,36 @@ class DogeHistorySimulator:
                 committee = DogeCommittee(committee_timestamp=training_end_time)
 
             # we need to simulate incoming price data
-            # rudely hijack the DogeSubscriber class
-            subscriber = DummyDogeSubscriber(committee)
+            self.feed_price_to_doge(committee=committee,
+                                    committee_valid_from=training_end_time,
+                                    committee_valid_to=training_end_time + self._time_to_retrain_seconds)
+
+
+
+    def feed_price_to_doge(self, committee, committee_valid_from, committee_valid_to):
+        prices_df = db_interface.get_resampled_prices_in_range(
+            start_time=committee_valid_from,
+            end_time=committee_valid_to,
+            transaction_currency=self._transaction_currency,
+            counter_currency=self._counter_currency,
+            horizon=self._horizon
+        )
+
+        # rudely hijack the DogeSubscriber class
+        subscriber = DummyDogeSubscriber(committee)
+
+        for row in prices_df.itertuples():
+            logging.info(f'Feeding {str(row)} to doge...')
             data_event = {
                 'type': 'message',
                 'pattern': None,
                 'channel': b'PriceStorage',
                 'data': f'''{{
-                    "key": "{self._ticker}:{self._exchange}:PriceStorage:1",
-                    "name": "9545225909:212121",
-                    "score": "212121"
-                }}'''.encode(encoding='UTF8')
-                }
+                                "key": "{self._ticker}:{self._exchange}:PriceStorage:1",
+                                "name": "{row.close_price}:{row.score}",
+                                "score": "{row.score}"
+                            }}'''.encode(encoding='UTF8')
+            }
             # call the doge with this event
             subscriber(data_event=data_event)
 
