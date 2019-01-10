@@ -7,7 +7,7 @@ from django.core.management.base import BaseCommand
 
 from apps.TA.management.commands.TA_worker import get_subscriber_classes
 from apps.TA.storages.abstract.timeseries_storage import TimeseriesStorage
-from apps.common.utilities.multithreading import multithread_this_shit
+from apps.common.utilities.multithreading import run_all_multithreaded
 from settings.redis_db import database
 
 logger = logging.getLogger(__name__)
@@ -90,7 +90,7 @@ def fill_data_gaps(force_fill=False):
 
     logger.info(f"{len(method_params)} tickers ready to fill gaps")
 
-    results = multithread_this_shit(condensed_fill_redis_TA_gaps, method_params)
+    results = run_all_multithreaded(condensed_fill_redis_TA_gaps, method_params)
     missing_scores_count = sum([len(result) for result in results])
     logger.warning(f"{missing_scores_count} scores could not be recovered and are still missing.")
 
