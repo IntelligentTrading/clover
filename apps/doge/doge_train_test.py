@@ -131,7 +131,6 @@ class DogeTrainer:
     def _save_doges(self, redis_entries):
         for i, redis_entry in enumerate(redis_entries):
             redis_entry.save_to_storage()
-            DogeStorage.save_doge_img(redis_entry.hash, out_filename=f'static/{i}')
 
     @staticmethod
     def fill_json_template(gp_training_config_json, start_timestamp, end_timestamp):
@@ -199,7 +198,7 @@ class DogeTrader:
                                        timestamp=timestamp)
         return float(result['values'][-1])
 
-    def save_doge_img(self, out_filename, format='png'):
+    def save_doge_img(self, out_filename, format='svg'):
         print(self.doge_str)
         return save_dot_graph(self.doge, out_filename, format)
 
@@ -288,7 +287,6 @@ class DogeCommittee:
 
     def generate_doge_images(self):
         for i, doge in enumerate(self.doge_traders):
-
             doge.save_doge_img(out_filename=f'apps/doge/static/{i}')
 
 
