@@ -26,16 +26,14 @@ class BbandsSqueeze180MinStorage(IndicatorStorage):
         periods = periods or self.periods
 
         self.width = BbandsStorage(
-            ticker=self.ticker, exchange=self.exchange, timestamp=self.unix_timestamp, periods_key=periods
+            ticker=self.ticker, exchange=self.exchange, timestamp=self.unix_timestamp, periods_key=5*periods
         ).get_width()
-
-        logger.debug(f"got width: {self.width}")
 
         if not self.width:
             return None
 
         query_result = BbandsStorage.query(
-            ticker=self.ticker, exchange=self.exchange, timestamp=self.unix_timestamp, periods_key=periods,
+            ticker=self.ticker, exchange=self.exchange, timestamp=self.unix_timestamp, periods_key=5*periods,
             periods=periods*180
         )
 
