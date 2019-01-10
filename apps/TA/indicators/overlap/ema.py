@@ -7,7 +7,7 @@ from apps.TA.storages.abstract.indicator_subscriber import IndicatorSubscriber
 from apps.TA.storages.data.price import PriceStorage
 from settings import logger
 
-EMA_LIST = [30, 50, 200, ]
+EMA_LIST = [20, 21, 30, 50, 55, 200, ]
 
 
 class EmaStorage(IndicatorStorage):
