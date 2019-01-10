@@ -22,10 +22,6 @@ class RsiStorage(IndicatorStorage):
         """
         periods = periods or self.periods
 
-        logger.debug(len(requisite_pv_index_arrays["close_price"]))
-        logger.debug(periods)
-
-
         rsi_value = talib.RSI(
             requisite_pv_index_arrays["close_price"],
             timeperiod=periods-1
@@ -38,30 +34,31 @@ class RsiStorage(IndicatorStorage):
 
         return str(rsi_value)
 
-    # def get_rsi_strength(self) -> int:
-    #     rsi = int(self.value)
-    #     if rsi is None or rsi <= 0.0 or rsi >= 100.0:
-    #         return None
-    #
-    #     assert (rsi > 0.0) & (rsi < 100.0), '>>> ERROR: RSI has extreme value of 0 or 100, highly unlikely'
-    #
-    #     logger.debug(f"RSI={rsi}")
-    #
-    #     rsi_strength = 0
-    #     if rsi >= 80:
-    #         rsi_strength = -3  # Extremely overbought
-    #     elif rsi >= 75:
-    #         rsi_strength = -2  # very overbought
-    #     elif rsi >= 70:
-    #         rsi_strength = -1  # overbought
-    #     elif rsi <= 20:
-    #         rsi_strength = 3  # Extremely oversold
-    #     elif rsi <= 25:
-    #         rsi_strength = 2  # very oversold
-    #     elif rsi <= 30:
-    #         rsi_strength = 1  # oversold
-    #     return rsi_strength
-    #
+
+    def get_rsi_strength(self) -> int:
+        rsi = int(self.value)
+        if rsi is None or rsi <= 0.0 or rsi >= 100.0:
+            return None
+
+        assert (rsi > 0.0) & (rsi < 100.0), '>>> ERROR: RSI has extreme value of 0 or 100, highly unlikely'
+
+        logger.debug(f"RSI={rsi}")
+
+        rsi_strength = 0
+        if rsi >= 80:
+            rsi_strength = -3  # Extremely overbought
+        elif rsi >= 75:
+            rsi_strength = -2  # very overbought
+        elif rsi >= 70:
+            rsi_strength = -1  # overbought
+        elif rsi <= 20:
+            rsi_strength = 3  # Extremely oversold
+        elif rsi <= 25:
+            rsi_strength = 2  # very oversold
+        elif rsi <= 30:
+            rsi_strength = 1  # oversold
+        return rsi_strength
+
     # def produce_signal(self):
     #     import numpy as np
     #
