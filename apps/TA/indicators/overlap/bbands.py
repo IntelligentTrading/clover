@@ -12,6 +12,7 @@ class BbandsStorage(IndicatorStorage):
 
     class_periods_list = [5]
     requisite_pv_indexes = ["close_price"]
+    always_publish = True
 
     def get_width(self):
         self.value = self.get_value()
