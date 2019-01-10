@@ -3,7 +3,6 @@ from enum import Enum
 
 from apps.TA.storages.data.price import PriceStorage
 from apps.TA.storages.data.pv_history import PriceVolumeHistoryStorage
-from apps.backtesting.config import postgres_connection_string
 from apps.backtesting.signals import Signal
 from abc import ABC
 import pandas as pd
@@ -84,6 +83,7 @@ class Database(ABC):
 class PostgresDatabaseConnection(Database):
 
     def __init__(self):
+        from settings import postgres_connection_string
         self.conn = psycopg2.connect(postgres_connection_string)
         self.cursor = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
@@ -191,7 +191,7 @@ class PostgresDatabaseConnection(Database):
             params = tuple(params)
         query += ' ORDER BY timestamp'
         if return_df:
-            connection = postgres_db.get_connection()
+            connection = db_interface.get_connection()
             signals_df = pd.read_sql(query, con=connection, params=params, index_col="timestamp")
             signals_df['counter_currency'] = [CounterCurrency(counter_currency).name
                                               for counter_currency in signals_df.counter_currency]
@@ -631,9 +631,8 @@ class RedisDB(Database):
 
 
 
-
-postgres_db = PostgresDatabaseConnection()
-redis_db = RedisDB()
+#postgres_db = PostgresDatabaseConnection()
+db_interface = RedisDB()
 
 if __name__ == '__main__':
-    redis_db.self_test('BTC', 'USDT')
+    db_interface.self_test('BTC', 'USDT')

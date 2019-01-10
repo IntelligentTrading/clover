@@ -1,6 +1,6 @@
 from apps.backtesting.orders import OrderType, Order
 from apps.backtesting.config import transaction_cost_percents
-from apps.backtesting.data_sources import postgres_db
+from apps.backtesting.data_sources import db_interface
 from abc import ABC, abstractmethod
 
 
@@ -9,7 +9,7 @@ class OrderGenerator(ABC):
     ALTERNATING = 'alternating'
     POSITION_BASED = 'position_based'
 
-    def __init__(self, start_cash, start_crypto, time_delay, slippage, database=postgres_db):
+    def __init__(self, start_cash, start_crypto, time_delay, slippage, database=db_interface):
         self._cash = start_cash
         self._crypto = start_crypto
         self._time_delay = time_delay

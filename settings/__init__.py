@@ -203,3 +203,11 @@ HORIZONS_TIME2NAMES = {
 EXCHANGE_MARKETS = ('poloniex', 'binance', 'bittrex')
 
 LOAD_TALIB = True
+
+# list of tickers for which doges will vote
+SUPPORTED_DOGE_TICKERS = ['BTC_USDT', ]
+
+# doge training schedule (how often to retrain and reinit the committee)
+DOGE_RETRAINING_PERIOD_SECONDS = 60*5
+DOGE_LOAD_ROCKSTARS = True
+DOGE_MAX_ROCKSTARS = 20

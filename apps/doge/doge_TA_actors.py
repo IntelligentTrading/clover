@@ -2,15 +2,15 @@ from apps.TA.resources.abstract_subscriber import SubscriberException
 from apps.TA.storages.abstract.indicator import IndicatorStorage, BULLISH, BEARISH, OTHER
 from apps.TA.storages.abstract.indicator_subscriber import IndicatorSubscriber
 from apps.TA.indicators.momentum import willr
-from apps.doge.models.doge_train_test import DogeCommittee
-from settings import logger
+from apps.TA.storages.abstract.key_value import KeyValueStorage
+from apps.TA.storages.abstract.ticker import TickerStorage
+from settings import DOGE_RETRAINING_PERIOD_SECONDS
 
 
 class SignalSubscriberException(SubscriberException):
     pass
 
 
-#
 class SignalSubscriber(IndicatorSubscriber):
     class_describer = "signal_subscriber"
     classes_subscribing_to = [
@@ -19,7 +19,108 @@ class SignalSubscriber(IndicatorSubscriber):
     storage_class = IndicatorStorage  # override with applicable storage class
 
 
-class DogeStorage(IndicatorStorage):
+class DogeStorage(KeyValueStorage):
+    """
+        Stores doge decision trees as strings. The key is hash of the string.
+    """
+    HASH_DIGITS_TO_KEEP = 8
+
+    # self.value = string_format_of_entire_decision_tree
+    # self.db_key_prefix = "ticker:exchange" # but we don't care, so don't distinguish!
+    # self.db_key_suffix = str(hash(self.value))[:8] #last 8 chars of the hash
+
+    @staticmethod
+    def hash(doge_str):
+        return hash(doge_str) % 10 ** DogeStorage.HASH_DIGITS_TO_KEEP
+
+    @staticmethod
+    def get_doge_str(doge_hash):
+        doge_storage = DogeStorage(key_suffix=str(doge_hash))
+        return doge_storage.get_value().decode('utf8')
+
+
+class DogePerformance(TickerStorage):
+    """
+        Defines the performance score for a doge obtained at the end of training period, unique per ticker
+    """
+    # self.key_suffix = doge_hash
+    # self.ticker = ticker
+    # self.exchange = exchange
+    # self.value = performance_score
+    # self.timestamp # end time of the training period
+
+    @staticmethod
+    def performance_at_timestamp(doge_id, ticker, exchange, timestamp, metric_id=0):
+        result = DogePerformance.query(key_suffix=f'{doge_id}:{metric_id}',
+                                       ticker=ticker,
+                                       exchange=exchange,
+                                       timestamp=timestamp)
+        return float(result['values'][-1])
+
+
+class CommitteeStorage(TickerStorage):
+    """
+        Defines which doges are valid for voting in the committee at the timestamp
+    """
+    #
+    # self.ticker = ticker
+    # self.exchange = exchange
+    # self.value = str(doge_id_list)
+    # self.timestamp = timestamp
+
+    @staticmethod
+    def load_rockstars(num_previous_committees_to_search, max_num_rockstars,
+                       ticker, exchange, timestamp):
+        """
+        Loads rockstars by searching existing previous committees and ranking the doges by performance.
+        :param num_previous_committees_to_search: number of previous committees to include in the search
+        :param max_num_rockstars: maximum rockstars to retrieve
+        :param ticker: ticker
+        :param exchange: exchange
+        :param timestamp: timestamp before which to query the committees
+        :return: a list of strings representing the retrieved rockstars
+        """
+        committees = CommitteeStorage.query(ticker=ticker, exchange=exchange, timestamp=timestamp,
+                                            timestamp_tolerance=DOGE_RETRAINING_PERIOD_SECONDS * num_previous_committees_to_search)
+        doge_ids = []
+        weights = []
+        for committee_ids, score in zip(committees['values'], committees['scores']):
+            timestamp = CommitteeStorage.timestamp_from_score(score)
+            committee_ids = committee_ids.split(':')
+            for doge_id in committee_ids:
+                weight = DogePerformance.performance_at_timestamp(doge_id, ticker, exchange, timestamp)
+                doge_ids.append(doge_id)
+                weights.append(weight)
+        doge_ids = [doge_id for _, doge_id in sorted(zip(weights, doge_ids))]
+        rockstar_ids = doge_ids[:max_num_rockstars]
+        doge_strs = [DogeStorage.get_doge_str(doge_hash) for doge_hash in rockstar_ids]
+        return doge_strs
+
+    @staticmethod
+    def get_committee_hashes(timestamp=None, ticker='BTC_USDT', exchange='binance'):
+        """
+        Retrieves committee hashes for a committee defined at timestamp.
+        :param timestamp: committee timestamp
+        :param ticker: ticker
+        :param exchange: exchange
+        :return: a list of doge hashes belonging to the specified committee
+        """
+        committee = CommitteeStorage.query(ticker=ticker, exchange=exchange, timestamp=timestamp,
+                                            timestamp_tolerance=0)
+        return committee['values'][-1].split(':')
+
+    @staticmethod
+    def generate_committee_images(timestamp=None, ticker='BTC_USDT', exchange='binance'):
+        for i, doge_hash in enumerate(CommitteeStorage.get_committee_hashes(timestamp, ticker, exchange)):
+            DogeStorage.save_doge_img(doge_hash, f'static/{i}.png')
+
+
+
+
+class CommitteeVoteStorage(IndicatorStorage):
+    """
+        Stores the combined vote of a doge committee at timestamp for a ticker at exchange.
+    """
     # todo: abstract this for programatic implementation
     requisite_TA_storages = ["rsi", "sma"]  # example
 
@@ -45,28 +146,3 @@ class DogeStorage(IndicatorStorage):
         return self.value
 
 
-class DogeSubscriber(SignalSubscriber):
-    storage_class = DogeStorage  # override with applicable storage class
-
-    def __init__(self, *args, **kwargs):
-        self.committee = DogeCommittee()
-        # todo: set an expiry for the committee on the same schedule as training
-        # todo: ideally, a new training would expire all previous committees, see common.behaviours.expirable
-        super().__init__(*args, **kwargs)
-
-    def handle(self, channel, data, *args, **kwargs):
-        transaction_currency, counter_currency = self.ticker.split('_')
-
-        new_doge_storage = DogeStorage(ticker=self.ticker,
-                                       exchange=self.exchange,
-                                       timestamp=self.timestamp, )
-
-        ticker_votes, weights = self.committee.vote(transaction_currency, counter_currency)
-        # weighted_vote = sum([ticker_votes[i] * weights[i] for i in range(len(ticker_votes))]) / sum(weights)
-
-        new_doge_storage.value = (sum(ticker_votes) * 100 / len(ticker_votes))  # normalize to +-100 scale
-        new_doge_storage.save(publish=True)
-
-
-    def pre_handle(self, channel, data, *args, **kwargs):
-        super().pre_handle(channel, data, *args, **kwargs)

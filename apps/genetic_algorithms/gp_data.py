@@ -5,7 +5,7 @@ import logging
 from dateutil import parser
 from apps.backtesting.tick_provider import PriceDataframeTickProvider
 from apps.backtesting.backtester_ticks import TickDrivenBacktester
-from apps.backtesting.data_sources import postgres_db
+from apps.backtesting.data_sources import db_interface
 from apps.backtesting.charting import time_series_chart
 from apps.TA import HORIZONS, PERIODS_4HR, PERIODS_1HR
 from apps.backtesting.utils import time_performance
@@ -34,7 +34,7 @@ class Data:
         return time_input
 
     def __init__(self, start_time, end_time, transaction_currency, counter_currency, horizon, start_cash,
-                 start_crypto, source, database=postgres_db):
+                 start_crypto, source, database=db_interface):
         self.start_time = self._parse_time(start_time)
         self.end_time = self._parse_time(end_time)
         self.transaction_currency = transaction_currency
@@ -44,11 +44,12 @@ class Data:
         self.start_crypto = start_crypto
         self.source = source
         self.database = database
+        self.resample_period = self.horizon  # legacy compatibility
         # self.horizon = PERIODS_1HR
 
 
         self.price_data = self.database.get_resampled_prices_in_range\
-            (self.start_time, self.end_time, transaction_currency, counter_currency, resample_period)
+            (self.start_time, self.end_time, transaction_currency, counter_currency, horizon)
 
         self.price_data = self.price_data[~self.price_data.index.duplicated(keep='first')]
 
@@ -116,7 +117,7 @@ class Data:
         self.bb_up = self._fill_indicator_values('bb_up', 5)
         self.bb_mid = self._fill_indicator_values('bb_mid', 5)
         self.bb_low = self._fill_indicator_values('bb_low', 5)
-        self.bb_width = [up - low for up, low in zip(self.bb_up, self.bb_low)]
+        self.bb_width = [(up - low)/mid for up, low, mid in zip(self.bb_up, self.bb_low, self.bb_mid)]
 
         # TODO re-enable the BB squeeze
         # self.min_bbw_180 = np.array(
@@ -212,10 +213,6 @@ class Data:
                           title=f"{self.transaction_currency} - {self.counter_currency}", orders=orders)
 
 
-
-
-
-
 class TaData:
 
     def _parse_time(self, time_input):
@@ -225,7 +222,7 @@ class TaData:
         return time_input
 
     def __init__(self, start_time, end_time, transaction_currency, counter_currency, resample_period, start_cash,
-                 start_crypto, source, database=postgres_db):
+                 start_crypto, source, database=db_interface):
         self.start_time = self._parse_time(start_time)
         self.end_time = self._parse_time(end_time)
         self.transaction_currency = transaction_currency

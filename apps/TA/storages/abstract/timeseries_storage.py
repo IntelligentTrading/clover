@@ -181,7 +181,8 @@ class TimeseriesStorage(KeyValueStorage):
         return z_add_data
 
     def save(self, publish=False, pipeline=None, *args, **kwargs):
-        if not self.value:
+        # if not self.value:  @tomcounsell: again, this is a problem if value is 0.0
+        if self.value is None:
             raise StorageException("no value set, nothing to save!")
         if not self.force_save:
             # validate some rules here?

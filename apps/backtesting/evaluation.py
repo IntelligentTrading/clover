@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import copy
 
-from apps.backtesting.data_sources import postgres_db, NoPriceDataException, Horizon
+from apps.backtesting.data_sources import NoPriceDataException, Horizon
 from apps.backtesting.orders import OrderType
 from apps.backtesting.utils import get_distinct_signal_types, datetime_from_timestamp
 from apps.backtesting.config import transaction_cost_percents
@@ -13,6 +13,7 @@ from apps.backtesting.charting import BacktestingChart
 
 from apps.backtesting.order_generator import OrderGenerator
 from apps.backtesting.config import INF_CRYPTO, INF_CASH
+from apps.backtesting.data_sources import db_interface
 
 logging.getLogger().setLevel(logging.INFO)
 pd.options.mode.chained_assignment = None
@@ -24,7 +25,7 @@ class Evaluation(ABC):
                  start_cash, start_crypto, start_time, end_time, source="binance",
                  resample_period=60, evaluate_profit_on_last_order=True, verbose=True,
                  benchmark_backtest=None, time_delay=0, slippage=0, order_generator=OrderGenerator.ALTERNATING,
-                 database=postgres_db):
+                 database=db_interface):
 
         self._strategy = strategy
         self._transaction_currency = transaction_currency
