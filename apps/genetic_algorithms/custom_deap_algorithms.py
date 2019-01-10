@@ -96,6 +96,10 @@ def eaSimpleCustom(population, toolbox, cxpb, mutpb, ngen, stats=None,
     .. [Back2000] Back, Fogel and Michalewicz, "Evolutionary Computation 1 :
        Basic Algorithms and Operators", 2000.
     """
+
+    # make sure the initial population is compressed
+    population = compress_population(population, genetic_program)
+
     logbook = tools.Logbook()
     logbook.header = ['gen', 'nevals'] + (stats.fields if stats else [])
     best_in_gens = []

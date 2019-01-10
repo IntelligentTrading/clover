@@ -109,12 +109,6 @@ class CommitteeStorage(TickerStorage):
                                             timestamp_tolerance=0)
         return committee['values'][-1].split(':')
 
-    @staticmethod
-    def generate_committee_images(timestamp=None, ticker='BTC_USDT', exchange='binance'):
-        for i, doge_hash in enumerate(CommitteeStorage.get_committee_hashes(timestamp, ticker, exchange)):
-            DogeStorage.save_doge_img(doge_hash, f'static/{i}.png')
-
-
 
 
 class CommitteeVoteStorage(IndicatorStorage):
