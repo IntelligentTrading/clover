@@ -67,7 +67,7 @@ class IndicatorStorage(TickerStorage):
                     periods_key=self.periods_key, key_suffix=self.key_suffix
                 )['values'][-1]
             if not self.value:
-                self.value = self.compute_value()
+                self.value = self.compute_and_save()
         except IndexError:
             self.value = None  # value not found
         except Exception as e:
