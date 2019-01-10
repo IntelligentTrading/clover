@@ -50,7 +50,10 @@ class AbstractSubscriber(ABC):
         try:
             channel_name = data_event.get('channel').decode("utf-8")
             event_data = json.loads(data_event.get('data').decode("utf-8"))
+
             # logger.debug(f'handling event in {self.__class__.__name__}')
+            # logger.debug(f'with data {event_data}')
+
             self.pre_handle(channel_name, event_data)
             self.handle(channel_name, event_data)
         except KeyError as  e:

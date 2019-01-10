@@ -67,9 +67,11 @@ class IndicatorSubscriber(TickerSubscriber):
         :return:
         """
 
-        if self.key_suffix not in self.storage_class.requisite_pv_indexes:
-            logger.debug(f'index {self.key_suffix} is not in {self.storage_class.requisite_pv_indexes} ...ignoring...')
-            return
+        if len(self.storage_class.requisite_pv_indexes):
+            if self.key_suffix not in self.storage_class.requisite_pv_indexes:
+                logger.debug(f'index {self.key_suffix} is not in {self.storage_class.requisite_pv_indexes} ...ignoring...')
+                return ""
+            else:
+                logger.debug(f'using indexes {self.storage_class.requisite_pv_indexes} for {self.storage_class.__name__} indicator')
 
-        logger.debug(f'using indexes {self.storage_class.requisite_pv_indexes} for {self.storage_class.__name__} indicator')
         self.storage_class.compute_and_save_all_values_for_timestamp(self.ticker, self.exchange, self.timestamp)
