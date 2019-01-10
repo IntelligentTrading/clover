@@ -58,6 +58,7 @@ def get_subscriber_classes():
     from apps.TA.indicators.overlap import sma, ema, wma, dema, tema, trima, bbands, ht_trendline, kama, midprice
     from apps.TA.indicators.momentum import adx, adxr, apo, aroon, aroonosc, bop, cci, cmo, dx, macd, mom, ppo, \
         roc, rocr, rsi, stoch, stochf, stochrsi, trix, ultosc, willr
+    from apps.TA.indicators.events import bbands_squeeze_180min
 
     return [
 
@@ -68,7 +69,8 @@ def get_subscriber_classes():
         bbands.BbandsSubscriber,
         # ht_trendline.HtTrendlineSubscriber,
 
-        # # MOMENTUM INDICATORS
+
+        # MOMENTUM INDICATORS
         # adx.AdxSubscriber,
         # adxr.AdxrSubscriber, apo.ApoSubscriber, aroon.AroonSubscriber, aroonosc.AroonOscSubscriber,
         # bop.BopSubscriber, cci.CciSubscriber, cmo.CmoSubscriber, dx.DxSubscriber,
@@ -79,6 +81,14 @@ def get_subscriber_classes():
         # stoch.StochSubscriber,
         # stochf.StochfSubscriber, stochrsi.StochrsiSubscriber,
         # trix.TrixSubscriber, ultosc.UltoscSubscriber,
+        # willr.WillrSubscriber ... wait no!! it has to be the last one - leave it for the end please :)
+
+
+        # EVENTS INDICATORS
+        bbands_squeeze_180min.BbandsSqueeze180MinSubscriber,
+
+
+        # THE LAST ONE
         willr.WillrSubscriber,  # the last one (if changes, change in SignalSubscriber default subscription)
 
     ]
