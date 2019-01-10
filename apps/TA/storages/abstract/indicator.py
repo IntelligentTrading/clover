@@ -238,7 +238,7 @@ class IndicatorStorage(TickerStorage):
         try:
             self.produce_signal()
         except Exception as e:
-            logger.error("error producing signal for indicator" + str(e))
+            logger.error("error producing signal for indicator " + str(e))
         return save_result
 
 

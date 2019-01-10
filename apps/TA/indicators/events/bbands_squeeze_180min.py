@@ -50,7 +50,7 @@ class BbandsSqueeze180MinStorage(IndicatorStorage):
             ])
 
         self.value = f"{self.width}:{str(self.squeeze)}"  # eg. "0.04523353:True"
-        logger.debug(f"BbandsSqueeze180MinStorage computed: {self.value}")
+        # logger.debug(f"BbandsSqueeze180MinStorage computed: {self.value}")
 
         return self.value
 
@@ -58,11 +58,11 @@ class BbandsSqueeze180MinStorage(IndicatorStorage):
     def produce_signal(self):
 
         self.value = self.get_value()
-        logger.debug("found TA value for BbandsSqueeze180MinStorage")
-        logger.debug(self.value)
+        # logger.debug("found TA value for BbandsSqueeze180MinStorage")
+        # logger.debug(self.value)
 
         self.width, self.squeeze = self.value.split(":")
-        self.width, self.squeeze = float(self.width), bool(self.squeeze == 'True')
+        self.width, self.squeeze = float(self.width), bool(str(self.squeeze) == 'True')
 
 
         if self.squeeze:
