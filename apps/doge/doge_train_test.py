@@ -157,8 +157,8 @@ class DogeTrainer:
 
         trainer = DogeTrainer(db_interface)
 
-        start_time = db_interface.get_nearest_db_timestamp(start_timestamp, 'BTC', 'USDT')
-        end_time = db_interface.get_nearest_db_timestamp(end_timestamp, 'BTC', 'USDT')
+        start_time = db_interface.get_nearest_db_timestamp(start_timestamp, 'BTC_USDT')
+        end_time = db_interface.get_nearest_db_timestamp(end_timestamp, 'BTC_USDT')
 
         trainer.retrain_doges(start_time, end_time, max_doges_to_save=10)
 
@@ -209,21 +209,20 @@ class DogeCommittee:
     The committee is built out of the latest GPs in the database.
     """
 
-    def __init__(self, init_time=None, max_doges=100, ttl=DOGE_RETRAINING_PERIOD_SECONDS):
+    def __init__(self, committee_timestamp=None, max_doges=100, ttl=DOGE_RETRAINING_PERIOD_SECONDS):
         with open(GP_TRAINING_CONFIG, 'r') as f:
             self.gp_training_config_json = f.read()
 
         self.max_doges = max_doges
-        self._init_time = init_time if init_time else time.time()
+        self._committee_timestamp = committee_timestamp  # uses the last committee if timestamp is None
         self.function_provider = RedisTAProvider()
         doge_traders = self._load_doge_traders()
         self.doge_traders = doge_traders if len(doge_traders) <= max_doges else doge_traders[:max_doges]
         self.periods = PERIODS_1HR  # TODO remove this hardcoding if we decide to use more horizons
         self._ttl = ttl
 
-    @property
     def expired(self, at_timestamp):
-        return at_timestamp - self._init_time > self._ttl
+        return at_timestamp - self._committee_timestamp > self._ttl
 
     def _load_doge_traders(self):
         """
@@ -234,9 +233,12 @@ class DogeCommittee:
 
         # get doges out of DB
         # get the latest committee
-        query_response = CommitteeStorage.query(ticker='BTC_USDT', exchange='binance')
+        query_response = CommitteeStorage.query(ticker='BTC_USDT', exchange='binance', timestamp=self._committee_timestamp)
         self.committee_timestamp = CommitteeStorage.timestamp_from_score(query_response['scores'][-1])
-        assert self._init_time == self.committee_timestamp  # for debugging
+        assert self._committee_timestamp == self.committee_timestamp or self._committee_timestamp is None # for debugging TODO: decide on how to make the distinction
+
+        if not query_response['values']:
+            raise Exception('No committee members found for timestamp {self.committee_timetstamp}!')
 
         doge_committee_ids = query_response['values'][-1].split(':')
         for doge_id in doge_committee_ids:
@@ -261,6 +263,7 @@ class DogeCommittee:
         :return: a list of votes (+1=buy, -1=sell, 0=ignore) and a list of
                  unnormalized weights of doges that produced the votes
         """
+
         ticker_data = TickerData(
             timestamp=timestamp,
             transaction_currency=transaction_currency,
@@ -357,7 +360,7 @@ class DogeSubscriber(SignalSubscriber):
             return
 
         # check if the committee has expired
-        if self.committee.expired:
+        if self.committee.expired(at_timestamp=self.timestamp):
             logger.info('Doge committee expired, reloading...')
             self._reload_committee()
 
@@ -380,3 +383,63 @@ class DogeSubscriber(SignalSubscriber):
 
     def pre_handle(self, channel, data, *args, **kwargs):
         super().pre_handle(channel, data, *args, **kwargs)
+
+
+class DummyDogeSubscriber(DogeSubscriber):
+
+    def __init__(self, committee):
+        self.committee = committee
+        # no super constructor calls, bypass the Redis and pubsub stuff
+
+    def expired(self, at_timestamp):
+        return False
+
+
+class DogeHistorySimulator:
+
+    def __init__(self, start_time, end_time, training_period_length, time_to_retrain_seconds, ticker, exchange):
+        self._start_time = db_interface.get_nearest_db_timestamp(start_time, ticker, exchange)
+        self._end_time = db_interface.get_nearest_db_timestamp(end_time, ticker, exchange)
+        self._training_period_length = training_period_length
+        self._time_to_retrain_seconds = time_to_retrain_seconds
+        self._ticker = ticker
+        self._exchange = exchange
+
+
+    def fill_history(self):
+        karen = DogeTrainer(database=db_interface)  # see Karen Pryor
+
+        for training_start_time in \
+            range(self._start_time, self._end_time - self._training_period_length, self._time_to_retrain_seconds):
+            training_end_time = training_start_time + self._training_period_length
+            training_end_time = 1547132400  # debug stuff
+
+            # check if a committee record already exists
+            try:
+                committee = DogeCommittee(committee_timestamp=training_end_time)
+                logging.info(f'Committee successfully loaded at {training_end_time}')
+            except:
+                # no committee, we need to rerun training
+                logging.info(f'No committee found, running training for timestamp {training_end_time}...')
+                karen.retrain_doges(start_timestamp=training_start_time, end_timestamp=training_end_time)
+
+                # now that Karen did her job we should totally have a working committee
+                committee = DogeCommittee(committee_timestamp=training_end_time)
+
+            # we need to simulate incoming price data
+            # rudely hijack the DogeSubscriber class
+            subscriber = DummyDogeSubscriber(committee)
+            data_event = {
+                'type': 'message',
+                'pattern': None,
+                'channel': b'PriceStorage',
+                'data': f'''{{
+                    "key": "{self._ticker}:{self._exchange}:PriceStorage:1",
+                    "name": "9545225909:212121",
+                    "score": "212121"
+                }}'''.encode(encoding='UTF8')
+                }
+            # call the doge with this event
+            subscriber(data_event=data_event)
+
+

@@ -483,13 +483,13 @@ class RedisDB(Database):
         return timestamp - n*60*5
 
 
-    def get_nearest_db_timestamp(self, timestamp, transaction_currency, counter_currency, source="binance"):
+    def get_nearest_db_timestamp(self, timestamp, ticker, exchange="binance"):
 
         timestamp_tolerance = 60*5
 
         results = PriceStorage.query(
-            ticker=f'{transaction_currency}_{counter_currency}',
-            exchange=source,
+            ticker=ticker,
+            exchange=exchange,
             index="close_price",
             timestamp=timestamp,
             timestamp_tolerance=timestamp_tolerance
