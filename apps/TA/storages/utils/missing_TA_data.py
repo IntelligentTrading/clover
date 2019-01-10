@@ -25,10 +25,11 @@ def find_TA_storage_data_gaps(ticker, exchange, storage_class_name, force_fill=F
         now_score = int(TimeseriesStorage.score_from_timestamp(datetime.now().timestamp()))
         one_month = 1*30*24*12
         query_results = storage_class.query(ticker=ticker, exchange=exchange, periods_key=periods, periods_range=one_month)
-        query_results['scores'].append(now_score)
-        query_results['scores'].append(now_score-one_month)
+        scores = [int(float(score)) for score in query_results['scores']]
+        scores.append(now_score)
+        scores.append(now_score-one_month)
 
-        missing_scores = [int(float(score)) for score in missing_elements(query_results['scores'])]
+        missing_scores = missing_elements(scores)
 
         logger.info(f"{len(missing_scores)} total scores are missing. start filling...")
 
