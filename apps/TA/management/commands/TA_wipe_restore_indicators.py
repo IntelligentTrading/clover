@@ -2,7 +2,6 @@ import json
 import logging
 from datetime import datetime, timedelta
 
-
 from django.core.management.base import BaseCommand
 
 from apps.TA.management.commands.TA_worker import get_subscriber_classes
@@ -71,3 +70,4 @@ def forge_data_event(ticker, exchange, storage_class, index, value, score):
         'channel': bytes(str(storage_class), "utf-8"),
         'data': bytes(json.dumps(data), "utf-8")
     }
+
