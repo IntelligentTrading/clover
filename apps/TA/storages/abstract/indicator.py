@@ -2,6 +2,7 @@ import logging
 
 from apps.TA import TAException, HORIZONS
 from apps.TA.storages.abstract.ticker import TickerStorage
+
 # from apps.signal.models import Signal
 
 logger = logging.getLogger(__name__)
@@ -11,7 +12,6 @@ TRENDS = (BEARISH, BULLISH, OTHER) = (-1, 1, 0)
 
 class IndicatorException(TAException):
     pass
-
 
 
 class IndicatorStorage(TickerStorage):
@@ -24,10 +24,11 @@ class IndicatorStorage(TickerStorage):
     class_describer = "indicator"
     value_sig_figs = 6
 
-    class_periods_list = [1,]  # class should override this
+    class_periods_list = [1, ]  # class should override this
     # list of integers where for x: (1 <= x <= 200)
 
     requisite_pv_indexes = []  # class should override this.
+    always_publish = True
 
     # may only include values in default_price_indexes or default_volume_indexes
     # eg. ["high_price", "low_price", "open_price", "close_price", "close_volume"]
@@ -41,6 +42,9 @@ class IndicatorStorage(TickerStorage):
 
         # self.horizon = int(kwargs.get('horizon', 1))
         self.periods = int(kwargs.get('periods', 1))  # * self.horizon))
+
+        self.periods_key = kwargs.get("periods_key", "")
+        self.key_suffix = kwargs.get("key_suffix", "")
 
         # if self.periods // self.horizon == 0:
         #     raise IndicatorException(f'horizon {self.horizon} '
@@ -58,7 +62,9 @@ class IndicatorStorage(TickerStorage):
                 pass
             else:
                 self.value = self.query(
-                    ticker=self.ticker, exchange=self.exchange, timestamp=self.unix_timestamp
+                    ticker=self.ticker, exchange=self.exchange,
+                    timestamp=self.unix_timestamp,
+                    periods_key=self.periods_key, key_suffix=self.key_suffix
                 )['values'][-1]
             if not self.value:
                 self.value = self.compute_value()
@@ -115,19 +121,27 @@ class IndicatorStorage(TickerStorage):
     def compute_value(self, periods: int = 0) -> str:
         periods = periods or self.periods
 
-        index_value_arrrays = {}
-        for index in self.requisite_pv_indexes:
-            index_value_arrrays[index] = self.get_denoted_price_array(index, periods)
-            if not len(index_value_arrrays[index]): return ""
+        index_value_arrays = {}
 
-        return self.compute_value_with_requisite_indexes(index_value_arrrays, periods)
+        if len(self.requisite_pv_indexes):
+            for index in self.requisite_pv_indexes:
+                index_value_arrays[index] = self.get_denoted_price_array(index, periods)
+                if not len(index_value_arrays[index]):
+                    logger.error(
+                        f"Error finding denoted price array for requisite index {index}. Returning empty value.")
+                    return ""
+
+        if min([len(array) for array in index_value_arrays] + [periods, ]) < periods:
+            logger.warning("possibly not enough data to compute")
+
+        return self.compute_value_with_requisite_indexes(index_value_arrays, periods)
 
     def compute_value_with_requisite_indexes(self, requisite_pv_index_arrays: dict, periods: int = 0) -> str:
         """
         custom class should set cls.requisite_pv_indexes
         override this function with custom logic
 
-        :param index_value_arrrays: a dict with keys matching requisite+pv_indexes and values from self.get_denoted_price_array()
+        :param index_value_arrays: a dict with keys matching requisite+pv_indexes and values from self.get_denoted_price_array()
         :param periods: number of periods to compute value for
         :return:
         """
@@ -189,7 +203,6 @@ class IndicatorStorage(TickerStorage):
         # volume_results_dict = VolumeStorage.query(ticker=self.ticker, exchange=self.exchange)
         # most_recent_volume = float(volume_results_dict ['values'][0])
 
-
         # todo: not applicable to Clover, use if replacing Core TA
         # return Signal.objects.create(
         #     timestamp=self.unix_timestamp,
@@ -208,25 +221,24 @@ class IndicatorStorage(TickerStorage):
     def save(self, *args, **kwargs):
 
         # check meets basic requirements for saving
-        # if not all([self.ticker, self.exchange,    # @tomcounsell: cool, but fails if value is 0.0
-        #            self.periods, self.value,
-        #             self.unix_timestamp]):
-        if not (all([self.ticker, self.exchange,     # an ugly fix 🤢
-                    self.periods,
-                    self.unix_timestamp]) and self.value is not None):
-
+        if not all([self.ticker, self.exchange,
+                    self.periods, self.unix_timestamp]):
             logger.error("incomplete information, cannot save \n" + str(self.__dict__))
             raise IndicatorException("save error, missing data")
 
         self.db_key_suffix = f'{str(self.periods)}'
-        if not 'publish' in kwargs:
-            kwargs['publish'] = True
+
+        if self.always_publish:
+            kwargs['publish'] = self.always_publish
+
+        elif not 'publish' in kwargs:
+            kwargs['publish'] = self.always_publish
 
         save_result = super().save(*args, **kwargs)
         try:
             self.produce_signal()
         except Exception as e:
-            logger.error("error producing signal for indicator" + str(e))
+            logger.error("error producing signal for indicator " + str(e))
         return save_result
 
 

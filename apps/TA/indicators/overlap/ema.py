@@ -20,7 +20,7 @@ class EmaStorage(IndicatorStorage):
         """
         with cls.requisite_pv_indexes set
 
-        :param index_value_arrrays: a dict with keys matching requisite+pv_indexes and values from self.get_denoted_price_array()
+        :param index_value_arrays: a dict with keys matching requisite+pv_indexes and values from self.get_denoted_price_array()
         :param periods: number of periods to compute value for
         :return:
         """

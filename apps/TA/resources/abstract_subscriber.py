@@ -25,8 +25,7 @@ class AbstractSubscriber(ABC):
         logger.info(f'New pubsub for {self.__class__.__name__}')
         for s_class in self.classes_subscribing_to:
             self.pubsub.subscribe(s_class.__name__)
-            logger.info(f'{self.__class__.__name__} subscribed to '
-                        f'{s_class.__name__} channel')
+            logger.info(f'{self.__class__.__name__} subscribed to {s_class.__name__} channel')
 
     def __call__(self, data_event=None):
         data_event = data_event or self.pubsub.get_message()
@@ -51,7 +50,10 @@ class AbstractSubscriber(ABC):
         try:
             channel_name = data_event.get('channel').decode("utf-8")
             event_data = json.loads(data_event.get('data').decode("utf-8"))
+
             # logger.debug(f'handling event in {self.__class__.__name__}')
+            # logger.debug(f'with data {event_data}')
+
             self.pre_handle(channel_name, event_data)
             self.handle(channel_name, event_data)
         except KeyError as  e:
@@ -73,8 +75,7 @@ class AbstractSubscriber(ABC):
         :return: None
         """
         logger.warning(f'NEW MESSAGE for '
-                       f'{self.__class__.__name__} subscribed to '
-                       f'{channel} channel '
+                       f'{self.__class__.__name__} subscribed to {channel} channel '
                        f'BUT HANDLER NOT DEFINED! '
                        f'... message/event discarded')
         pass
