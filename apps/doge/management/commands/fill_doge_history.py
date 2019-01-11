@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from apps.doge.doge_train_test import DogeHistorySimulator
+from apps.doge.doge_historical_runs import DogeHistorySimulator
 import time
 from apps.TA import PERIODS_1HR
 
