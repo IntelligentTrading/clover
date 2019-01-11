@@ -4,7 +4,6 @@ from apps.backtesting.data_sources import db_interface
 from apps.backtesting.tick_listener import TickListener
 from apps.backtesting.tick_provider_heartbeat import TickProviderHeartbeat
 from apps.backtesting.tick_provider import TickerData
-from apps.backtesting.utils import datetime_from_timestamp
 from apps.doge.doge_TA_actors import DogeStorage, DogePerformance, CommitteeStorage, SignalSubscriber, \
     CommitteeVoteStorage
 from apps.genetic_algorithms.genetic_program import GeneticTickerStrategy
@@ -14,6 +13,7 @@ from apps.TA import PERIODS_1HR
 from settings import DOGE_RETRAINING_PERIOD_SECONDS, logger, SUPPORTED_DOGE_TICKERS, DOGE_LOAD_ROCKSTARS
 import time
 from apps.genetic_algorithms.chart_plotter import save_dot_graph
+from apps.backtesting.utils import datetime_from_timestamp
 
 METRIC_IDS = {
     'mean_profit': 0,
@@ -82,7 +82,6 @@ class DogeTrainer:
         # DEBUG: loading rockstars
         rockstars = []
         if DOGE_LOAD_ROCKSTARS:
-            from settings import DOGE_MAX_ROCKSTARS
             rockstars = CommitteeStorage.load_rockstars(num_previous_committees_to_search=2, max_num_rockstars=5,
                                                         ticker='BTC_USDT', exchange='binance', timestamp=end_timestamp)
             logging.info(f'Loaded {len(rockstars)} rockstars.')
@@ -157,8 +156,8 @@ class DogeTrainer:
 
         trainer = DogeTrainer(db_interface)
 
-        start_time = db_interface.get_nearest_db_timestamp(start_timestamp, 'BTC', 'USDT')
-        end_time = db_interface.get_nearest_db_timestamp(end_timestamp, 'BTC', 'USDT')
+        start_time = db_interface.get_nearest_db_timestamp(start_timestamp, 'BTC_USDT')
+        end_time = db_interface.get_nearest_db_timestamp(end_timestamp, 'BTC_USDT')
 
         trainer.retrain_doges(start_time, end_time, max_doges_to_save=10)
 
@@ -209,33 +208,37 @@ class DogeCommittee:
     The committee is built out of the latest GPs in the database.
     """
 
-    def __init__(self, max_doges=100, ttl=DOGE_RETRAINING_PERIOD_SECONDS):
+    def __init__(self, committee_timestamp=None, max_doges=100, ttl=DOGE_RETRAINING_PERIOD_SECONDS):
         with open(GP_TRAINING_CONFIG, 'r') as f:
             self.gp_training_config_json = f.read()
 
         self.max_doges = max_doges
+        self._committee_timestamp = committee_timestamp  # uses the last committee if timestamp is None
         self.function_provider = RedisTAProvider()
-        doge_traders = self._load_latest_doge_traders()
+        doge_traders = self._load_doge_traders()
         self.doge_traders = doge_traders if len(doge_traders) <= max_doges else doge_traders[:max_doges]
         self.periods = PERIODS_1HR  # TODO remove this hardcoding if we decide to use more horizons
-        self._init_time = time.time()
         self._ttl = ttl
 
-    @property
-    def expired(self):
-        return time.time() - self._init_time > self._ttl
+    def expired(self, at_timestamp):
+        return at_timestamp - self._committee_timestamp > self._ttl
 
-    def _load_latest_doge_traders(self):
+    def _load_doge_traders(self):
         """
-        Loads latest doge traders from the database.
+        Loads doge traders that belong to this committee (based on timestamp, self._init_time).
         :return: a list of DogeTrader objects
         """
         doge_traders = []
 
         # get doges out of DB
         # get the latest committee
-        query_response = CommitteeStorage.query(ticker='BTC_USDT', exchange='binance')
+        query_response = CommitteeStorage.query(ticker='BTC_USDT', exchange='binance', timestamp=self._committee_timestamp)
         self.committee_timestamp = CommitteeStorage.timestamp_from_score(query_response['scores'][-1])
+        assert self._committee_timestamp == self.committee_timestamp or self._committee_timestamp is None # for debugging TODO: decide on how to make the distinction
+
+        if not query_response['values']:
+            raise Exception('No committee members found for timestamp {self.committee_timetstamp}!')
+
         doge_committee_ids = query_response['values'][-1].split(':')
         for doge_id in doge_committee_ids:
             doge_storage = DogeStorage(key_suffix=doge_id)
@@ -259,6 +262,7 @@ class DogeCommittee:
         :return: a list of votes (+1=buy, -1=sell, 0=ignore) and a list of
                  unnormalized weights of doges that produced the votes
         """
+
         ticker_data = TickerData(
             timestamp=timestamp,
             transaction_currency=transaction_currency,
@@ -288,9 +292,6 @@ class DogeCommittee:
     def generate_doge_images(self):
         for i, doge in enumerate(self.doge_traders):
             doge.save_doge_img(out_filename=f'apps/doge/static/{i}')
-
-
-
 
 
 class DogeTradingManager(TickListener):
@@ -350,6 +351,9 @@ class DogeSubscriber(SignalSubscriber):
     def _reload_committee(self):
         self.committee = DogeCommittee()
 
+    def _check_committee_expired(self):
+        return self.committee.expired(at_timestamp=self.timestamp)
+
     def handle(self, channel, data, *args, **kwargs):
         # check if we received data for a ticker we support
         if self.ticker not in SUPPORTED_DOGE_TICKERS:  # @tomcounsell please check if this is OK or I should register
@@ -358,12 +362,13 @@ class DogeSubscriber(SignalSubscriber):
             return
 
         # check if the committee has expired
-        if self.committee.expired:
+        if self._check_committee_expired():
             logger.info('Doge committee expired, reloading...')
             self._reload_committee()
 
-        logger.info(f'Doge subscriber invoked at {self.timestamp}, channel={str(channel)}, data={str(data)} '
-                    f'(it is now {time.time()})')
+        logger.info(f'Doge subscriber invoked at {datetime_from_timestamp(self.timestamp)}, '
+                    f'channel={str(channel)}, data={str(data)} '
+                    f'(it is now {datetime_from_timestamp(time.time())})')
         transaction_currency, counter_currency = self.ticker.split('_')
 
         new_doge_storage = CommitteeVoteStorage(ticker=self.ticker,
@@ -381,3 +386,5 @@ class DogeSubscriber(SignalSubscriber):
 
     def pre_handle(self, channel, data, *args, **kwargs):
         super().pre_handle(channel, data, *args, **kwargs)
+
+
