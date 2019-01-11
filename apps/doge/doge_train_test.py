@@ -366,8 +366,9 @@ class DogeSubscriber(SignalSubscriber):
             logger.info('Doge committee expired, reloading...')
             self._reload_committee()
 
-        logger.info(f'Doge subscriber invoked at {self.timestamp}, channel={str(channel)}, data={str(data)} '
-                    f'(it is now {time.time()})')
+        logger.info(f'Doge subscriber invoked at {datetime_from_timestamp(self.timestamp)}, '
+                    f'channel={str(channel)}, data={str(data)} '
+                    f'(it is now {datetime_from_timestamp(time.time())})')
         transaction_currency, counter_currency = self.ticker.split('_')
 
         new_doge_storage = CommitteeVoteStorage(ticker=self.ticker,
