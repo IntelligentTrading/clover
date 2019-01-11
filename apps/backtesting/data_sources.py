@@ -513,6 +513,7 @@ class RedisDB(Database):
 
         from apps.TA.indicators.momentum import rsi, stochrsi, adx, macd, mom, stoch
         from apps.TA.indicators.overlap import sma, ema, wma, bbands, ht_trendline
+        from apps.TA.indicators.events import bbands_squeeze_180min
         from apps.backtesting.utils import datetime_from_timestamp
 
         storage_class = {
@@ -525,6 +526,7 @@ class RedisDB(Database):
             'ema': ema.EmaStorage,
             'wma': wma.WmaStorage,
             'bbands': bbands.BbandsStorage,
+            'bb_squeeze': bbands_squeeze_180min.BbandsSqueeze180MinStorage,
             'ht_trendline': ht_trendline.HtTrendlineStorage,
             'slowd': stoch.StochStorage,
             'close_price': PriceStorage
@@ -576,6 +578,7 @@ class RedisDB(Database):
 
         from apps.TA.indicators.momentum import rsi, stochrsi, adx, macd, mom, stoch
         from apps.TA.indicators.overlap import sma, ema, wma, bbands, ht_trendline
+        from apps.TA.indicators.events import bbands_squeeze_180min
 
         storage_class = {
             'rsi': rsi.RsiStorage,
@@ -593,6 +596,7 @@ class RedisDB(Database):
             'bb_up': bbands.BbandsStorage,
             'bb_mid': bbands.BbandsStorage,
             'bb_low': bbands.BbandsStorage,
+            'bb_squeeze': bbands_squeeze_180min.BbandsSqueeze180MinStorage,
             'ht_trendline': ht_trendline.HtTrendlineStorage,
             'slowd': stoch.StochStorage,
         }
@@ -607,6 +611,8 @@ class RedisDB(Database):
                     return float(result[1])
                 elif indicator_name == 'bb_low':
                     return float(result[2])
+                elif indicator_name == 'bb_squeeze':
+                    return bool(result[1])
                 elif indicator_name == 'macd_value':
                     return float(result[0])
                 elif indicator_name == 'macd_signal':
