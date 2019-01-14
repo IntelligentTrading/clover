@@ -109,6 +109,8 @@ class DogePerformanceTimer:
                     }
                     entries.append(entry)
                     pickle.dump(entries, open('entries.p', 'wb'))
+                    with open('entries.txt', 'w') as f:
+                        f.writelines(map(str, entries))
 
         entries = pickle.load(open('entries.p', 'rb'))
         df = pd.DataFrame(entries)
