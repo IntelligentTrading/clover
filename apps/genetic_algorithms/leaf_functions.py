@@ -86,11 +86,11 @@ class TAProvider(FunctionProvider):
         return self._crosses_from_above('close_price', 'bb_low', input)
 
     def bbands_squeeze_bullish(self, input):
-        return self.get_indicator('bb_width', input) <= self.get_indicator('min_bbw_180', input)\
+        return self.get_indicator('bb_squeeze', input)\
                and self._crosses_from_below('close_price', 'bb_up', input)
 
     def bbands_squeeze_bearish(self, input):
-        return self.get_indicator('bb_width', input) <= self.get_indicator('min_bbw_180', input)\
+        return self.get_indicator('bb_squeeze', input)\
                and self._crosses_from_above('close_price', 'bb_low', input)
 
     def bbands_price_gt_up(self, input):
@@ -207,6 +207,7 @@ class RedisTAProvider(TAProvider):
         'bb_up': 5,
         'bb_mid': 5,
         'bb_low': 5,
+        'bb_squeeze': 1,
         'macd_value': 26,
         'macd_signal': 26,
         'macd_hist': 26,
