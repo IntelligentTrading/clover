@@ -56,13 +56,18 @@ class DogeTrainer:
     A class that encapsulates GP training.
     """
 
-    def __init__(self, database):
+    def __init__(self, database, gp_training_config_json=None):
         """
 
         :param database: database from data_sources, either Redis or Postgres
+        :param gp_training_config_json: string JSON representing the training config, if None loaded from GP_TRAINING_CONFIG
         """
-        with open(GP_TRAINING_CONFIG, 'r') as f:
-            self.gp_training_config_json = f.read()
+        if gp_training_config_json is None:
+            with open(GP_TRAINING_CONFIG, 'r') as f:
+                self.gp_training_config_json = f.read()
+        else:
+            self.gp_training_config_json = gp_training_config_json
+
         self.database = database
 
     def retrain_doges(self, start_timestamp, end_timestamp, max_doges_to_save=10):
@@ -355,6 +360,7 @@ class DogeSubscriber(SignalSubscriber):
         return self.committee.expired(at_timestamp=self.timestamp)
 
     def handle(self, channel, data, *args, **kwargs):
+        logging.info('Doge subscriber invoked')
         # check if we received data for a ticker we support
         if self.ticker not in SUPPORTED_DOGE_TICKERS:  # @tomcounsell please check if this is OK or I should register
                                                        # for tickers of interest in some other way
