@@ -500,67 +500,6 @@ class RedisDB(Database):
         if results['latest_timestamp'] > (timestamp - timestamp_tolerance):
             return results['latest_timestamp']
 
-
-    @staticmethod
-    def self_test(transaction_currency, counter_currency):
-        # query Redis to get indicator value at timestamp
-        from settings.redis_db import database
-
-        params = dict(
-            ticker=f'{transaction_currency}_{counter_currency}',
-            exchange="binance",
-         )
-
-        from apps.TA.indicators.momentum import rsi, stochrsi, adx, macd, mom, stoch
-        from apps.TA.indicators.overlap import sma, ema, wma, bbands, ht_trendline
-        from apps.TA.indicators.events import bbands_squeeze_180min
-        from apps.backtesting.utils import datetime_from_timestamp
-
-        storage_class = {
-            'rsi': rsi.RsiStorage,
-            'stoch_rsi': stochrsi.StochrsiStorage,
-            'adx': adx.AdxStorage,
-            'macd': macd.MacdStorage,
-            'mom': mom.MomStorage,
-            'sma': sma.SmaStorage,
-            'ema': ema.EmaStorage,
-            'wma': wma.WmaStorage,
-            'bbands': bbands.BbandsStorage,
-            'bb_squeeze': bbands_squeeze_180min.BbandsSqueeze180MinStorage,
-            'ht_trendline': ht_trendline.HtTrendlineStorage,
-            'slowd': stoch.StochStorage,
-            'close_price': PriceStorage
-        }
-
-        params = dict(
-            ticker=f'{transaction_currency}_{counter_currency}',
-            exchange="binance",
-         )
-
-        for indicator_type in storage_class:
-            sorted_set_key = storage_class[indicator_type].compile_db_key(key=None,
-                                                                          key_prefix=f"{params['ticker']}:{params['exchange']}:",
-                                                                          key_suffix='*')
-            print(f'Processing indicator {sorted_set_key}')
-            if len(database.keys(sorted_set_key)) == 0:
-                print('   no data.')
-            for key in database.keys(sorted_set_key):
-                query_response = database.zrange(key, 0, -1)
-                if len(query_response) == 0:
-                    print(f'   {key}: no data')
-                    continue
-                try:
-                    score_start = query_response[0].decode("utf-8").split(":")[-1]
-                    score_end = query_response[-1].decode("utf-8").split(":")[-1]
-                    time_start = datetime_from_timestamp(storage_class[indicator_type].timestamp_from_score(score_start))
-                    time_end = datetime_from_timestamp(storage_class[indicator_type].timestamp_from_score(score_end))
-                    num_values = len(query_response)
-                    print(f'   {key}: {num_values} values, start time = {time_start}, end time = {time_end}')
-                except Exception as e:
-                    logging.info(f'Error decoding input: {str(e)}')
-        return
-
-
     def get_indicator(self, indicator_name, transaction_currency, counter_currency, timestamp, resample_period, source='binance'):
         # query Redis to get indicator value at timestamp
 
@@ -640,8 +579,118 @@ class RedisDB(Database):
 
 
 
+
+class RedisTests:
+
+    @staticmethod
+    def self_test(transaction_currency, counter_currency):
+        # query Redis to get indicator value at timestamp
+        from settings.redis_db import database
+
+        params = dict(
+            ticker=f'{transaction_currency}_{counter_currency}',
+            exchange="binance",
+        )
+
+        from apps.TA.indicators.momentum import rsi, stochrsi, adx, macd, mom, stoch
+        from apps.TA.indicators.overlap import sma, ema, wma, bbands, ht_trendline
+        from apps.TA.indicators.events import bbands_squeeze_180min
+        from apps.backtesting.utils import datetime_from_timestamp
+
+        storage_class = {
+            'rsi': rsi.RsiStorage,
+            'stoch_rsi': stochrsi.StochrsiStorage,
+            'adx': adx.AdxStorage,
+            'macd': macd.MacdStorage,
+            'mom': mom.MomStorage,
+            'sma': sma.SmaStorage,
+            'ema': ema.EmaStorage,
+            'wma': wma.WmaStorage,
+            'bbands': bbands.BbandsStorage,
+            'bb_squeeze': bbands_squeeze_180min.BbandsSqueeze180MinStorage,
+            'ht_trendline': ht_trendline.HtTrendlineStorage,
+            'slowd': stoch.StochStorage,
+            'close_price': PriceStorage
+        }
+
+        params = dict(
+            ticker=f'{transaction_currency}_{counter_currency}',
+            exchange="binance",
+        )
+
+        for indicator_type in storage_class:
+            sorted_set_key = storage_class[indicator_type].compile_db_key(key=None,
+                                                                          key_prefix=f"{params['ticker']}"
+                                                                          f":{params['exchange']}:",
+                                                                          key_suffix='*')
+            print(f'Processing indicator {sorted_set_key}')
+            if len(database.keys(sorted_set_key)) == 0:
+                print('   no data.')
+            for key in database.keys(sorted_set_key):
+                query_response = database.zrange(key, 0, -1)
+                if len(query_response) == 0:
+                    print(f'   {key}: no data')
+                    continue
+                try:
+                    score_start = query_response[0].decode("utf-8").split(":")[-1]
+                    score_end = query_response[-1].decode("utf-8").split(":")[-1]
+                    time_start = datetime_from_timestamp(
+                        storage_class[indicator_type].timestamp_from_score(score_start))
+                    time_end = datetime_from_timestamp(storage_class[indicator_type].timestamp_from_score(score_end))
+                    num_values = len(query_response)
+                    print(f'   {key}: {num_values} values, start time = {time_start}, end time = {time_end}')
+                except Exception as e:
+                    logging.info(f'Error decoding input: {str(e)}')
+        return
+
+
+
+    @staticmethod
+    def find_gaps(key_pattern, start_timestamp, end_timestamp):
+        from settings.redis_db import database
+
+        start_score = PriceStorage.score_from_timestamp(start_timestamp)
+        end_score = PriceStorage.score_from_timestamp(end_timestamp)
+
+        keys = database.keys(key_pattern)
+        for key in keys:
+            logging.info(f'Processing data for {key}...')
+            values = database.zrangebyscore(key, min=start_score, max=end_score)
+            gaps = []
+            gap_start = None
+            for i, item in enumerate(values):
+                if i == len(values) - 1:  # the last element
+                    break
+                current_score = int(item.decode('UTF8').split(':')[-1])
+                next_score = int(values[i + 1].decode('UTF8').split(':')[-1])
+                if next_score == current_score:
+                    logging.warning(f'     Encountered duplicate scores: {item} and {values[i + 1]}')
+                    continue
+                if next_score != current_score + 1:
+                    if gap_start is None:
+                        gap_start = current_score
+                else:
+                    if gap_start is not None:
+                        gap_end = current_score
+                        gaps.append((gap_start, gap_end))
+                        gap_start = None
+            logging.info('Found gaps: ')
+            from apps.backtesting.utils import datetime_from_timestamp
+            for gap in gaps:
+                start = datetime_from_timestamp(PriceStorage.timestamp_from_score(gap[0]))
+                end = datetime_from_timestamp(PriceStorage.timestamp_from_score(gap[1]))
+                logging.info(f'    start: {start}, end: {end}  (scores {gap[0]}-{gap[1]})')
+
+        return gaps
+
+
+
+
+
 #postgres_db = PostgresDatabaseConnection()
 db_interface = RedisDB()
 
 if __name__ == '__main__':
-    db_interface.self_test('BTC', 'USDT')
+    import time
+    RedisTests.find_gaps('*BTC_USDT*Sma*', time.time()-60*60*24*30, time.time())
+    #db_interface.self_test('BTC', 'USDT')
