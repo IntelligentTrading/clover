@@ -39,6 +39,8 @@ def list_all_committees(ticker='BTC_USDT', exchange='binance'):
                     f'{get_allocations_from_doge(at_datetime=datetime.datetime.utcfromtimestamp(timestamp))}')
 
 
+
+
 def get_indicator_status(indicator_key='Willr', ticker='BTC_USDT', exchange='binance'):
     indicator_keys = view_keys(f'{ticker}:{exchange}:{indicator_key}*')
     for key in indicator_keys:
