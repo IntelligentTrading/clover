@@ -120,11 +120,6 @@ class Data:
         self.bb_width = [(up - low)/mid for up, low, mid in zip(self.bb_up, self.bb_low, self.bb_mid)]
         self.bb_squeeze = self._fill_indicator_values('bb_squeeze', 1)
 
-        # TODO re-enable the BB squeeze
-        # self.min_bbw_180 = np.array(
-        #     list(map(min, [self.bb_width[i:i + 180] for i in range(len(self.bb_width) - 180 + 1)])))
-        # self.min_bbw_180 = self.min_bbw_180[len(self.min_bbw_180) - (len(prices)):]
-
         self.macd = self._fill_indicator_values('macd_value', 26)
         self.macd_signal = self._fill_indicator_values('macd_signal', 26)
         self.macd_hist = self._fill_indicator_values('macd_hist', 26)
