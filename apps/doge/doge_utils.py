@@ -8,6 +8,9 @@ from apps.genetic_algorithms.gp_artemis import ExperimentManager
 import datetime
 import json
 from apps.doge.doge_train_test import DogeTrainer, GP_TRAINING_CONFIG
+import time
+import pandas as pd
+import pickle
 
 def clean_redis():
     for key in database.keys('*Doge*'):
@@ -51,7 +54,7 @@ class DogePerformanceTimer:
             self.gp_training_config_json = f.read()
         self.time_doge_performance()
 
-    def _fill_experiment_params(self, **params):
+    def _build_experiment_manager(self, **params):
         gp_training_config_json = self.gp_training_config_json.format(
             start_time=datetime_from_timestamp(params['start_time']),
             end_time=datetime_from_timestamp(params['end_time'])
@@ -66,16 +69,48 @@ class DogePerformanceTimer:
         return e
 
     def time_doge_performance(self):
-        import time
 
-        end_timestamp = time.time()
-        start_timestamp = end_timestamp - 60*60
+        entries = []
 
-        start_time = db_interface.get_nearest_db_timestamp(start_timestamp, 'BTC_USDT')
-        end_time = db_interface.get_nearest_db_timestamp(end_timestamp, 'BTC_USDT')
+        training_periods_secs = [60*60,      # 1 hour
+                                60*60*4,     # 4 hours
+                                60*60*24,    # 24 hours
+                                60*60*24*3]  # 3 days
 
-        self._fill_experiment_params(start_time=start_time,
-                                     end_time=end_time,
-                                     population_sizes=[500])
+        population_sizes = [50, 100, 200, 500]
+        num_generations = [5, 10, 50, 100]
+
+        for training_period in training_periods_secs:
+            for generations in num_generations:
+                for population_size in population_sizes:
+                    end_timestamp = time.time()
+                    start_timestamp = end_timestamp - training_period
+
+                    start_time = db_interface.get_nearest_db_timestamp(start_timestamp, 'BTC_USDT')
+                    end_time = db_interface.get_nearest_db_timestamp(end_timestamp, 'BTC_USDT')
+
+                    e = self._build_experiment_manager(start_time=start_time,
+                                                       end_time=end_time,
+                                                       population_sizes=[population_size],
+                                                       num_generations=generations,
+                                                       mating_probabilities=[0.5],  # ensure only one variant is tested
+                                                       mutation_probabilities=[0.8]  # ensure only one variant is tested
+                                                       )
+                    tick = time.time()
+                    e.run_experiments()
+                    tock = time.time()
+
+                    duration = tock - tick
+                    entry = {
+                        'training_period': training_period,
+                        'population_size': population_size,
+                        'generations': generations,
+                        'duration': duration
+                    }
+                    entries.append(entry)
+                    pickle.dump(entries, open('entries.p', 'wb'))
+
+        entries = pickle.load(open('entries.p', 'rb'))
+        df = pd.DataFrame(entries)
 
 
