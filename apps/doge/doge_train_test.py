@@ -145,12 +145,10 @@ class DogeTrainer:
         :param ticker in the form of TRANSACTION_COUNTER
         :return:
         """
-        transaction_currency, counter_currency = ticker.split('_')
         return gp_training_config_json.format(
             start_time=datetime_from_timestamp(start_timestamp),
             end_time=datetime_from_timestamp(end_timestamp),
-            transaction_currency=transaction_currency,
-            counter_currency=counter_currency
+            ticker=ticker
         )
 
     @staticmethod

@@ -33,12 +33,10 @@ class Data:
             return time_object.timestamp()
         return time_input
 
-    def __init__(self, start_time, end_time, transaction_currency, counter_currency, horizon, start_cash,
-                 start_crypto, source, database=db_interface):
+    def __init__(self, start_time, end_time, ticker, horizon, start_cash, start_crypto, source, database=db_interface):
         self.start_time = self._parse_time(start_time)
         self.end_time = self._parse_time(end_time)
-        self.transaction_currency = transaction_currency
-        self.counter_currency = counter_currency
+        self.transaction_currency, self.counter_currency = ticker.split('_')
         self.horizon = horizon
         self.start_cash = start_cash
         self.start_crypto = start_crypto
@@ -49,19 +47,19 @@ class Data:
 
 
         self.price_data = self.database.get_resampled_prices_in_range\
-            (self.start_time, self.end_time, transaction_currency, counter_currency, horizon)
+            (self.start_time, self.end_time, self.transaction_currency, self.counter_currency, horizon)
 
         self.price_data = self.price_data[~self.price_data.index.duplicated(keep='first')]
 
 
         # do some sanity checks with data
         if not self.price_data.empty and self.price_data.iloc[0].name > self.start_time + 60*60*8:
-            raise Exception(f"The retrieved price data for {transaction_currency}-{counter_currency} starts "
+            raise Exception(f"The retrieved price data for {self.transaction_currency}-{self.counter_currency} starts "
                             f"{(self.price_data.iloc[0].name - self.start_time)/60:.2f} minutes after "
                             f"the set start time!")
 
         if not self.price_data.empty and self.end_time - self.price_data.iloc[-1].name > 60*60*8:
-            raise Exception(f"The retrieved price data for {transaction_currency}-{counter_currency} ends "
+            raise Exception(f"The retrieved price data for {self.transaction_currency}-{self.counter_currency} ends "
                             f"{(self.end_time - self.price_data.iloc[-1].name)/60:.2f} minutes before "
                             f"the set end time! (end time = {self.end_time}, data end time = {self.price_data.iloc[-1].name}")
 
