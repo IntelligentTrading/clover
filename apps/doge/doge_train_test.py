@@ -187,8 +187,9 @@ class DogeTrader:
         self.doge_str = doge_str
         self.hash = doge_id
         self.gp_training_config_json = gp_training_config_json
-        experiment_json = DogeTrainer.fill_json_template(self.gp_training_config_json, 0, 0)
-        self.doge, self.gp = ExperimentManager.resurrect_better_doge(experiment_json, self.doge_str, function_provider)
+        experiment_json = DogeTrainer.fill_json_template(self.gp_training_config_json, 0, 0, '_')
+                # filling the template with empty values, because training data info isn't used when resurrecting
+        self.doge, self.gp = ExperimentManager.resurrect_doge(experiment_json, self.doge_str, function_provider)
         self.strategy = GeneticTickerStrategy(tree=self.doge, gp_object=self.gp)
 
     def vote(self, ticker_data):
@@ -216,17 +217,20 @@ class DogeCommittee:
     The committee is built out of the latest GPs in the database.
     """
 
-    def __init__(self, committee_timestamp=None, max_doges=100, ttl=DOGE_RETRAINING_PERIOD_SECONDS):
+    def __init__(self, committee_timestamp=None, max_doges=100, ttl=DOGE_RETRAINING_PERIOD_SECONDS, training_ticker='BTC_USDT'):
         with open(GP_TRAINING_CONFIG, 'r') as f:
             self.gp_training_config_json = f.read()
 
         self.max_doges = max_doges
         self._committee_timestamp = committee_timestamp  # uses the last committee if timestamp is None
         self.function_provider = RedisTAProvider()
-        doge_traders = self._load_doge_traders()
-        self.doge_traders = doge_traders if len(doge_traders) <= max_doges else doge_traders[:max_doges]
         self.periods = PERIODS_1HR  # TODO remove this hardcoding if we decide to use more horizons
         self._ttl = ttl
+        self._training_ticker = training_ticker
+
+        doge_traders = self._load_doge_traders()
+        self.doge_traders = doge_traders if len(doge_traders) <= max_doges else doge_traders[:max_doges]
+
 
     def expired(self, at_timestamp):
         return at_timestamp - self._committee_timestamp > self._ttl
@@ -240,12 +244,12 @@ class DogeCommittee:
 
         # get doges out of DB
         # get the latest committee
-        query_response = CommitteeStorage.query(ticker='BTC_USDT', exchange='binance', timestamp=self._committee_timestamp)
+        query_response = CommitteeStorage.query(ticker=self._training_ticker, exchange='binance', timestamp=self._committee_timestamp)
         self.committee_timestamp = CommitteeStorage.timestamp_from_score(query_response['scores'][-1])
         assert self._committee_timestamp == self.committee_timestamp or self._committee_timestamp is None # for debugging TODO: decide on how to make the distinction
 
         if not query_response['values']:
-            raise Exception('No committee members found for timestamp {self.committee_timetstamp}!')
+            raise Exception(f'No committee members found for timestamp {self.committee_timetstamp}!')
 
         doge_committee_ids = query_response['values'][-1].split(':')
         for doge_id in doge_committee_ids:
@@ -270,6 +274,10 @@ class DogeCommittee:
         :return: a list of votes (+1=buy, -1=sell, 0=ignore) and a list of
                  unnormalized weights of doges that produced the votes
         """
+
+        if self._training_ticker != f'{transaction_currency}_{counter_currency}':
+            logger.warning(f'Doge voting on ticker {transaction_currency}_{counter_currency}, '
+                           f'and trained on {self._training_ticker}')
 
         ticker_data = TickerData(
             timestamp=timestamp,
