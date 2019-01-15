@@ -70,7 +70,7 @@ class DogeTrainer:
 
         self.database = database
 
-    def retrain_doges(self, start_timestamp, end_timestamp, max_doges_to_save=10):
+    def retrain_doges(self, start_timestamp, end_timestamp, max_doges_to_save=10, training_ticker='BTC_USDT'):
         """
         Reruns doge training and saves results to the database.
         :param start_timestamp: starting time to use for training (tickers are specified in GP_TRAINING_CONFIG json)
@@ -78,7 +78,7 @@ class DogeTrainer:
         :param max_doges_to_save: maximum number of GPs to save in the database
         :return:
         """
-        config_json = self.fill_json_template(self.gp_training_config_json, start_timestamp, end_timestamp)
+        config_json = self.fill_json_template(self.gp_training_config_json, start_timestamp, end_timestamp, training_ticker)
 
         logging.info('>>>>>>> Starting GP training... ')
         logging.info(f'    >>> start_time = {datetime_from_timestamp(start_timestamp)}')
@@ -88,7 +88,7 @@ class DogeTrainer:
         rockstars = []
         if DOGE_LOAD_ROCKSTARS:
             rockstars = CommitteeStorage.load_rockstars(num_previous_committees_to_search=2, max_num_rockstars=5,
-                                                        ticker='BTC_USDT', exchange='binance', timestamp=end_timestamp)
+                                                        ticker=training_ticker, exchange='binance', timestamp=end_timestamp)
             logging.info(f'Loaded {len(rockstars)} rockstars.')
 
 
@@ -126,8 +126,7 @@ class DogeTrainer:
 
         # save current committee
         committee_str = ":".join(map(str, [redis_entry.hash for redis_entry in redis_entries]))
-        new_committee_storage = CommitteeStorage(timestamp=end_timestamp, ticker='BTC_USDT', exchange='binance')
-                                                                          # TODO remove this hardcoding once more tickers are supported
+        new_committee_storage = CommitteeStorage(timestamp=end_timestamp, ticker=training_ticker, exchange='binance')
         new_committee_storage.value = committee_str
         new_committee_storage.save(publish=True)
         logging.info('>>>>>>> GPs saved to database.')
@@ -137,21 +136,25 @@ class DogeTrainer:
             redis_entry.save_to_storage()
 
     @staticmethod
-    def fill_json_template(gp_training_config_json, start_timestamp, end_timestamp):
+    def fill_json_template(gp_training_config_json, start_timestamp, end_timestamp, ticker):
         """
         Fills the json training template with starting and ending times.
         :param gp_training_config_json: string json describing the training process (loaded from GP_TRAINING_CONFIG file)
         :param start_timestamp: training start time
         :param end_timestamp: training end time
+        :param ticker in the form of TRANSACTION_COUNTER
         :return:
         """
+        transaction_currency, counter_currency = ticker.split('_')
         return gp_training_config_json.format(
             start_time=datetime_from_timestamp(start_timestamp),
-            end_time=datetime_from_timestamp(end_timestamp)
+            end_time=datetime_from_timestamp(end_timestamp),
+            transaction_currency=transaction_currency,
+            counter_currency=counter_currency
         )
 
     @staticmethod
-    def run_training(start_timestamp, end_timestamp):
+    def run_training(start_timestamp, end_timestamp, ticker):
         """
         Instantiates a DogeTrainer and reruns training.
         :param start_timestamp:
@@ -161,8 +164,8 @@ class DogeTrainer:
 
         trainer = DogeTrainer(db_interface)
 
-        start_time = db_interface.get_nearest_db_timestamp(start_timestamp, 'BTC_USDT')
-        end_time = db_interface.get_nearest_db_timestamp(end_timestamp, 'BTC_USDT')
+        start_time = db_interface.get_nearest_db_timestamp(start_timestamp, ticker)
+        end_time = db_interface.get_nearest_db_timestamp(end_timestamp, ticker)
 
         trainer.retrain_doges(start_time, end_time, max_doges_to_save=10)
 

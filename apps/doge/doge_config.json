@@ -1,8 +1,8 @@
 {{
     "training_data": [
         {{
-        "transaction_currency": "BTC",
-        "counter_currency": "USDT",
+        "transaction_currency": "{transaction_currency}",
+        "counter_currency": "{counter_currency}",
         "start_time": "{start_time}",
         "end_time": "{end_time}",
         "horizon": 12,
