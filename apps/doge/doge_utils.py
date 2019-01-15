@@ -71,8 +71,11 @@ class DogePerformanceTimer:
         return e
 
     def time_doge_performance(self):
-
-        entries = []
+        import os
+        if os.path.exists('entries.p'):
+            entries = pickle.load(open('entries.p', 'rb'))
+        else:
+            entries = []
 
         training_periods_secs = [60*60,      # 1 hour
                                 60*60*4,     # 4 hours
@@ -85,6 +88,16 @@ class DogePerformanceTimer:
         for training_period in training_periods_secs:
             for generations in num_generations:
                 for population_size in population_sizes:
+                    exists = False
+                    for entry in entries:
+                        if entry['training_period'] == training_period \
+                                and entry['generations'] == generations \
+                                and entry['population_size'] == population_size:
+                            exists = True
+                            break
+                    if exists:
+                        logger.info('Entry exists, skipping...')
+                        continue
                     end_timestamp = time.time()
                     start_timestamp = end_timestamp - training_period
 
