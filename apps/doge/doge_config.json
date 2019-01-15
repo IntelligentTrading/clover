@@ -1,8 +1,7 @@
 {{
     "training_data": [
         {{
-        "transaction_currency": "{transaction_currency}",
-        "counter_currency": "{counter_currency}",
+        "ticker": "{ticker}",
         "start_time": "{start_time}",
         "end_time": "{end_time}",
         "horizon": 12,
