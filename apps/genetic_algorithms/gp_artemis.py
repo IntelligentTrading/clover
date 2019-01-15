@@ -690,14 +690,9 @@ class ExperimentManager:
 
         return backtest_results, baseline_results
 
-    @staticmethod
-    def resurrect_doge(experiment_json, experiment_id, individual_str, database, function_provider=None):
-        e = ExperimentManager(experiment_container=experiment_json, read_from_file=False, database=database, function_provider=function_provider)
-        gp = e.build_genetic_program(data=None, function_provider=e.function_provider, db_record=e.get_db_record_from_experiment_id(experiment_id))
-        return gp.individual_from_string(individual_str), gp
 
     @staticmethod
-    def resurrect_better_doge(experiment_json, individual_str, function_provider):
+    def resurrect_doge(experiment_json, individual_str, function_provider):
         experiment_json = json.loads(experiment_json)
         grammar = Grammar.construct(
             grammar_name=experiment_json['grammar_version'],
