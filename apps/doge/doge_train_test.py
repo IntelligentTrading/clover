@@ -42,6 +42,9 @@ class DogeRecord:
         new_doge_storage = DogeStorage(value=self.doge_str, key_suffix=str(self.hash))
         new_doge_storage.save()
 
+        if self.metric_value is None:
+            logger.warning('Empty value encountered!')
+
         # save performance info
         new_doge_performance_storage = DogePerformance(key_suffix=f'{str(self.hash)}:{self.metric_id}',
                                                        ticker='BTC_USDT',
