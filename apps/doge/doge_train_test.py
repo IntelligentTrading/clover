@@ -223,7 +223,7 @@ class DogeCommittee:
             self.gp_training_config_json = f.read()
 
         self.max_doges = max_doges
-        self._committee_timestamp = committee_timestamp  # uses the last committee if timestamp is None
+        self._committee_timestamp = committee_timestamp  # gets filled with the last committee timestamp if set to None
         self.function_provider = RedisTAProvider()
         self.periods = PERIODS_1HR  # TODO remove this hardcoding if we decide to use more horizons
         self._ttl = ttl
@@ -246,11 +246,14 @@ class DogeCommittee:
         # get doges out of DB
         # get the latest committee
         query_response = CommitteeStorage.query(ticker=self._training_ticker, exchange='binance', timestamp=self._committee_timestamp)
-        self.committee_timestamp = CommitteeStorage.timestamp_from_score(query_response['scores'][-1])
-        assert self._committee_timestamp == self.committee_timestamp or self._committee_timestamp is None # for debugging TODO: decide on how to make the distinction
+        loaded_timestamp = CommitteeStorage.timestamp_from_score(query_response['scores'][-1])
+        if self._committee_timestamp is not None and self._committee_timestamp != loaded_timestamp:
+            logger.critical('Loaded committee timestamp differs from the requested timestamp')
+        elif self._committee_timestamp is None:
+            self._committee_timestamp = loaded_timestamp
 
         if not query_response['values']:
-            raise Exception(f'No committee members found for timestamp {self.committee_timetstamp}!')
+            raise Exception(f'No committee members found for timestamp {self._committee_timetstamp}!')
 
         doge_committee_ids = query_response['values'][-1].split(':')
         for doge_id in doge_committee_ids:
@@ -299,7 +302,7 @@ class DogeCommittee:
 
         for i, doge in enumerate(self.doge_traders):
             decision = doge.vote(ticker_data)
-            weight = doge.weight_at_timestamp(timestamp=self.committee_timestamp)
+            weight = doge.weight_at_timestamp(timestamp=self._committee_timestamp)
             print(f'  Doge {i} says: {str(decision)} (its weight is {weight:.2f})')
             votes.append(decision.outcome)
             weights.append(weight)
