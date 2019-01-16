@@ -185,7 +185,11 @@ class TimeseriesStorage(KeyValueStorage):
         if self.value is None:
             logger.warning("no value was set, nothing to save, but will save empty string anyway")
 
-        self.value = self.value or ""  # use empty string for None, False, etc
+        # self.value = self.value or ""  # use empty string for None, False, etc
+                                         # !!! @tomcounsell this will kill perfectly valid values of 0.0!
+        if self.value != 0:
+            self.value = self.value or ""  # there, this is ugly, but should exclude 0s from the test
+
 
         if not self.force_save:
             # validate some rules here?
