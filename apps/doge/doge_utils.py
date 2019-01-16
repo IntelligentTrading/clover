@@ -58,6 +58,7 @@ class DogePerformanceTimer:
 
     def _build_experiment_manager(self, **params):
         gp_training_config_json = self.gp_training_config_json.format(
+            ticker=params['ticker'],
             start_time=datetime_from_timestamp(params['start_time']),
             end_time=datetime_from_timestamp(params['end_time'])
         )
@@ -104,7 +105,8 @@ class DogePerformanceTimer:
                     start_time = db_interface.get_nearest_db_timestamp(start_timestamp, 'BTC_USDT')
                     end_time = db_interface.get_nearest_db_timestamp(end_timestamp, 'BTC_USDT')
 
-                    e = self._build_experiment_manager(start_time=start_time,
+                    e = self._build_experiment_manager(ticker='BTC_USDT',
+                                                       start_time=start_time,
                                                        end_time=end_time,
                                                        population_sizes=[population_size],
                                                        num_generations=generations,
