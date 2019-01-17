@@ -1,17 +1,38 @@
 import logging
 from copy import deepcopy
-
-import requests
 from datetime import datetime, timedelta
-from django.core.cache import cache
-
-from apps.common.utilities.multithreading import start_new_thread
-from settings import ITF_CORE_API_URL, ITF_CORE_API_KEY
+from apps.TA import HORIZONS, PERIODS_1HR
+from apps.doge.doge_TA_actors import CommitteeVoteStorage
+from settings import SUPPORTED_DOGE_TICKERS
 
 (SHORT_HORIZON, MEDIUM_HORIZON, LONG_HORIZON) = list(range(3))
 (POLONIEX, BITTREX, BINANCE, BITFINEX, KUCOIN, GDAX, HITBTC) = list(range(7))
-from apps.TA import HORIZONS, PERIODS_1HR
-from apps.doge.doge_TA_actors import CommitteeVoteStorage
+
+
+def fill_tickers_dict(supported_tickers, minimum_reserves):
+    tickers_dict = {}
+    for ticker in supported_tickers:
+        transaction_currency, counter_currency = ticker.split('_')
+        inverse_ticker = f'{counter_currency}_{transaction_currency}'
+        tickers_dict[ticker] = {
+            'coin': transaction_currency,
+            'vote': 0,
+            'portion': minimum_reserves[transaction_currency] if transaction_currency in minimum_reserves else 0
+        }
+        tickers_dict[inverse_ticker] = {
+            'coin': counter_currency,
+            'vote': 0,
+            'portion': minimum_reserves[counter_currency] if counter_currency in minimum_reserves else 0
+        }
+    # add BNB_BTC
+    if 'BNB' in minimum_reserves:
+        tickers_dict['BNB_BTC'] = {
+            'coin': 'BNB',
+            'vote': 0,
+            'portion': minimum_reserves['BNB']
+
+        }
+    return tickers_dict
 
 
 def get_allocations_from_doge(at_datetime=None):
@@ -36,32 +57,16 @@ def get_allocations_from_doge(at_datetime=None):
 
     # fix horizon for now
     horizons = [SHORT_HORIZON]
-    source = BINANCE
-    tickers = ['BTC_USDT']
+    tickers = SUPPORTED_DOGE_TICKERS
     exchange = 'binance'
 
-    BTC_minimum_reserve = 0.0090
-    BNB_minimum_reserve = 0.0010
-    USDT_minimum_reserve = 0.0
-
-    tickers_dict = {
-        "BTC_USDT": {
-            "coin": "BTC",
-            "vote": 0,
-            "portion": BTC_minimum_reserve,  # hold by default
-        },
-        "USDT_BTC": {
-            "coin": "USDT",
-            "vote": 0,
-            "portion": USDT_minimum_reserve,  # hold by default
-        },
-        "BNB_BTC": {
-            "coin": "BNB",
-            "vote": 0,
-            "portion": BNB_minimum_reserve,  # hold by default
-        }
+    minimum_reserves = {
+        'BTC': 0.0090,
+        'BNB': 0.0010,
+        'USDT': 0
     }
 
+    tickers_dict = fill_tickers_dict(SUPPORTED_DOGE_TICKERS, minimum_reserves)
 
     for ticker in tickers:
         for horizon in horizons:
@@ -72,10 +77,8 @@ def get_allocations_from_doge(at_datetime=None):
                 periods_key=PERIODS_1HR*horizon_periods[horizon]
             )
 
-
             for score, weighted_vote in zip(query_result['scores'], query_result['values']):
                 timestamp = CommitteeVoteStorage.datetime_from_score(score)
-
 
                 time_weight = float(1) - (
                         (now_datetime - timestamp).total_seconds() / (
@@ -132,12 +135,12 @@ def get_allocations_from_doge(at_datetime=None):
             allocations_dict[data["coin"]] = 0
         allocations_dict[data["coin"]] += data["portion"]
 
-    allocations_dict["BNB"] = max([BNB_minimum_reserve, allocations_dict.get("BNB", 0)])
-    allocations_dict["BTC"] = max([BTC_minimum_reserve, (0.9999 - BNB_minimum_reserve - allocations_sum + allocations_dict.get("BTC", 0))])
+    allocations_dict["BNB"] = max([minimum_reserves['BNB'], allocations_dict.get("BNB", 0)])
+    allocations_dict["BTC"] = max([minimum_reserves['BTC'],
+                                   (0.9999 - minimum_reserves['BNB'] - allocations_sum + allocations_dict.get("BTC", 0))])
 
     allocations_list = [{"coin": coin, "portion": (portion // 0.0001 / 10000)} for coin, portion in allocations_dict.items()]
     logging.debug(f'Final SUM of allocations: {round(sum([a["portion"] for a in allocations_list])*100,3)}%')
-
 
     return allocations_list
 
