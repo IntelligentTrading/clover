@@ -497,8 +497,11 @@ class RedisDB(Database):
             timestamp=timestamp,
             timestamp_tolerance=timestamp_tolerance
         )
-        if results['latest_timestamp'] > (timestamp - timestamp_tolerance):
-            return results['latest_timestamp']
+
+        if not results['scores']:
+            return None
+
+        return PriceStorage.timestamp_from_score(results['scores'][-1])
 
     def get_indicator(self, indicator_name, transaction_currency, counter_currency, timestamp, resample_period, source='binance'):
         # query Redis to get indicator value at timestamp
