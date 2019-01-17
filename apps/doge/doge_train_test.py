@@ -168,7 +168,8 @@ class DogeTrainer:
         start_time = db_interface.get_nearest_db_timestamp(start_timestamp, ticker)
         end_time = db_interface.get_nearest_db_timestamp(end_timestamp, ticker)
 
-        trainer.retrain_doges(start_time, end_time, max_doges_to_save=10)
+        trainer.retrain_doges(start_timestamp=start_time, end_timestamp=end_time, max_doges_to_save=10,
+                              training_ticker=ticker)
 
 
 class DogeTrader:
@@ -218,7 +219,8 @@ class DogeCommittee:
     The committee is built out of the latest GPs in the database.
     """
 
-    def __init__(self, committee_timestamp=None, max_doges=100, ttl=DOGE_RETRAINING_PERIOD_SECONDS, training_ticker='BTC_USDT'):
+    def __init__(self, committee_timestamp=None, max_doges=100,
+                 ttl=DOGE_RETRAINING_PERIOD_SECONDS, training_ticker='BTC_USDT'):
         with open(GP_TRAINING_CONFIG, 'r') as f:
             self.gp_training_config_json = f.read()
 
@@ -363,16 +365,21 @@ class DogeSubscriber(SignalSubscriber):
     storage_class = CommitteeVoteStorage  # override with applicable storage class
 
     def __init__(self, *args, **kwargs):
-        self._reload_committee()
         super().__init__(*args, **kwargs)
         logger.info("                                                      (😎 IT IS THE LAST ONE 😎)")
+
+        # load committees for all supported tickers
+        self.committees = {}
+        for ticker in SUPPORTED_DOGE_TICKERS:
+            self._reload_committee(ticker)
         logger.info(f'Initialized DogeSubscriber at {time.time()}')
 
-    def _reload_committee(self):
-        self.committee = DogeCommittee()
+    def _reload_committee(self, ticker):
+        logging.info(f'Reloading committee for {ticker}...')
+        self.committees[ticker] = DogeCommittee(training_ticker=ticker)
 
-    def _check_committee_expired(self):
-        return self.committee.expired(at_timestamp=self.timestamp)
+    def _check_committee_expired(self, ticker):
+        return self.committees[ticker].expired(at_timestamp=self.timestamp)
 
     def handle(self, channel, data, *args, **kwargs):
         logging.info('Doge subscriber invoked')
@@ -383,9 +390,9 @@ class DogeSubscriber(SignalSubscriber):
             return
 
         # check if the committee has expired
-        if self._check_committee_expired():
-            logger.info('Doge committee expired, reloading...')
-            self._reload_committee()
+        if self._check_committee_expired(self.ticker):
+            logger.info(f'Doge committee for ticker {self.ticker} expired, reloading...')
+            self._reload_committee(ticker=self.ticker)
 
         logger.info(f'Doge subscriber invoked at {datetime_from_timestamp(self.timestamp)}, '
                     f'channel={str(channel)}, data={str(data)} '
@@ -395,9 +402,9 @@ class DogeSubscriber(SignalSubscriber):
         new_doge_storage = CommitteeVoteStorage(ticker=self.ticker,
                                                 exchange=self.exchange,
                                                 timestamp=self.timestamp,
-                                                periods=self.committee.periods)
+                                                periods=self.committees[self.ticker].periods)
 
-        ticker_votes, weights = self.committee.vote(transaction_currency, counter_currency, self.timestamp)
+        ticker_votes, weights = self.committees[self.ticker].vote(transaction_currency, counter_currency, self.timestamp)
         # weighted_vote = sum([ticker_votes[i] * weights[i] for i in range(len(ticker_votes))]) / sum(weights)
 
         new_doge_storage.value = (sum(ticker_votes) * 100 / len(ticker_votes))  # normalize to +-100 scale
