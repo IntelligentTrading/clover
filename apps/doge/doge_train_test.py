@@ -168,6 +168,15 @@ class DogeTrainer:
         start_time = db_interface.get_nearest_db_timestamp(start_timestamp, ticker)
         end_time = db_interface.get_nearest_db_timestamp(end_timestamp, ticker)
 
+        if start_time is None or end_time is None:
+            logging.error(f'Unable to find close enough timestamp for {ticker},'
+                         f'start time = {datetime_from_timestamp(start_timestamp)}, '
+                         f'end time = {datetime_from_timestamp(end_timestamp)} ')
+            logging.error('Training cannot continue.')
+            from apps.doge.doge_utils import get_indicator_status
+            get_indicator_status(indicator_key='PriceStorage', ticker=ticker)
+            return
+
         trainer.retrain_doges(start_timestamp=start_time, end_timestamp=end_time, max_doges_to_save=10,
                               training_ticker=ticker)
 
