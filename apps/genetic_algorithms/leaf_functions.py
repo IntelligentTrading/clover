@@ -270,7 +270,6 @@ class TAProviderCollection(FunctionProvider):
 
             setattr(TAProviderCollection, function_name, self._create_function(function_name))
 
-
     def _create_function(self, function_name):
         exec(f'''
 def {function_name}(self, input):

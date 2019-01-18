@@ -25,8 +25,6 @@ TICKS_FOR_PRECOMPUTE = 200
 
 class Data:
 
-    # will always go to Redis to find the data
-
     def _parse_time(self, time_input):
         if isinstance(time_input, str):
             time_object = parser.parse(time_input)
@@ -108,7 +106,7 @@ class Data:
         result = pd.merge(self.price_data, df, how='left', on=['timestamp'])
         return np.array(result['indicator'])
 
-
+    @time_performance
     def _compute_ta_indicators(self):
         prices = np.array(self.price_data.close_price, dtype=float)
         high_prices = np.array(self.price_data.high_price, dtype=float)
