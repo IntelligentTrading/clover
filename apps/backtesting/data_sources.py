@@ -34,6 +34,34 @@ class Strength(Enum):
 
 #(BTC, ETH, USDT, XMR) = list(range(4))
 
+from apps.TA.indicators.momentum import rsi, stochrsi, adx, macd, mom, stoch, willr
+from apps.TA.indicators.overlap import sma, ema, wma, bbands, ht_trendline
+from apps.TA.indicators.events import bbands_squeeze_180min
+
+
+STORAGE_CLASS = {
+    'rsi': rsi.RsiStorage,
+    'stoch_rsi': stochrsi.StochrsiStorage,
+    'adx': adx.AdxStorage,
+    'macd': macd.MacdStorage,
+    'macd_value': macd.MacdStorage,
+    'macd_signal': macd.MacdStorage,
+    'macd_hist': macd.MacdStorage,
+    'mom': mom.MomStorage,
+    'sma': sma.SmaStorage,
+    'ema': ema.EmaStorage,
+    'wma': wma.WmaStorage,
+    'bbands': bbands.BbandsStorage,
+    'bb_up': bbands.BbandsStorage,
+    'bb_mid': bbands.BbandsStorage,
+    'bb_low': bbands.BbandsStorage,
+    'bb_squeeze': bbands_squeeze_180min.BbandsSqueeze180MinStorage,
+    'ht_trendline': ht_trendline.HtTrendlineStorage,
+    'slowd': stoch.StochStorage,
+    'willr': willr.WillrStorage
+}
+
+
 
 class Database(ABC):
 
@@ -292,8 +320,6 @@ class PostgresDatabaseConnection(Database):
         return price_data
 
 
-
-
     def get_volumes_in_range(self, start_time, end_time, transaction_currency, counter_currency, source):
         volume_in_range_query_asc = """SELECT volume, timestamp 
                                        FROM indicator_volume 
@@ -503,9 +529,12 @@ class RedisDB(Database):
 
         return PriceStorage.timestamp_from_score(results['scores'][-1])
 
-    def get_indicator(self, indicator_name, transaction_currency, counter_currency, timestamp, resample_period, source='binance'):
-        # query Redis to get indicator value at timestamp
 
+
+    def get_indicator(self, indicator_name, transaction_currency, counter_currency,
+                      timestamp, resample_period, source='binance', periods_range=0.01):
+
+        # query Redis to get indicator value at timestamp (+- periods range)
         if indicator_name == 'close_price':
             return self.get_price(transaction_currency=transaction_currency,
                                   counter_currency=counter_currency,
@@ -515,36 +544,12 @@ class RedisDB(Database):
             ticker=f'{transaction_currency}_{counter_currency}',
             exchange="binance",
             timestamp=timestamp,
-            periods_key = resample_period #//5 TODO
+            periods_key=resample_period, #//5 TODO
+            periods_range=periods_range
          )
 
-        from apps.TA.indicators.momentum import rsi, stochrsi, adx, macd, mom, stoch
-        from apps.TA.indicators.overlap import sma, ema, wma, bbands, ht_trendline
-        from apps.TA.indicators.events import bbands_squeeze_180min
-
-        storage_class = {
-            'rsi': rsi.RsiStorage,
-            'stoch_rsi': stochrsi.StochrsiStorage,
-            'adx': adx.AdxStorage,
-            'macd': macd.MacdStorage,
-            'macd_value': macd.MacdStorage,
-            'macd_signal': macd.MacdStorage,
-            'macd_hist': macd.MacdStorage,
-            'mom': mom.MomStorage,
-            'sma': sma.SmaStorage,
-            'ema': ema.EmaStorage,
-            'wma': wma.WmaStorage,
-            'bbands': bbands.BbandsStorage,
-            'bb_up': bbands.BbandsStorage,
-            'bb_mid': bbands.BbandsStorage,
-            'bb_low': bbands.BbandsStorage,
-            'bb_squeeze': bbands_squeeze_180min.BbandsSqueeze180MinStorage,
-            'ht_trendline': ht_trendline.HtTrendlineStorage,
-            'slowd': stoch.StochStorage,
-        }
-
         try:
-            results = storage_class[indicator_name].query(**params)
+            results = STORAGE_CLASS[indicator_name].query(**params)
             if len(results['values']):
                 result = results['values'][-1].split(':')
                 if indicator_name == 'bb_up':
@@ -590,40 +595,16 @@ class RedisTests:
         # query Redis to get indicator value at timestamp
         from settings.redis_db import database
 
-        params = dict(
-            ticker=f'{transaction_currency}_{counter_currency}',
-            exchange="binance",
-        )
-
-        from apps.TA.indicators.momentum import rsi, stochrsi, adx, macd, mom, stoch, willr
-        from apps.TA.indicators.overlap import sma, ema, wma, bbands, ht_trendline
-        from apps.TA.indicators.events import bbands_squeeze_180min
         from apps.backtesting.utils import datetime_from_timestamp
 
-        storage_class = {
-            'rsi': rsi.RsiStorage,
-            'stoch_rsi': stochrsi.StochrsiStorage,
-            'adx': adx.AdxStorage,
-            'macd': macd.MacdStorage,
-            'mom': mom.MomStorage,
-            'sma': sma.SmaStorage,
-            'ema': ema.EmaStorage,
-            'wma': wma.WmaStorage,
-            'bbands': bbands.BbandsStorage,
-            'bb_squeeze': bbands_squeeze_180min.BbandsSqueeze180MinStorage,
-            'ht_trendline': ht_trendline.HtTrendlineStorage,
-            'slowd': stoch.StochStorage,
-            'close_price': PriceStorage,
-            'willr': willr.WillrStorage
-        }
 
         params = dict(
             ticker=f'{transaction_currency}_{counter_currency}',
             exchange="binance",
         )
 
-        for indicator_type in storage_class:
-            sorted_set_key = storage_class[indicator_type].compile_db_key(key=None,
+        for indicator_type in STORAGE_CLASS:
+            sorted_set_key = STORAGE_CLASS[indicator_type].compile_db_key(key=None,
                                                                           key_prefix=f"{params['ticker']}"
                                                                           f":{params['exchange']}:",
                                                                           key_suffix='*')
@@ -639,8 +620,8 @@ class RedisTests:
                     score_start = query_response[0].decode("utf-8").split(":")[-1]
                     score_end = query_response[-1].decode("utf-8").split(":")[-1]
                     time_start = datetime_from_timestamp(
-                        storage_class[indicator_type].timestamp_from_score(score_start))
-                    time_end = datetime_from_timestamp(storage_class[indicator_type].timestamp_from_score(score_end))
+                        STORAGE_CLASS[indicator_type].timestamp_from_score(score_start))
+                    time_end = datetime_from_timestamp(STORAGE_CLASS[indicator_type].timestamp_from_score(score_end))
                     num_values = len(query_response)
                     print(f'   {key}: {num_values} values, start time = {time_start}, end time = {time_end}')
                 except Exception as e:
