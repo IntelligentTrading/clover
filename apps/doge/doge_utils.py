@@ -58,6 +58,7 @@ class DogePerformanceTimer:
 
     def _build_experiment_manager(self, **params):
         gp_training_config_json = self.gp_training_config_json.format(
+            ticker=params['ticker'],
             start_time=datetime_from_timestamp(params['start_time']),
             end_time=datetime_from_timestamp(params['end_time'])
         )
@@ -71,8 +72,11 @@ class DogePerformanceTimer:
         return e
 
     def time_doge_performance(self):
-
-        entries = []
+        import os
+        if os.path.exists('entries.p'):
+            entries = pickle.load(open('entries.p', 'rb'))
+        else:
+            entries = []
 
         training_periods_secs = [60*60,      # 1 hour
                                 60*60*4,     # 4 hours
@@ -85,13 +89,24 @@ class DogePerformanceTimer:
         for training_period in training_periods_secs:
             for generations in num_generations:
                 for population_size in population_sizes:
+                    exists = False
+                    for entry in entries:
+                        if entry['training_period'] == training_period \
+                                and entry['generations'] == generations \
+                                and entry['population_size'] == population_size:
+                            exists = True
+                            break
+                    if exists:
+                        logger.info('Entry exists, skipping...')
+                        continue
                     end_timestamp = time.time()
                     start_timestamp = end_timestamp - training_period
 
                     start_time = db_interface.get_nearest_db_timestamp(start_timestamp, 'BTC_USDT')
                     end_time = db_interface.get_nearest_db_timestamp(end_timestamp, 'BTC_USDT')
 
-                    e = self._build_experiment_manager(start_time=start_time,
+                    e = self._build_experiment_manager(ticker='BTC_USDT',
+                                                       start_time=start_time,
                                                        end_time=end_time,
                                                        population_sizes=[population_size],
                                                        num_generations=generations,
