@@ -66,7 +66,7 @@ class Data:
         self._compute_ta_indicators()
 
     @time_performance
-    def _fill_indicator_values(self, indicator_name, indicator_period=1):
+    def _fill_indicator_values_legacy(self, indicator_name, indicator_period=1):
         logging.info(f'Retrieving values for {indicator_name}, indicator_period={indicator_period}')
         result = []
         for i, timestamp in enumerate(self.price_data.index.values):
@@ -84,6 +84,29 @@ class Data:
                 logging.warning('Empty indicator value, exiting...')
                 break
         return result
+
+    def _fill_indicator_values(self, indicator_name, indicator_period=1):
+        logging.info(f'Retrieving values for {indicator_name}, indicator_period={indicator_period}')
+        timestamp = self.price_data.index.values[-1]
+
+        periods_range = len(self.price_data.index.values)  # we need this many values
+        indicator_values, timestamps = self.database.get_indicator(
+            indicator_name,
+            self.transaction_currency,
+            self.counter_currency,
+            timestamp,
+            resample_period=self.horizon * indicator_period,
+            source='binance',
+            periods_range=periods_range
+        )
+
+        if not indicator_values or not timestamps:
+            return None
+
+        df = pd.DataFrame({'timestamp': timestamps, 'indicator': indicator_values})
+        df = df[~df.index.duplicated(keep='first')]
+        result = pd.merge(self.price_data, df, how='left', on=['timestamp'])
+        return np.array(result['indicator'])
 
 
     def _compute_ta_indicators(self):
