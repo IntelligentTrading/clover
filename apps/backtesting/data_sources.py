@@ -497,8 +497,11 @@ class RedisDB(Database):
             timestamp=timestamp,
             timestamp_tolerance=timestamp_tolerance
         )
-        if results['latest_timestamp'] > (timestamp - timestamp_tolerance):
-            return results['latest_timestamp']
+
+        if not results['scores']:
+            return None
+
+        return PriceStorage.timestamp_from_score(results['scores'][-1])
 
     def get_indicator(self, indicator_name, transaction_currency, counter_currency, timestamp, resample_period, source='binance'):
         # query Redis to get indicator value at timestamp
@@ -592,7 +595,7 @@ class RedisTests:
             exchange="binance",
         )
 
-        from apps.TA.indicators.momentum import rsi, stochrsi, adx, macd, mom, stoch
+        from apps.TA.indicators.momentum import rsi, stochrsi, adx, macd, mom, stoch, willr
         from apps.TA.indicators.overlap import sma, ema, wma, bbands, ht_trendline
         from apps.TA.indicators.events import bbands_squeeze_180min
         from apps.backtesting.utils import datetime_from_timestamp
@@ -610,7 +613,8 @@ class RedisTests:
             'bb_squeeze': bbands_squeeze_180min.BbandsSqueeze180MinStorage,
             'ht_trendline': ht_trendline.HtTrendlineStorage,
             'slowd': stoch.StochStorage,
-            'close_price': PriceStorage
+            'close_price': PriceStorage,
+            'willr': willr.WillrStorage
         }
 
         params = dict(
@@ -692,5 +696,5 @@ db_interface = RedisDB()
 
 if __name__ == '__main__':
     import time
-    RedisTests.find_gaps('*BTC_USDT*Sma*', time.time()-60*60*24*30, time.time())
-    #db_interface.self_test('BTC', 'USDT')
+    #RedisTests.find_gaps('*BTC_USDT*Willr*', time.time()-60*60*24*30, time.time())
+    RedisTests.self_test('BTC', 'USDT')
