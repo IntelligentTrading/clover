@@ -530,9 +530,8 @@ class RedisDB(Database):
         return PriceStorage.timestamp_from_score(results['scores'][-1])
 
 
-
     def get_indicator(self, indicator_name, transaction_currency, counter_currency,
-                      timestamp, resample_period, source='binance', periods_range=0.01):
+                      timestamp, resample_period, source='binance', periods_range=None):
 
         # query Redis to get indicator value at timestamp (+- periods range)
         if indicator_name == 'close_price':
@@ -545,36 +544,50 @@ class RedisDB(Database):
             exchange="binance",
             timestamp=timestamp,
             periods_key=resample_period, #//5 TODO
-            periods_range=periods_range
+            timestamp_tolerance=0
          )
+        if periods_range is not None:
+            params['periods_range'] = periods_range
 
         try:
             results = STORAGE_CLASS[indicator_name].query(**params)
-            if len(results['values']):
-                result = results['values'][-1].split(':')
-                if indicator_name == 'bb_up':
-                    return float(result[0])
-                elif indicator_name == 'bb_mid':
-                    return float(result[1])
-                elif indicator_name == 'bb_low':
-                    return float(result[2])
-                elif indicator_name == 'bb_squeeze':
-                    return bool(result[1])
-                elif indicator_name == 'macd_value':
-                    return float(result[0])
-                elif indicator_name == 'macd_signal':
-                    return float(result[1])
-                elif indicator_name == 'macd_hist':
-                    return float(result[2])
-                elif indicator_name == 'slowd':
-                    return float(result[1])
 
-            return float(results['values'][-1]) if len(results['values']) else None
+            # do we want to get multiple values?
+            if periods_range is None:
+                if len(results['values']):
+                    return self._extract_indicator_value(indicator_name, results['values'][-1])
+            else:
+                # periods_range is not None, we are returning an array of values
+                if len(results['values']):
+                    return [self._extract_indicator_value(indicator_name, result) for result in results['values']], \
+                           [PriceStorage.timestamp_from_score(score) for score in results['scores']]
+                else:
+                    return [], []
 
         except IndexError:
             return "unknown indicator_name"
         except Exception as e:
             raise e
+
+    def _extract_indicator_value(self, indicator_name, result):
+        result = result.split(':')
+        if indicator_name == 'bb_up':
+            return float(result[0])
+        elif indicator_name == 'bb_mid':
+            return float(result[1])
+        elif indicator_name == 'bb_low':
+            return float(result[2])
+        elif indicator_name == 'bb_squeeze':
+            return bool(result[1])
+        elif indicator_name == 'macd_value':
+            return float(result[0])
+        elif indicator_name == 'macd_signal':
+            return float(result[1])
+        elif indicator_name == 'macd_hist':
+            return float(result[2])
+        elif indicator_name == 'slowd':
+            return float(result[1])
+        return float(result[0])
 
     def get_indicator_at_previous_timestamp(self, indicator_name, transaction_currency, counter_currency, timestamp, resample_period, source="binance"):
         indicator_value = self.get_indicator(indicator_name, transaction_currency, counter_currency,
