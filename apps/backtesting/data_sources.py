@@ -395,8 +395,8 @@ class PostgresDatabaseConnection(Database):
         return data[-1][0]
 
 
+
 class RedisDB(Database):
-    from settings.redis_db import database
 
     def __init__(self):
         pass
@@ -599,6 +599,34 @@ class RedisDB(Database):
         return indicator_value
 
 
+class CachedRedis(RedisDB):
+
+    def __init__(self, start_time, end_time, transaction_currency, counter_currency, horizon, source="binance",
+                 normalize=False):
+        self.transaction_currency = transaction_currency
+        self.counter_currency = counter_currency
+
+        self.price_df = self.get_resampled_prices_in_range(start_time, end_time,
+                                                           transaction_currency, counter_currency, horizon,
+                                                           source)
+        self.btc_usdt_price_df = self.get_resampled_prices_in_range(start_time, end_time,
+                                                                    'BTC', 'USDT', horizon,
+                                                                    source)
+        self.hits = 0
+
+    def get_price(self, transaction_currency, timestamp, source="binance", counter_currency="BTC", normalize=False):
+        if transaction_currency == self.transaction_currency and counter_currency == self.counter_currency:
+            logging.info(f'Total hits: {self.hits}')
+            self.hits += 1
+            return self.price_df.loc[timestamp].close_price
+        elif transaction_currency == 'BTC' and counter_currency == 'USDT':
+            logging.info(f'Total hits: {self.hits}')
+            self.hits += 1
+            return self.btc_usdt_price_df.loc[timestamp].close_price
+        else:
+            logging.warning('No cached price data! Querying Redis...')
+            return super().get_price(transaction_currency, timestamp, source="binance", counter_currency="BTC",
+                                     normalize=False)
 
 
 class RedisTests:
