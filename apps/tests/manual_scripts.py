@@ -12,7 +12,6 @@ from settings import logger
 from settings.redis_db import database
 
 
-
 def list_all_committees(ticker='BTC_USDT', exchange='binance'):
     values = database.zrange(f'{ticker}:{exchange}:CommitteeStorage', 0, -1)
     logger.info('Existing committees:')
@@ -25,20 +24,18 @@ def list_all_committees(ticker='BTC_USDT', exchange='binance'):
                     f'{get_allocations_from_doge(at_datetime=datetime.datetime.utcfromtimestamp(timestamp))}')
 
 
-def get_indicator_status(indicator_key='Willr', ticker='BTC_USDT', exchange='binance'):
+def show_indicator_status(indicator_key='Willr', ticker='BTC_USDT', exchange='binance'):
     indicator_keys = view_keys(f'{ticker}:{exchange}:{indicator_key}*')
     for key in indicator_keys:
         last_entry = database.zrange(key, -1, -1)[0]
         timestamp = CommitteeStorage.timestamp_from_score(last_entry.decode('UTF8').split(':')[-1])
-        logger.info(f'For key {key}, last entry is at {datetime_from_timestamp(timestamp)}')
+        logger.info(f'For key {key}, last entry is at {datetime_from_timestamp(timestamp)} ({last_entry})')
 
 
 class RedisTests:
 
     @staticmethod
     def test_ticker_storages(ticker):
-        from settings.redis_db import database
-        from apps.backtesting.utils import datetime_from_timestamp
 
         params = dict(
             ticker=ticker,
@@ -73,7 +70,6 @@ class RedisTests:
 
     @staticmethod
     def find_gaps(key_pattern, start_timestamp, end_timestamp):
-        from settings.redis_db import database
 
         start_score = PriceStorage.score_from_timestamp(start_timestamp)
         end_score = PriceStorage.score_from_timestamp(end_timestamp)

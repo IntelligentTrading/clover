@@ -179,8 +179,8 @@ class DogeTrainer:
                          f'start time = {datetime_from_timestamp(start_timestamp)}, '
                          f'end time = {datetime_from_timestamp(end_timestamp)} ')
             logging.error('Training cannot continue.')
-            from apps.tests.manual_scripts import get_indicator_status
-            get_indicator_status(indicator_key='PriceStorage', ticker=ticker)
+            from apps.tests.manual_scripts import show_indicator_status
+            show_indicator_status(indicator_key='PriceStorage', ticker=ticker)
             return
 
         trainer.retrain_doges(start_timestamp=start_time, end_timestamp=end_time, max_doges_to_save=10,
