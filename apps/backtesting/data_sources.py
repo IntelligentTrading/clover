@@ -601,17 +601,28 @@ class RedisDB(Database):
 
 class CachedRedis(RedisDB):
 
+    def _remove_duplicate_indexes(self, df, data_description=''):
+        df_len = len(df)
+        cleaned = df[~df.index.duplicated(keep='first')]
+        if (len(cleaned) != df_len):
+            logging.critical(f'Encountered duplicate values in {data_description} data, {df_len} '
+                             f'values loaded, {len(cleaned)} remain after removal.')
+
+        return cleaned
+
+
     def __init__(self, start_time, end_time, transaction_currency, counter_currency, horizon, source="binance",
                  normalize=False):
         self.transaction_currency = transaction_currency
         self.counter_currency = counter_currency
 
-        self.price_df = self.get_resampled_prices_in_range(start_time, end_time,
-                                                           transaction_currency, counter_currency, horizon,
-                                                           source)
-        self.btc_usdt_price_df = self.get_resampled_prices_in_range(start_time, end_time,
-                                                                    'BTC', 'USDT', horizon,
-                                                                    source)
+        self.price_df = self.get_resampled_prices_in_range(start_time, end_time, transaction_currency,
+                                                           counter_currency, horizon, source)
+        self.price_df = self._remove_duplicate_indexes(self.price_df,
+                                                       f'price ticker {transaction_currency}_{counter_currency}')
+
+        self.btc_usdt_price_df = self.get_resampled_prices_in_range(start_time, end_time, 'BTC', 'USDT', horizon, source)
+        self.btc_usdt_price_df = self._remove_duplicate_indexes(self.btc_usdt_price_df, 'BTC_USDT price data')
         self.hits = 0
 
     def get_price(self, transaction_currency, timestamp, source="binance", counter_currency="BTC", normalize=False):
