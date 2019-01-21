@@ -94,7 +94,7 @@ def get_subscriber_classes():
     ]
 
 def get_doge_subscriber_classes():
-    from apps.doge.doge_TA_actors import DogeSubscriber
+    from apps.doge.doge_train_test import DogeSubscriber
 
     return [
         DogeSubscriber,
