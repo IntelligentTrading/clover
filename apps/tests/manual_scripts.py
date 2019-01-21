@@ -12,6 +12,7 @@ from settings import logger
 from settings.redis_db import database
 
 
+
 def list_all_committees(ticker='BTC_USDT', exchange='binance'):
     values = database.zrange(f'{ticker}:{exchange}:CommitteeStorage', 0, -1)
     logger.info('Existing committees:')
@@ -94,7 +95,7 @@ class RedisTests:
                     gaps.append((current_score, next_score))
 
             logging.info('Found gaps: ')
-            from apps.backtesting.utils import datetime_from_timestamp
+
             for gap in gaps:
                 start = datetime_from_timestamp(PriceStorage.timestamp_from_score(gap[0]))
                 end = datetime_from_timestamp(PriceStorage.timestamp_from_score(gap[1]))
