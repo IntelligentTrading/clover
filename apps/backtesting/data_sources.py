@@ -616,11 +616,11 @@ class CachedRedis(RedisDB):
 
     def get_price(self, transaction_currency, timestamp, source="binance", counter_currency="BTC", normalize=False):
         if transaction_currency == self.transaction_currency and counter_currency == self.counter_currency:
-            logging.info(f'Total hits: {self.hits}')
+            logging.debug(f'Total hits: {self.hits}')
             self.hits += 1
             return self.price_df.loc[timestamp].close_price
         elif transaction_currency == 'BTC' and counter_currency == 'USDT':
-            logging.info(f'Total hits: {self.hits}')
+            logging.debug(f'Total hits: {self.hits}')
             self.hits += 1
             return self.btc_usdt_price_df.loc[timestamp].close_price
         else:
@@ -718,5 +718,5 @@ db_interface = RedisDB()
 
 if __name__ == '__main__':
     import time
-    #RedisTests.find_gaps('*BTC_USDT*Willr*', time.time()-60*60*24*30, time.time())
+    RedisTests.find_gaps('*BTC_USDT*Willr*', time.time()-60*60*24*30, time.time())
     RedisTests.self_test('BTC', 'USDT')

@@ -56,7 +56,19 @@ class DogePerformanceTimer:
             self.gp_training_config_json = f.read()
         self.time_doge_performance()
 
-    def _build_experiment_manager(self, **params):
+    def _build_experiment_manager(self, use_cached_redis, **params):
+
+        if use_cached_redis:
+            transaction_currency, counter_currency = params['ticker'].split('_')
+
+            from apps.backtesting.data_sources import CachedRedis
+            cached_redis = CachedRedis(start_time=params['start_time'], end_time=params['end_time'],
+                                       transaction_currency=transaction_currency, counter_currency=counter_currency,
+                                       horizon=None)
+            database = cached_redis
+        else:
+            database = db_interface
+
         gp_training_config_json = self.gp_training_config_json.format(
             ticker=params['ticker'],
             start_time=datetime_from_timestamp(params['start_time']),
@@ -67,11 +79,10 @@ class DogePerformanceTimer:
         for key in params:
             experiment_json[key] = params[key]
         experiment_json = json.dumps(experiment_json)
-        e = ExperimentManager(experiment_container=experiment_json, read_from_file=False, database=db_interface,
-                              hof_size=10)
-        return e
+        return ExperimentManager(experiment_container=experiment_json, read_from_file=False, database=database,
+                                 hof_size=10)
 
-    def time_doge_performance(self):
+    def time_doge_performance(self, use_cached_redis=True):
         import os
         if os.path.exists('entries.p'):
             entries = pickle.load(open('entries.p', 'rb'))
@@ -105,7 +116,8 @@ class DogePerformanceTimer:
                     start_time = db_interface.get_nearest_db_timestamp(start_timestamp, 'BTC_USDT')
                     end_time = db_interface.get_nearest_db_timestamp(end_timestamp, 'BTC_USDT')
 
-                    e = self._build_experiment_manager(ticker='BTC_USDT',
+                    e = self._build_experiment_manager(use_cached_redis=use_cached_redis,
+                                                       ticker='BTC_USDT',
                                                        start_time=start_time,
                                                        end_time=end_time,
                                                        population_sizes=[population_size],
