@@ -1,4 +1,3 @@
-from datetime import timedelta
 from enum import Enum
 
 from apps.TA.storages.data.price import PriceStorage
@@ -9,6 +8,7 @@ import pandas as pd
 import psycopg2
 import psycopg2.extras
 import logging
+
 
 class NoPriceDataException(Exception):
     pass
@@ -33,6 +33,34 @@ class Strength(Enum):
     long = 3
 
 #(BTC, ETH, USDT, XMR) = list(range(4))
+
+from apps.TA.indicators.momentum import rsi, stochrsi, adx, macd, mom, stoch, willr
+from apps.TA.indicators.overlap import sma, ema, wma, bbands, ht_trendline
+from apps.TA.indicators.events import bbands_squeeze_180min
+
+
+STORAGE_CLASS = {
+    'rsi': rsi.RsiStorage,
+    'stoch_rsi': stochrsi.StochrsiStorage,
+    'adx': adx.AdxStorage,
+    'macd': macd.MacdStorage,
+    'macd_value': macd.MacdStorage,
+    'macd_signal': macd.MacdStorage,
+    'macd_hist': macd.MacdStorage,
+    'mom': mom.MomStorage,
+    'sma': sma.SmaStorage,
+    'ema': ema.EmaStorage,
+    'wma': wma.WmaStorage,
+    'bbands': bbands.BbandsStorage,
+    'bb_up': bbands.BbandsStorage,
+    'bb_mid': bbands.BbandsStorage,
+    'bb_low': bbands.BbandsStorage,
+    'bb_squeeze': bbands_squeeze_180min.BbandsSqueeze180MinStorage,
+    'ht_trendline': ht_trendline.HtTrendlineStorage,
+    'slowd': stoch.StochStorage,
+    'willr': willr.WillrStorage
+}
+
 
 
 class Database(ABC):
@@ -292,8 +320,6 @@ class PostgresDatabaseConnection(Database):
         return price_data
 
 
-
-
     def get_volumes_in_range(self, start_time, end_time, transaction_currency, counter_currency, source):
         volume_in_range_query_asc = """SELECT volume, timestamp 
                                        FROM indicator_volume 
@@ -369,8 +395,8 @@ class PostgresDatabaseConnection(Database):
         return data[-1][0]
 
 
+
 class RedisDB(Database):
-    from settings.redis_db import database
 
     def __init__(self):
         pass
@@ -503,9 +529,11 @@ class RedisDB(Database):
 
         return PriceStorage.timestamp_from_score(results['scores'][-1])
 
-    def get_indicator(self, indicator_name, transaction_currency, counter_currency, timestamp, resample_period, source='binance'):
-        # query Redis to get indicator value at timestamp
 
+    def get_indicator(self, indicator_name, transaction_currency, counter_currency,
+                      timestamp, resample_period, source='binance', periods_range=None):
+
+        # query Redis to get indicator value at timestamp (+- periods range)
         if indicator_name == 'close_price':
             return self.get_price(transaction_currency=transaction_currency,
                                   counter_currency=counter_currency,
@@ -515,61 +543,51 @@ class RedisDB(Database):
             ticker=f'{transaction_currency}_{counter_currency}',
             exchange="binance",
             timestamp=timestamp,
-            periods_key = resample_period #//5 TODO
+            periods_key=resample_period, #//5 TODO
+            timestamp_tolerance=0
          )
-
-        from apps.TA.indicators.momentum import rsi, stochrsi, adx, macd, mom, stoch
-        from apps.TA.indicators.overlap import sma, ema, wma, bbands, ht_trendline
-        from apps.TA.indicators.events import bbands_squeeze_180min
-
-        storage_class = {
-            'rsi': rsi.RsiStorage,
-            'stoch_rsi': stochrsi.StochrsiStorage,
-            'adx': adx.AdxStorage,
-            'macd': macd.MacdStorage,
-            'macd_value': macd.MacdStorage,
-            'macd_signal': macd.MacdStorage,
-            'macd_hist': macd.MacdStorage,
-            'mom': mom.MomStorage,
-            'sma': sma.SmaStorage,
-            'ema': ema.EmaStorage,
-            'wma': wma.WmaStorage,
-            'bbands': bbands.BbandsStorage,
-            'bb_up': bbands.BbandsStorage,
-            'bb_mid': bbands.BbandsStorage,
-            'bb_low': bbands.BbandsStorage,
-            'bb_squeeze': bbands_squeeze_180min.BbandsSqueeze180MinStorage,
-            'ht_trendline': ht_trendline.HtTrendlineStorage,
-            'slowd': stoch.StochStorage,
-        }
+        if periods_range is not None:
+            params['periods_range'] = periods_range
 
         try:
-            results = storage_class[indicator_name].query(**params)
-            if len(results['values']):
-                result = results['values'][-1].split(':')
-                if indicator_name == 'bb_up':
-                    return float(result[0])
-                elif indicator_name == 'bb_mid':
-                    return float(result[1])
-                elif indicator_name == 'bb_low':
-                    return float(result[2])
-                elif indicator_name == 'bb_squeeze':
-                    return bool(result[1])
-                elif indicator_name == 'macd_value':
-                    return float(result[0])
-                elif indicator_name == 'macd_signal':
-                    return float(result[1])
-                elif indicator_name == 'macd_hist':
-                    return float(result[2])
-                elif indicator_name == 'slowd':
-                    return float(result[1])
+            results = STORAGE_CLASS[indicator_name].query(**params)
 
-            return float(results['values'][-1]) if len(results['values']) else None
+            # do we want to get multiple values?
+            if periods_range is None:
+                if len(results['values']):
+                    return self._extract_indicator_value(indicator_name, results['values'][-1])
+            else:
+                # periods_range is not None, we are returning an array of values
+                if len(results['values']):
+                    return [self._extract_indicator_value(indicator_name, result) for result in results['values']], \
+                           [PriceStorage.timestamp_from_score(score) for score in results['scores']]
+                else:
+                    return [], []
 
         except IndexError:
             return "unknown indicator_name"
         except Exception as e:
             raise e
+
+    def _extract_indicator_value(self, indicator_name, result):
+        result = result.split(':')
+        if indicator_name == 'bb_up':
+            return float(result[0])
+        elif indicator_name == 'bb_mid':
+            return float(result[1])
+        elif indicator_name == 'bb_low':
+            return float(result[2])
+        elif indicator_name == 'bb_squeeze':
+            return bool(result[1])
+        elif indicator_name == 'macd_value':
+            return float(result[0])
+        elif indicator_name == 'macd_signal':
+            return float(result[1])
+        elif indicator_name == 'macd_hist':
+            return float(result[2])
+        elif indicator_name == 'slowd':
+            return float(result[1])
+        return float(result[0])
 
     def get_indicator_at_previous_timestamp(self, indicator_name, transaction_currency, counter_currency, timestamp, resample_period, source="binance"):
         indicator_value = self.get_indicator(indicator_name, transaction_currency, counter_currency,
@@ -581,120 +599,37 @@ class RedisDB(Database):
         return indicator_value
 
 
+class CachedRedis(RedisDB):
 
+    def __init__(self, start_time, end_time, transaction_currency, counter_currency, horizon, source="binance",
+                 normalize=False):
+        self.transaction_currency = transaction_currency
+        self.counter_currency = counter_currency
 
-class RedisTests:
+        self.price_df = self.get_resampled_prices_in_range(start_time, end_time,
+                                                           transaction_currency, counter_currency, horizon,
+                                                           source)
+        self.btc_usdt_price_df = self.get_resampled_prices_in_range(start_time, end_time,
+                                                                    'BTC', 'USDT', horizon,
+                                                                    source)
+        self.hits = 0
 
-    @staticmethod
-    def self_test(transaction_currency, counter_currency):
-        # query Redis to get indicator value at timestamp
-        from settings.redis_db import database
-
-        params = dict(
-            ticker=f'{transaction_currency}_{counter_currency}',
-            exchange="binance",
-        )
-
-        from apps.TA.indicators.momentum import rsi, stochrsi, adx, macd, mom, stoch, willr
-        from apps.TA.indicators.overlap import sma, ema, wma, bbands, ht_trendline
-        from apps.TA.indicators.events import bbands_squeeze_180min
-        from apps.backtesting.utils import datetime_from_timestamp
-
-        storage_class = {
-            'rsi': rsi.RsiStorage,
-            'stoch_rsi': stochrsi.StochrsiStorage,
-            'adx': adx.AdxStorage,
-            'macd': macd.MacdStorage,
-            'mom': mom.MomStorage,
-            'sma': sma.SmaStorage,
-            'ema': ema.EmaStorage,
-            'wma': wma.WmaStorage,
-            'bbands': bbands.BbandsStorage,
-            'bb_squeeze': bbands_squeeze_180min.BbandsSqueeze180MinStorage,
-            'ht_trendline': ht_trendline.HtTrendlineStorage,
-            'slowd': stoch.StochStorage,
-            'close_price': PriceStorage,
-            'willr': willr.WillrStorage
-        }
-
-        params = dict(
-            ticker=f'{transaction_currency}_{counter_currency}',
-            exchange="binance",
-        )
-
-        for indicator_type in storage_class:
-            sorted_set_key = storage_class[indicator_type].compile_db_key(key=None,
-                                                                          key_prefix=f"{params['ticker']}"
-                                                                          f":{params['exchange']}:",
-                                                                          key_suffix='*')
-            print(f'Processing indicator {sorted_set_key}')
-            if len(database.keys(sorted_set_key)) == 0:
-                print('   no data.')
-            for key in database.keys(sorted_set_key):
-                query_response = database.zrange(key, 0, -1)
-                if len(query_response) == 0:
-                    print(f'   {key}: no data')
-                    continue
-                try:
-                    score_start = query_response[0].decode("utf-8").split(":")[-1]
-                    score_end = query_response[-1].decode("utf-8").split(":")[-1]
-                    time_start = datetime_from_timestamp(
-                        storage_class[indicator_type].timestamp_from_score(score_start))
-                    time_end = datetime_from_timestamp(storage_class[indicator_type].timestamp_from_score(score_end))
-                    num_values = len(query_response)
-                    print(f'   {key}: {num_values} values, start time = {time_start}, end time = {time_end}')
-                except Exception as e:
-                    logging.info(f'Error decoding input: {str(e)}')
-        return
-
-
-
-    @staticmethod
-    def find_gaps(key_pattern, start_timestamp, end_timestamp):
-        from settings.redis_db import database
-
-        start_score = PriceStorage.score_from_timestamp(start_timestamp)
-        end_score = PriceStorage.score_from_timestamp(end_timestamp)
-
-        keys = database.keys(key_pattern)
-        for key in keys:
-            logging.info(f'Processing data for {key}...')
-            values = database.zrangebyscore(key, min=start_score, max=end_score)
-            gaps = []
-            gap_start = None
-            for i, item in enumerate(values):
-                if i == len(values) - 1:  # the last element
-                    break
-                current_score = int(item.decode('UTF8').split(':')[-1])
-                next_score = int(values[i + 1].decode('UTF8').split(':')[-1])
-                if next_score == current_score:
-                    logging.warning(f'     Encountered duplicate scores: {item} and {values[i + 1]}')
-                    continue
-                if next_score != current_score + 1:
-                    if gap_start is None:
-                        gap_start = current_score
-                else:
-                    if gap_start is not None:
-                        gap_end = current_score
-                        gaps.append((gap_start, gap_end))
-                        gap_start = None
-            logging.info('Found gaps: ')
-            from apps.backtesting.utils import datetime_from_timestamp
-            for gap in gaps:
-                start = datetime_from_timestamp(PriceStorage.timestamp_from_score(gap[0]))
-                end = datetime_from_timestamp(PriceStorage.timestamp_from_score(gap[1]))
-                logging.info(f'    start: {start}, end: {end}  (scores {gap[0]}-{gap[1]})')
-
-        return gaps
-
-
-
+    def get_price(self, transaction_currency, timestamp, source="binance", counter_currency="BTC", normalize=False):
+        if transaction_currency == self.transaction_currency and counter_currency == self.counter_currency:
+            logging.debug(f'Total hits: {self.hits}')
+            self.hits += 1
+            return self.price_df.loc[timestamp].close_price
+        elif transaction_currency == 'BTC' and counter_currency == 'USDT':
+            logging.debug(f'Total hits: {self.hits}')
+            self.hits += 1
+            return self.btc_usdt_price_df.loc[timestamp].close_price
+        else:
+            logging.warning('No cached price data! Querying Redis...')
+            return super().get_price(transaction_currency, timestamp, source="binance", counter_currency="BTC",
+                                     normalize=False)
 
 
 #postgres_db = PostgresDatabaseConnection()
 db_interface = RedisDB()
 
-if __name__ == '__main__':
-    import time
-    #RedisTests.find_gaps('*BTC_USDT*Willr*', time.time()-60*60*24*30, time.time())
-    RedisTests.self_test('BTC', 'USDT')
+
