@@ -12,4 +12,3 @@ class Command(BaseCommand):
 
         key_pattern = options['key_pattern'] or '*BTC_USDT*Willr*'
         RedisTests.find_gaps(key_pattern, time.time() - 60 * 60 * 24 * 30, time.time())
-        #RedisTests.self_test('BTC', 'USDT')
