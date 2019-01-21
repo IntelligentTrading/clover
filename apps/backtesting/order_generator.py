@@ -2,6 +2,7 @@ from apps.backtesting.orders import OrderType, Order
 from apps.backtesting.config import transaction_cost_percents
 from apps.backtesting.data_sources import db_interface
 from abc import ABC, abstractmethod
+import logging
 
 
 class OrderGenerator(ABC):
@@ -87,8 +88,7 @@ class AlternatingOrderGenerator(OrderGenerator):
     def generate_order(self, decision):
         order = None
 
-        #try:
-        if True:
+        try:
             if decision.sell() and self._crypto > 0 and decision.transaction_currency == self._buy_currency:
                 order = self.sell_order(decision=decision, value=self._crypto)
                 self._execute_order(order)
@@ -100,8 +100,9 @@ class AlternatingOrderGenerator(OrderGenerator):
                 self._execute_order(order)
                 assert self._cash == 0
             return order
-        #except AttributeError:
-        #    pass
+        except Exception as e:
+            logging.critical(f'Cannot generate order: {str(e)}')
+
 
 class PositionBasedOrderGenerator(OrderGenerator):
     '''
