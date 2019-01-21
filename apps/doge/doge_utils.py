@@ -1,13 +1,10 @@
 from settings.redis_db import database
 from settings import logger
-from apps.doge.doge_TA_actors import CommitteeStorage
 from apps.backtesting.utils import datetime_from_timestamp
 from apps.backtesting.data_sources import db_interface
-from apps.portfolio.services.doge_votes import get_allocations_from_doge
 from apps.genetic_algorithms.gp_artemis import ExperimentManager
-import datetime
 import json
-from apps.doge.doge_train_test import DogeTrainer, GP_TRAINING_CONFIG
+from apps.doge.doge_train_test import GP_TRAINING_CONFIG
 import time
 import pandas as pd
 import pickle
@@ -27,28 +24,6 @@ def get_key_values(key):
     return database.zrange(key, 0, -1)
 
 
-def list_all_committees(ticker='BTC_USDT', exchange='binance'):
-    values = database.zrange(f'{ticker}:{exchange}:CommitteeStorage', 0, -1)
-    logger.info('Existing committees:')
-    for item in values:
-        item = item.decode('UTF8').split(':')
-        timestamp = CommitteeStorage.timestamp_from_score(item[-1])
-        logger.info(f'  ->  at timestamp {datetime_from_timestamp(timestamp)}')
-
-        logger.info(f'This committee produced the following allocations: '
-                    f'{get_allocations_from_doge(at_datetime=datetime.datetime.utcfromtimestamp(timestamp))}')
-
-
-
-
-def get_indicator_status(indicator_key='Willr', ticker='BTC_USDT', exchange='binance'):
-    indicator_keys = view_keys(f'{ticker}:{exchange}:{indicator_key}*')
-    for key in indicator_keys:
-        last_entry = database.zrange(key, -1, -1)[0]
-        timestamp = CommitteeStorage.timestamp_from_score(last_entry.decode('UTF8').split(':')[-1])
-        logger.info(f'For key {key}, last entry is at {datetime_from_timestamp(timestamp)}')
-
-
 class DogePerformanceTimer:
 
     def __init__(self):
@@ -56,7 +31,19 @@ class DogePerformanceTimer:
             self.gp_training_config_json = f.read()
         self.time_doge_performance()
 
-    def _build_experiment_manager(self, **params):
+    def _build_experiment_manager(self, use_cached_redis, **params):
+
+        if use_cached_redis:
+            transaction_currency, counter_currency = params['ticker'].split('_')
+
+            from apps.backtesting.data_sources import CachedRedis
+            cached_redis = CachedRedis(start_time=params['start_time'], end_time=params['end_time'],
+                                       transaction_currency=transaction_currency, counter_currency=counter_currency,
+                                       horizon=None)
+            database = cached_redis
+        else:
+            database = db_interface
+
         gp_training_config_json = self.gp_training_config_json.format(
             ticker=params['ticker'],
             start_time=datetime_from_timestamp(params['start_time']),
@@ -67,11 +54,10 @@ class DogePerformanceTimer:
         for key in params:
             experiment_json[key] = params[key]
         experiment_json = json.dumps(experiment_json)
-        e = ExperimentManager(experiment_container=experiment_json, read_from_file=False, database=db_interface,
-                              hof_size=10)
-        return e
+        return ExperimentManager(experiment_container=experiment_json, read_from_file=False, database=database,
+                                 hof_size=10)
 
-    def time_doge_performance(self):
+    def time_doge_performance(self, use_cached_redis=True):
         import os
         if os.path.exists('entries.p'):
             entries = pickle.load(open('entries.p', 'rb'))
@@ -105,7 +91,8 @@ class DogePerformanceTimer:
                     start_time = db_interface.get_nearest_db_timestamp(start_timestamp, 'BTC_USDT')
                     end_time = db_interface.get_nearest_db_timestamp(end_timestamp, 'BTC_USDT')
 
-                    e = self._build_experiment_manager(ticker='BTC_USDT',
+                    e = self._build_experiment_manager(use_cached_redis=use_cached_redis,
+                                                       ticker='BTC_USDT',
                                                        start_time=start_time,
                                                        end_time=end_time,
                                                        population_sizes=[population_size],
