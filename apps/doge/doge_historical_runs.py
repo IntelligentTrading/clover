@@ -1,9 +1,10 @@
 import logging
 
 from apps.backtesting.data_sources import db_interface
-from apps.backtesting.utils import datetime_from_timestamp
+from apps.backtesting.utils import datetime_from_timestamp, parallel_run
 from apps.doge.doge_train_test import DogeTrainer, DogeCommittee, DogeSubscriber
 from settings import DOGE_TRAINING_PERIOD_DURATION_SECONDS, DOGE_RETRAINING_PERIOD_SECONDS
+from functools import partial
 
 class DummyDogeSubscriber(DogeSubscriber):
 
@@ -30,45 +31,63 @@ class DogeHistorySimulator:
         self._horizon = horizon
 
 
-    def fill_history(self):
+    def fill_history(self, parallel=True):
         karen = DogeTrainer(database=db_interface)  # see Karen Pryor
+        training_intervals = []
 
         for training_end_time in range(self._end_time,
                                        self._start_time + self._training_period_length,
                                        -self._time_to_retrain_seconds):
             # training_end_time = 1547132400  # debug stuff
             training_start_time = training_end_time - self._training_period_length
+            training_intervals.append((training_start_time, training_end_time))
 
-            logging.info(f'Processing data for committee trained on data '
-                         f'from {datetime_from_timestamp(training_start_time)} '
-                         f'to {datetime_from_timestamp(training_end_time)}')
+        partial_func = partial(DogeHistorySimulator._single_period_run,
+                               doge_trainer=karen,
+                               time_to_retrain_seconds=self._time_to_retrain_seconds)
 
-            # check if a committee record already exists
-            try:
-                committee = DogeCommittee(committee_timestamp=training_end_time)
-                logging.info(f'Committee successfully loaded at {training_end_time}')
-            except:
-                # no committee, we need to rerun training
-                logging.info(f'No committee found, running training for timestamp {training_end_time}...')
-                karen.retrain_doges(start_timestamp=training_start_time, end_timestamp=training_end_time)
+        if parallel:
+            parallel_run(partial_func, param_list=training_intervals)
+        else:
+            for time_interval in training_intervals:
+                partial_func(time_interval)
 
-                # now that Karen did her job we should totally have a working committee
-                committee = DogeCommittee(committee_timestamp=training_end_time)
-
-            # we need to simulate incoming price data
-            self.feed_price_to_doge(committee=committee,
-                                    committee_valid_from=training_end_time,
-                                    committee_valid_to=training_end_time + self._time_to_retrain_seconds)
         logging.info('Filling historical data completed successfully.')
 
-    def feed_price_to_doge(self, committee, committee_valid_from, committee_valid_to):
+    @staticmethod
+    def _single_period_run(time_interval, doge_trainer, time_to_retrain_seconds):
+        training_start_time, training_end_time = time_interval
+        logging.info(f'Processing data for committee trained on data '
+                     f'from {datetime_from_timestamp(training_start_time)} '
+                     f'to {datetime_from_timestamp(training_end_time)}')
+        # check if a committee record already exists
+        try:
+            committee = DogeCommittee(committee_timestamp=training_end_time)
+            logging.info(f'Committee successfully loaded at {training_end_time}')
+        except:
+            # no committee, we need to rerun training
+            logging.info(f'No committee found, running training for timestamp {training_end_time}...')
+            doge_trainer.retrain_doges(start_timestamp=training_start_time, end_timestamp=training_end_time)
+
+            # now that Karen did her job we should totally have a working committee
+            committee = DogeCommittee(committee_timestamp=training_end_time)
+        # we need to simulate incoming price data
+        DogeHistorySimulator.feed_price_to_doge(committee=committee,
+                                committee_valid_from=training_end_time,
+                                committee_valid_to=training_end_time + time_to_retrain_seconds)
+
+    @staticmethod
+    def feed_price_to_doge(committee, committee_valid_from, committee_valid_to, transaction_currency,
+                           counter_currency, horizon, exchange):
         prices_df = db_interface.get_resampled_prices_in_range(
             start_time=committee_valid_from,
             end_time=committee_valid_to,
-            transaction_currency=self._transaction_currency,
-            counter_currency=self._counter_currency,
-            horizon=self._horizon
+            transaction_currency=transaction_currency,
+            counter_currency=counter_currency,
+            horizon=horizon
         )
+
+        ticker = f'{transaction_currency}_{counter_currency}'
 
         # rudely hijack the DogeSubscriber class
         subscriber = DummyDogeSubscriber(committee)
@@ -82,7 +101,7 @@ class DogeHistorySimulator:
                 'pattern': None,
                 'channel': b'PriceStorage',
                 'data': f'''{{
-                                "key": "{self._ticker}:{self._exchange}:PriceStorage:1",
+                                "key": "{ticker}:{exchange}:PriceStorage:1",
                                 "name": "{row.close_price}:{row.score}",
                                 "score": "{row.score}"
                             }}'''.encode(encoding='UTF8')
