@@ -382,7 +382,10 @@ class DogeSubscriber(SignalSubscriber):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         logger.info("                                                      (😎 IT IS THE LAST ONE 😎)")
+        self._init_committees()
 
+
+    def _init_committees(self):
         # load committees for all supported tickers
         self.committees = {}
         for ticker in SUPPORTED_DOGE_TICKERS:
