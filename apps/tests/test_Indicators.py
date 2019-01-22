@@ -11,13 +11,13 @@ from settings.redis_db import database
 logger = logging.getLogger(__name__)
 
 ticker = "CWC_ETH"
-exchange = "binance"
+exchange = "test"
 
 
 class IndicatorsTestCase(TestCase):
 
     def setUp(self):
-        max_periods = PERIODS_24HR  # * 200
+        max_periods = PERIODS_24HR * 201
 
         prices = {
             # 'close_volume': np.random.random(max_periods)
@@ -33,6 +33,8 @@ class IndicatorsTestCase(TestCase):
                                      exchange=exchange,
                                      timestamp=timestamp)
 
+
+        pipeline = database.pipeline()
         for index in default_price_indexes:
             price_storage.index = index
 
@@ -41,9 +43,10 @@ class IndicatorsTestCase(TestCase):
 
                 price_storage.unix_timestamp = timestamp
                 price_storage.value = price
-                price_storage.save()
+                price_storage.save(pipeline=pipeline)
 
                 self.last_price_storage = price_storage
+        pipeline.execute()
 
     def run_subscriber(self, storage_class, subscriber_class):
 
@@ -59,6 +62,7 @@ class IndicatorsTestCase(TestCase):
         logger.info("looking for keys like " + key_substring)
 
         keys = database.keys(f"*{key_substring}*")
+        logger.debug(str(keys))
         assert len(keys)
 
         for key in keys:
