@@ -144,22 +144,11 @@ class ExperimentManager:
 
     @time_performance
     def run_parallel_experiments(self, num_processes=8, rerun_existing=False, display_results=True):
-        #from pathos.multiprocessing import ProcessingPool as Pool
-
         partial_run_func = partial(ExperimentManager.run_variant, keep_record=True, display_results=display_results,
                            rerun_existing=rerun_existing, saved_figure_ext='.fig.png')
 
         records = parallel_run(partial_run_func, self.variants)
-        #with Pool(num_processes) as pool:
-        #    records = pool.map(partial_run_func, self.variants)
-        #    pool.close()
-        #    pool.join()
-        #    pool.terminate()
-
-        for record in records:
-            if record is not None: # empty records if experiments already exist
-                self._save_rockstars(record)
-
+        return records
 
     @time_performance
     def run_experiments(self, rerun_existing=False, display_results=True, keep_record=True):

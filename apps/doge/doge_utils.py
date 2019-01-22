@@ -101,7 +101,7 @@ class DogePerformanceTimer:
                                                        mutation_probabilities=[0.8]  # ensure only one variant is tested
                                                        )
                     tick = time.time()
-                    e.run_experiments()
+                    e.run_parallel_experiments()
                     tock = time.time()
 
                     duration = tock - tick
