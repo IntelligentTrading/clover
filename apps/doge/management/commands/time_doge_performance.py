@@ -5,4 +5,4 @@ from apps.doge.doge_utils import DogePerformanceTimer
 class Command(BaseCommand):
 
     def handle(self, *args, **options):
-        DogePerformanceTimer()
+        DogePerformanceTimer(run_variants_in_parallel=True)

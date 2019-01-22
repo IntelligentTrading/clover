@@ -26,9 +26,10 @@ def get_key_values(key):
 
 class DogePerformanceTimer:
 
-    def __init__(self):
+    def __init__(self, run_variants_in_parallel=False):
         with open(GP_TRAINING_CONFIG, 'r') as f:
             self.gp_training_config_json = f.read()
+        self.run_variants_in_parallel = run_variants_in_parallel
         self.time_doge_performance()
 
     def _build_experiment_manager(self, use_cached_redis, **params):
@@ -55,7 +56,7 @@ class DogePerformanceTimer:
             experiment_json[key] = params[key]
         experiment_json = json.dumps(experiment_json)
         return ExperimentManager(experiment_container=experiment_json, read_from_file=False, database=database,
-                                 hof_size=10)
+                                 hof_size=10, parallel_run=self.run_variants_in_parallel)
 
     def time_doge_performance(self, use_cached_redis=True):
         import os
@@ -97,11 +98,11 @@ class DogePerformanceTimer:
                                                        end_time=end_time,
                                                        population_sizes=[population_size],
                                                        num_generations=generations,
-                                                       mating_probabilities=[0.5],  # ensure only one variant is tested
+                                                       mating_probabilities=[0.5,0.7],  # ensure only one variant is tested
                                                        mutation_probabilities=[0.8]  # ensure only one variant is tested
                                                        )
                     tick = time.time()
-                    e.run_parallel_experiments()
+                    e.run_experiments()
                     tock = time.time()
 
                     duration = tock - tick
