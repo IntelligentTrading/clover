@@ -4,7 +4,7 @@ from apps.backtesting.utils import datetime_from_timestamp
 from apps.backtesting.data_sources import db_interface
 from apps.genetic_algorithms.gp_artemis import ExperimentManager
 import json
-from apps.doge.doge_train_test import GP_TRAINING_CONFIG
+from apps.doge.doge_train_test import GP_TRAINING_CONFIG, DogeTrainer
 import time
 import pandas as pd
 import pickle
@@ -119,5 +119,4 @@ class DogePerformanceTimer:
 
         entries = pickle.load(open('entries.p', 'rb'))
         df = pd.DataFrame(entries)
-
 

@@ -28,13 +28,13 @@ class DogeHistorySimulator:
         self._time_to_retrain_seconds = time_to_retrain_seconds
         self._ticker = ticker
         self._exchange = exchange
-        self._transaction_currency, self._counter_currency = ticker.split('_')
+        self._ticker = ticker
         self._horizon = horizon
         self._parallel = parallel
 
     @time_performance
     def fill_history(self):
-        karen = DogeTrainer(database=db_interface)  # see Karen Pryor
+
         training_intervals = []
 
         for training_end_time in range(self._end_time,
@@ -45,10 +45,8 @@ class DogeHistorySimulator:
             training_intervals.append((training_start_time, training_end_time))
 
         partial_func = partial(DogeHistorySimulator._single_period_run,
-                               doge_trainer=karen,
                                time_to_retrain_seconds=self._time_to_retrain_seconds,
-                               transaction_currency=self._transaction_currency,
-                               counter_currency=self._counter_currency,
+                               ticker=self._ticker,
                                horizon=self._horizon,
                                exchange=self._exchange)
 
@@ -60,9 +58,10 @@ class DogeHistorySimulator:
 
         logging.info('Filling historical data completed successfully.')
 
+
     @staticmethod
-    def _single_period_run(time_interval, doge_trainer, time_to_retrain_seconds, transaction_currency,
-                           counter_currency, horizon, exchange):
+    @time_performance
+    def _single_period_run(time_interval, time_to_retrain_seconds, ticker, horizon, exchange):
         training_start_time, training_end_time = time_interval
         logging.info(f'Processing data for committee trained on data '
                      f'from {datetime_from_timestamp(training_start_time)} '
@@ -74,8 +73,12 @@ class DogeHistorySimulator:
         except:
             # no committee, we need to rerun training
             logging.info(f'No committee found, running training for timestamp {training_end_time}...')
-            doge_trainer.retrain_doges(start_timestamp=training_start_time, end_timestamp=training_end_time,
-                                       training_ticker=f'{transaction_currency}_{counter_currency}')
+            karen = DogeTrainer.build_cached_redis_trainer(start_time=training_start_time,
+                                                           end_time=training_end_time,
+                                                           ticker=ticker) # see Karen Pryor
+
+            karen.retrain_doges(start_timestamp=training_start_time, end_timestamp=training_end_time,
+                                training_ticker=ticker)
 
             # now that Karen did her job we should totally have a working committee
             committee = DogeCommittee(committee_timestamp=training_end_time)
@@ -83,14 +86,13 @@ class DogeHistorySimulator:
         DogeHistorySimulator.feed_price_to_doge(committee=committee,
                                                 committee_valid_from=training_end_time,
                                                 committee_valid_to=training_end_time + time_to_retrain_seconds,
-                                                transaction_currency=transaction_currency,
-                                                counter_currency=counter_currency,
+                                                ticker=ticker,
                                                 horizon=horizon,
                                                 exchange=exchange)
 
     @staticmethod
-    def feed_price_to_doge(committee, committee_valid_from, committee_valid_to, transaction_currency,
-                           counter_currency, horizon, exchange):
+    def feed_price_to_doge(committee, committee_valid_from, committee_valid_to, ticker, horizon, exchange):
+        transaction_currency, counter_currency = ticker.split('_')
         prices_df = db_interface.get_resampled_prices_in_range(
             start_time=committee_valid_from,
             end_time=committee_valid_to,
@@ -98,8 +100,6 @@ class DogeHistorySimulator:
             counter_currency=counter_currency,
             horizon=horizon
         )
-
-        ticker = f'{transaction_currency}_{counter_currency}'
         committees = {ticker: committee}
 
         # rudely hijack the DogeSubscriber class

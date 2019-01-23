@@ -164,15 +164,8 @@ class DogeTrainer:
         """
         start_time = db_interface.get_nearest_db_timestamp(start_timestamp, ticker)
         end_time = db_interface.get_nearest_db_timestamp(end_timestamp, ticker)
-        transaction_currency, counter_currency = ticker.split('_')
 
-        from apps.backtesting.data_sources import CachedRedis
-        cached_redis = CachedRedis(start_time=start_time, end_time=end_time,
-                                   transaction_currency=transaction_currency, counter_currency=counter_currency,
-                                   horizon=None)
-
-        #trainer = DogeTrainer(db_interface)
-        trainer = DogeTrainer(cached_redis)
+        trainer = DogeTrainer.build_cached_redis_trainer(start_time, end_time, ticker)
 
         if start_time is None or end_time is None:
             logging.error(f'Unable to find close enough timestamp for {ticker},'
@@ -185,6 +178,17 @@ class DogeTrainer:
 
         trainer.retrain_doges(start_timestamp=start_time, end_timestamp=end_time, max_doges_to_save=10,
                               training_ticker=ticker)
+
+    @staticmethod
+    def build_cached_redis_trainer(start_time, end_time, ticker):
+        from apps.backtesting.data_sources import CachedRedis
+        transaction_currency, counter_currency = ticker.split('_')
+        cached_redis = CachedRedis(start_time=start_time, end_time=end_time,
+                                   transaction_currency=transaction_currency,
+                                   counter_currency=counter_currency,
+                                   horizon=None)
+        return DogeTrainer(database=cached_redis)
+
 
 
 class DogeTrader:
