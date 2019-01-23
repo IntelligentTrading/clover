@@ -74,7 +74,8 @@ class DogeHistorySimulator:
         except:
             # no committee, we need to rerun training
             logging.info(f'No committee found, running training for timestamp {training_end_time}...')
-            doge_trainer.retrain_doges(start_timestamp=training_start_time, end_timestamp=training_end_time)
+            doge_trainer.retrain_doges(start_timestamp=training_start_time, end_timestamp=training_end_time,
+                                       training_ticker=f'{transaction_currency}_{counter_currency}')
 
             # now that Karen did her job we should totally have a working committee
             committee = DogeCommittee(committee_timestamp=training_end_time)
