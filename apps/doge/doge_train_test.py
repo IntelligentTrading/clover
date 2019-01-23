@@ -13,7 +13,7 @@ from apps.TA import PERIODS_1HR
 from settings import DOGE_RETRAINING_PERIOD_SECONDS, logger, SUPPORTED_DOGE_TICKERS, DOGE_LOAD_ROCKSTARS
 import time
 from apps.genetic_algorithms.chart_plotter import save_dot_graph
-from apps.backtesting.utils import datetime_from_timestamp
+from apps.backtesting.utils import datetime_from_timestamp, time_performance
 
 METRIC_IDS = {
     'mean_profit': 0,
@@ -213,6 +213,7 @@ class DogeTrader:
         self.doge, self.gp = ExperimentManager.resurrect_doge(experiment_json, self.doge_str, function_provider)
         self.strategy = GeneticTickerStrategy(tree=self.doge, gp_object=self.gp)
 
+    @time_performance
     def vote(self, ticker_data):
         """
         :param ticker_data: an instance of TickerData class, containing the ticker info and optionally OHLCV data and signals
@@ -239,13 +240,14 @@ class DogeCommittee:
     """
 
     def __init__(self, committee_timestamp=None, max_doges=100,
-                 ttl=DOGE_RETRAINING_PERIOD_SECONDS, training_ticker='BTC_USDT'):
+                 ttl=DOGE_RETRAINING_PERIOD_SECONDS, training_ticker='BTC_USDT',
+                 db_interface=db_interface, function_provider=None):
         with open(GP_TRAINING_CONFIG, 'r') as f:
             self.gp_training_config_json = f.read()
 
         self.max_doges = max_doges
         self._committee_timestamp = committee_timestamp  # gets filled with the last committee timestamp if set to None
-        self.function_provider = RedisTAProvider()
+        self.function_provider = function_provider or RedisTAProvider(db_interface=db_interface)
         self.periods = PERIODS_1HR  # TODO remove this hardcoding if we decide to use more horizons
         self._ttl = ttl
         self._training_ticker = training_ticker
@@ -264,8 +266,6 @@ class DogeCommittee:
         """
         doge_traders = []
 
-        # get doges out of DB
-        # get the latest committee
         query_response = CommitteeStorage.query(ticker=self._training_ticker, exchange='binance', timestamp=self._committee_timestamp)
         loaded_timestamp = CommitteeStorage.timestamp_from_score(query_response['scores'][-1])
         if self._committee_timestamp is not None and self._committee_timestamp != loaded_timestamp:
@@ -324,7 +324,7 @@ class DogeCommittee:
         for i, doge in enumerate(self.doge_traders):
             decision = doge.vote(ticker_data)
             weight = doge.weight_at_timestamp(timestamp=self._committee_timestamp)
-            print(f'  Doge {i} says: {str(decision)} (its weight is {weight:.2f})')
+            logger.debug(f'  Doge {i} says: {str(decision)} (its weight is {weight:.2f})')
             votes.append(decision.outcome)
             weights.append(weight)
 
@@ -386,6 +386,7 @@ class DogeSubscriber(SignalSubscriber):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         logger.info("                                                      (😎 IT IS THE LAST ONE 😎)")
+        self._rewrite_history = kwargs.get('rewrite_history', True)
         self._init_committees()
 
 
@@ -404,7 +405,7 @@ class DogeSubscriber(SignalSubscriber):
         return self.committees[ticker].expired(at_timestamp=self.timestamp)
 
     def handle(self, channel, data, *args, **kwargs):
-        logging.info('Doge subscriber invoked')
+        logger.debug('Doge subscriber invoked')
         # check if we received data for a ticker we support
         if self.ticker not in SUPPORTED_DOGE_TICKERS:  # @tomcounsell please check if this is OK or I should register
                                                        # for tickers of interest in some other way
@@ -416,7 +417,7 @@ class DogeSubscriber(SignalSubscriber):
             logger.info(f'Doge committee for ticker {self.ticker} expired, reloading...')
             self._reload_committee(ticker=self.ticker)
 
-        logger.info(f'Doge subscriber invoked at {datetime_from_timestamp(self.timestamp)}, '
+        logger.debug(f'Doge subscriber invoked at {datetime_from_timestamp(self.timestamp)}, '
                     f'channel={str(channel)}, data={str(data)} '
                     f'(it is now {datetime_from_timestamp(time.time())})')
         transaction_currency, counter_currency = self.ticker.split('_')
@@ -426,12 +427,24 @@ class DogeSubscriber(SignalSubscriber):
                                                 timestamp=self.timestamp,
                                                 periods=self.committees[self.ticker].periods)
 
-        ticker_votes, weights = self.committees[self.ticker].vote(transaction_currency, counter_currency, self.timestamp)
-        # weighted_vote = sum([ticker_votes[i] * weights[i] for i in range(len(ticker_votes))]) / sum(weights)
+        if not self._rewrite_history:
+            if new_doge_storage.has_saved_value():
+                logging.warning(f'Found existing committee vote for {self.ticker} '
+                                f'at {datetime_from_timestamp(self.timestamp)}, skipping computation.')
+                logging.warning('To rewrite history, set rewrite_history=True when invoking DogeSubscriber.')
+                return
 
-        new_doge_storage.value = (sum(ticker_votes) * 100 / len(ticker_votes))  # normalize to +-100 scale
-        new_doge_storage.save(publish=True)
-        logger.info('Doge vote saved')
+
+        try:
+            ticker_votes, weights = self.committees[self.ticker].vote(transaction_currency, counter_currency, self.timestamp)
+            # weighted_vote = sum([ticker_votes[i] * weights[i] for i in range(len(ticker_votes))]) / sum(weights)
+
+            new_doge_storage.value = (sum(ticker_votes) * 100 / len(ticker_votes))  # normalize to +-100 scale
+            new_doge_storage.save(publish=True)
+            logger.info('Doge vote saved')
+        except Exception as e:
+            logging.error(f'Unable to vote for {self.ticker} '
+                          f'at {datetime_from_timestamp(self.timestamp)}')
 
 
     def pre_handle(self, channel, data, *args, **kwargs):
