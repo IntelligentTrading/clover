@@ -59,9 +59,11 @@ class DogePerformanceTimer:
                                  hof_size=10, parallel_run=self.run_variants_in_parallel)
 
     def time_doge_performance(self, use_cached_redis=True):
+
+        ENTRIES_CACHE_FILENAME = 'entries.p'
         import os
-        if os.path.exists('entries.p'):
-            entries = pickle.load(open('entries.p', 'rb'))
+        if os.path.exists(ENTRIES_CACHE_FILENAME):
+            entries = pickle.load(ENTRIES_CACHE_FILENAME, 'rb')
         else:
             entries = []
 
@@ -98,7 +100,7 @@ class DogePerformanceTimer:
                                                        end_time=end_time,
                                                        population_sizes=[population_size],
                                                        num_generations=generations,
-                                                       mating_probabilities=[0.5,0.7],  # ensure only one variant is tested
+                                                       mating_probabilities=[0.7],  # ensure only one variant is tested
                                                        mutation_probabilities=[0.8]  # ensure only one variant is tested
                                                        )
                     tick = time.time()
@@ -113,10 +115,12 @@ class DogePerformanceTimer:
                         'duration': duration
                     }
                     entries.append(entry)
-                    pickle.dump(entries, open('entries.p', 'wb'))
-                    with open('entries.txt', 'w') as f:
+                    pickle.dump(entries, open(ENTRIES_CACHE_FILENAME, 'wb'))
+
+                    entries_txt_file = ENTRIES_CACHE_FILENAME.split('.')[0] + '.txt'
+                    with open(entries_txt_file, 'w') as f:
                         f.writelines(map(str, entries))
 
-        entries = pickle.load(open('entries.p', 'rb'))
+        entries = pickle.load(open(ENTRIES_CACHE_FILENAME, 'rb'))
         df = pd.DataFrame(entries)
 
