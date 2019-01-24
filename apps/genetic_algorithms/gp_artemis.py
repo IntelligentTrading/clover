@@ -77,7 +77,10 @@ class ExperimentManager:
             self.validation_data = [Data(start_cash=self.START_CASH, start_crypto=self.START_CRYPTO, database=self.database,
                                       **dataset) for dataset in self.experiment_json["validation_data"]]
             # create function provider objects based on data
-            self.function_provider = TAProviderCollection(self.training_data + self.validation_data)
+            # .function_provider = TAProviderCollection(self.training_data + self.validation_data)
+            # TODO: refactor this
+            from apps.genetic_algorithms.leaf_functions import CachedDataTAProvider
+            self.function_provider = CachedDataTAProvider(self.training_data[0])
 
         else:
             self.training_data = [Data.to_string(dataset['transaction_currency'],
