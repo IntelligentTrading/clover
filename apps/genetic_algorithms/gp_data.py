@@ -61,6 +61,8 @@ class Data:
                             f"{(self.end_time - self.price_data.iloc[-1].name)/60:.2f} minutes before "
                             f"the set end time! (end time = {self.end_time}, data end time = {self.price_data.iloc[-1].name}")
 
+        self.bah = None
+        self.build_buy_and_hold_benchmark()
         self._compute_ta_indicators()
 
     @time_performance
@@ -170,7 +172,11 @@ class Data:
     def to_string(transaction_currency, counter_currency, start_time, end_time):
         return f"{transaction_currency}-{counter_currency}-{int(start_time)}-{int(end_time)}"
 
+    from apps.backtesting.utils import time_performance
+    @time_performance
     def build_buy_and_hold_benchmark(self):
+        if self.bah is not None:
+            return self.bah
 
         benchmark = TickDrivenBacktester.build_benchmark(
             transaction_currency=self.transaction_currency,
@@ -188,7 +194,8 @@ class Data:
                                                      ),
             database=self.database
         )
-        return benchmark
+        self.bah = benchmark
+        return self.bah
 
     def _filter_fields(self, fields, individual_str):
         filtered_dict = {}
