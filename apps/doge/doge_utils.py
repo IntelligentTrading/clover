@@ -63,7 +63,7 @@ class DogePerformanceTimer:
         ENTRIES_CACHE_FILENAME = 'entries.p'
         import os
         if os.path.exists(ENTRIES_CACHE_FILENAME):
-            entries = pickle.load(ENTRIES_CACHE_FILENAME, 'rb')
+            entries = pickle.load(open(ENTRIES_CACHE_FILENAME, 'rb'))
         else:
             entries = []
 
