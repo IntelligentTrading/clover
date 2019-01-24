@@ -59,7 +59,7 @@ class DogeTrainer:
     A class that encapsulates GP training.
     """
 
-    def __init__(self, database, gp_training_config_json=None):
+    def __init__(self, database, gp_training_config_json=None, function_provider=None):
         """
 
         :param database: database from data_sources, either Redis or Postgres
@@ -72,6 +72,7 @@ class DogeTrainer:
             self.gp_training_config_json = gp_training_config_json
 
         self.database = database
+        self.function_provider = function_provider or RedisTAProvider(db_interface=database)
 
     def retrain_doges(self, start_timestamp, end_timestamp, max_doges_to_save=10, training_ticker='BTC_USDT'):
         """
@@ -97,7 +98,7 @@ class DogeTrainer:
 
         # create an experiment manager
         e = ExperimentManager(experiment_container=config_json, read_from_file=False, database=self.database,
-                              hof_size=10, rockstars=rockstars)  # we will have one central json with all the parameters
+                              hof_size=10, rockstars=rockstars, function_provider=None) # TODO self.function_provider)  # we will have one central json with all the parameters
 
         # run experiments
         e.run_experiments(keep_record=True)
@@ -155,7 +156,7 @@ class DogeTrainer:
         )
 
     @staticmethod
-    def run_training(start_timestamp, end_timestamp, ticker):
+    def run_training(start_timestamp, end_timestamp, ticker, exchange="binance", horizon=12):
         """
         Instantiates a DogeTrainer and reruns training.
         :param start_timestamp:
@@ -165,7 +166,7 @@ class DogeTrainer:
         start_time = db_interface.get_nearest_db_timestamp(start_timestamp, ticker)
         end_time = db_interface.get_nearest_db_timestamp(end_timestamp, ticker)
 
-        trainer = DogeTrainer.build_cached_redis_trainer(start_time, end_time, ticker)
+        trainer = DogeTrainer.build_cached_redis_trainer(start_time, end_time, ticker, exchange, horizon)
 
         if start_time is None or end_time is None:
             logging.error(f'Unable to find close enough timestamp for {ticker},'
@@ -180,14 +181,23 @@ class DogeTrainer:
                               training_ticker=ticker)
 
     @staticmethod
-    def build_cached_redis_trainer(start_time, end_time, ticker):
+    def build_cached_redis_trainer(start_time, end_time, ticker, exchange, horizon):
         from apps.backtesting.data_sources import CachedRedis
+        from apps.genetic_algorithms.leaf_functions import CachedDataTAProvider
         transaction_currency, counter_currency = ticker.split('_')
+
         cached_redis = CachedRedis(start_time=start_time, end_time=end_time,
                                    transaction_currency=transaction_currency,
                                    counter_currency=counter_currency,
-                                   horizon=None)
-        return DogeTrainer(database=cached_redis)
+                                   horizon=horizon)
+        ta_provider = CachedDataTAProvider.build(start_time=start_time,
+                                                 end_time=end_time,
+                                                 ticker=f'{transaction_currency}_{counter_currency}',
+                                                 horizon=horizon,
+                                                 exchange=exchange,
+                                                 db_interface=cached_redis)
+
+        return DogeTrainer(database=cached_redis, function_provider=None)
 
 
 
@@ -213,7 +223,6 @@ class DogeTrader:
         self.doge, self.gp = ExperimentManager.resurrect_doge(experiment_json, self.doge_str, function_provider)
         self.strategy = GeneticTickerStrategy(tree=self.doge, gp_object=self.gp)
 
-    @time_performance
     def vote(self, ticker_data):
         """
         :param ticker_data: an instance of TickerData class, containing the ticker info and optionally OHLCV data and signals
@@ -441,9 +450,9 @@ class DogeSubscriber(SignalSubscriber):
 
             new_doge_storage.value = (sum(ticker_votes) * 100 / len(ticker_votes))  # normalize to +-100 scale
             new_doge_storage.save(publish=True)
-            logger.info('Doge vote saved')
+            logger.debug('Doge vote saved')
         except Exception as e:
-            logging.error(f'Unable to vote for {self.ticker} '
+            logging.debug(f'Unable to vote for {self.ticker} '
                           f'at {datetime_from_timestamp(self.timestamp)}')
 
 
