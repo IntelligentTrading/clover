@@ -23,7 +23,7 @@ class DogeHistorySimulator:
     def __init__(self, start_time, end_time, ticker, exchange, horizon,
                  training_period_length=DOGE_TRAINING_PERIOD_DURATION_SECONDS,
                  time_to_retrain_seconds=DOGE_RETRAINING_PERIOD_SECONDS,
-                 parallel=False):
+                 parallel=True):
         self._start_time = db_interface.get_nearest_db_timestamp(start_time, ticker, exchange)
         self._end_time = db_interface.get_nearest_db_timestamp(end_time, ticker, exchange)
         self._training_period_length = training_period_length
@@ -128,7 +128,7 @@ class DogeHistorySimulator:
 
         for i, row in enumerate(prices_df.itertuples()):
             if i % 100 == 0:
-                logging.info(f'Feeding {str(row)} ({i+1}/{len(prices_df)}) to doge (using committee '
+                logging.debug(f'Feeding {str(row)} ({i+1}/{len(prices_df)}) to doge (using committee '
                              f'valid from {datetime_from_timestamp(committee_valid_from)} '
                              f'to {datetime_from_timestamp(committee_valid_to)}...')
 
