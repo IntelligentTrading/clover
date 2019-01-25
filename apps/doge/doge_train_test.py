@@ -59,7 +59,7 @@ class DogeTrainer:
     A class that encapsulates GP training.
     """
 
-    def __init__(self, database, gp_training_config_json=None, function_provider=None):
+    def __init__(self, database, gp_training_config_json=None):
         """
 
         :param database: database from data_sources, either Redis or Postgres
@@ -72,7 +72,7 @@ class DogeTrainer:
             self.gp_training_config_json = gp_training_config_json
 
         self.database = database
-        self.function_provider = function_provider or RedisTAProvider(db_interface=database)
+        # self.function_provider = function_provider or RedisTAProvider(db_interface=database)
 
     def retrain_doges(self, start_timestamp, end_timestamp, max_doges_to_save=10, training_ticker='BTC_USDT'):
         """
@@ -98,7 +98,7 @@ class DogeTrainer:
 
         # create an experiment manager
         e = ExperimentManager(experiment_container=config_json, read_from_file=False, database=self.database,
-                              hof_size=10, rockstars=rockstars, function_provider=None) # TODO self.function_provider)  # we will have one central json with all the parameters
+                              hof_size=10, rockstars=rockstars)  # we will have one central json with all the parameters
 
         # run experiments
         e.run_experiments(keep_record=True)
@@ -190,14 +190,8 @@ class DogeTrainer:
                                    transaction_currency=transaction_currency,
                                    counter_currency=counter_currency,
                                    horizon=horizon)
-        ta_provider = CachedDataTAProvider.build(start_time=start_time,
-                                                 end_time=end_time,
-                                                 ticker=f'{transaction_currency}_{counter_currency}',
-                                                 horizon=horizon,
-                                                 exchange=exchange,
-                                                 db_interface=cached_redis)
 
-        return DogeTrainer(database=cached_redis, function_provider=None)
+        return DogeTrainer(database=cached_redis)
 
 
 
