@@ -4,10 +4,11 @@ from apps.backtesting.utils import datetime_from_timestamp
 from apps.backtesting.data_sources import db_interface
 from apps.genetic_algorithms.gp_artemis import ExperimentManager
 import json
-from apps.doge.doge_train_test import GP_TRAINING_CONFIG, DogeTrainer
+from apps.doge.doge_train_test import GP_TRAINING_CONFIG, DogeCommittee
 import time
 import pandas as pd
 import pickle
+from apps.doge.doge_TA_actors import CommitteeStorage
 
 def clean_redis():
     for key in database.keys('*Doge*'):
@@ -22,6 +23,15 @@ def view_keys(pattern):
 
 def get_key_values(key):
     return database.zrange(key, 0, -1)
+
+
+def load_committees_in_period(ticker, exchange, start_timestamp, end_timestamp):
+    key = f'{ticker}:{exchange}:CommitteeStorage'
+    timestamps = [CommitteeStorage.timestamp_from_score(score.decode('utf8').split(':')[-1]) for score in
+        database.zrangebyscore(key, min=CommitteeStorage.score_from_timestamp(start_timestamp),
+                               max=CommitteeStorage.score_from_timestamp(end_timestamp))]
+    committees = [DogeCommittee(committee_timestamp=timestamp) for timestamp in timestamps]
+    return committees
 
 
 class DogePerformanceTimer:
