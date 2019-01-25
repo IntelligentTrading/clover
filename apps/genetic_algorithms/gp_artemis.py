@@ -25,6 +25,7 @@ from functools import partial
 #from pathos.multiprocessing import ProcessingPool as Pool
 from apps.backtesting.utils import parallel_run
 from apps.genetic_algorithms.gp_utils import Period
+from apps.genetic_algorithms.leaf_functions import TAProviderCollection
 
 
 
@@ -52,10 +53,11 @@ class ExperimentManager:
 
 
     def __init__(self, experiment_container, read_from_file=True, database=db_interface, hof_size=10,
-                 function_provider=None, rockstars=[]):
+                 function_provider=None, rockstars=[], parallel_run=False):
         self.database = database
         self.hof_size = hof_size
         self.rockstars = rockstars
+        self._parallel_run = parallel_run
 
         if read_from_file:
             with open(experiment_container) as f:
@@ -142,27 +144,23 @@ class ExperimentManager:
 
         return variant.run(keep_record=keep_record, display_results=display_results, saved_figure_ext=saved_figure_ext)
 
-    @time_performance
-    def run_parallel_experiments(self, num_processes=8, rerun_existing=False, display_results=True):
-        #from pathos.multiprocessing import ProcessingPool as Pool
+    def run_experiments(self, rerun_existing=False, display_results=True, keep_record=True):
+        if self._parallel_run:
+            self.run_parallel_experiments(rerun_existing, display_results, keep_record)
+        else:
+            self.run_sequential_experiments(rerun_existing, display_results, keep_record)
 
-        partial_run_func = partial(ExperimentManager.run_variant, keep_record=True, display_results=display_results,
+    @time_performance
+    def run_parallel_experiments(self, rerun_existing=False, display_results=True, keep_record=True):
+        partial_run_func = partial(ExperimentManager.run_variant, keep_record=keep_record, display_results=display_results,
                            rerun_existing=rerun_existing, saved_figure_ext='.fig.png')
 
         records = parallel_run(partial_run_func, self.variants)
-        #with Pool(num_processes) as pool:
-        #    records = pool.map(partial_run_func, self.variants)
-        #    pool.close()
-        #    pool.join()
-        #    pool.terminate()
-
-        for record in records:
-            if record is not None: # empty records if experiments already exist
-                self._save_rockstars(record)
-
+        return records
 
     @time_performance
-    def run_experiments(self, rerun_existing=False, display_results=True, keep_record=True):
+    def run_sequential_experiments(self, rerun_existing=False, display_results=True, keep_record=True):
+        records = []
         for i, variant in enumerate(self.variants):
             if len(variant.get_records(only_completed=True)) > 0 and not rerun_existing:
                 logging.info(f">>> Variant {variant.name} already has completed records, skipping...")
@@ -170,6 +168,8 @@ class ExperimentManager:
 
             logging.info(f"Running variant {i}")
             record = variant.run(keep_record=keep_record, display_results=display_results, saved_figure_ext='.fig.png')
+            records.append(record)
+        return records
 
 
     def explore_records(self, use_validation_data=True):
