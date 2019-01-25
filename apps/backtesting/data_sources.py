@@ -418,6 +418,9 @@ class RedisDB(Database):
 
         # TODO add support for horizon
 
+        if end_time is None or start_time is None:
+            logging.error('Start or end time is set to None!')
+
         periods_range = (end_time - start_time) // (5*60)
 
         close_prices = PriceStorage.query(

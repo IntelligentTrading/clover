@@ -144,4 +144,11 @@ class CommitteeVoteStorage(IndicatorStorage):
     def vote(self):
         return self.value
 
+    def has_saved_value(self):
+        return len(self.query(
+            ticker=self.ticker, exchange=self.exchange,
+            timestamp=self.unix_timestamp,
+            periods_key=self.periods, key_suffix=self.key_suffix
+        )['values']) > 0
+
 
