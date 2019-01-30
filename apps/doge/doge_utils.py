@@ -25,6 +25,13 @@ def get_key_values(key):
     return database.zrange(key, 0, -1)
 
 
+def backtest(doge_trader, start_time, end_time, ticker, exchange, horizon=12):
+    from apps.genetic_algorithms.gp_data import Data
+    data = Data(start_time, end_time, ticker, horizon, start_cash=1000, start_crypto=0, source=exchange)
+    evaluation = doge_trader.gp.build_evaluation_object(doge_trader.doge, data)
+    return evaluation
+
+
 def load_committees_in_period(ticker, exchange, start_timestamp, end_timestamp):
     key = f'{ticker}:{exchange}:CommitteeStorage'
     timestamps = [CommitteeStorage.timestamp_from_score(score.decode('utf8').split(':')[-1]) for score in
@@ -32,6 +39,15 @@ def load_committees_in_period(ticker, exchange, start_timestamp, end_timestamp):
                                max=CommitteeStorage.score_from_timestamp(end_timestamp))]
     committees = [DogeCommittee(committee_timestamp=timestamp) for timestamp in timestamps]
     return committees
+
+def committees_report(ticker, exchange, start_timestamp, end_timestamp):
+    committees = load_committees_in_period(ticker='BTC_USDT', exchange='binance', start_timestamp=0,
+                                           end_timestamp=time.time())
+    for committee in committees:
+        for trader in committee.doge_traders:
+            evaluation = backtest(trader, end_time=time.time(), start_time=time.time() - 60 * 60 * 6, ticker='BTC_USDT',
+                                  exchange='binance')
+            evaluation.get_report()
 
 
 class DogePerformanceTimer:
