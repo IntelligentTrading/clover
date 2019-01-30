@@ -33,7 +33,8 @@ class TickerStorage(TimeseriesStorage):
             if self.ticker.find("_") <= 0:
                 raise TAException("ticker should be like BTC_USD")
             if self.exchange not in EXCHANGE_MARKETS:
-                logger.debug("----- UNKNOWN EXCHANGE! ARE YOU SURE? -----")
+                if "test" not in str(self.exchange):
+                    logger.debug("----- UNKNOWN EXCHANGE! ARE YOU SURE? -----")
 
 
     def get_db_key(self):
