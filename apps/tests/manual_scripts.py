@@ -32,6 +32,25 @@ def show_indicator_status(indicator_key='Willr', ticker='BTC_USDT', exchange='bi
         logger.info(f'For key {key}, last entry is at {datetime_from_timestamp(timestamp)} ({last_entry})')
 
 
+def duplicate_scores_test():
+    from apps.doge.doge_TA_actors import CommitteeVoteStorage
+    timestamp = 1548034200
+    score = CommitteeVoteStorage.score_from_timestamp(timestamp)
+    for i in range(10):
+        new_doge_storage = CommitteeVoteStorage(ticker='BTC_USDT',
+                                                exchange='binance',
+                                                timestamp=timestamp,
+                                                periods=12)
+        new_doge_storage.value = i
+        new_doge_storage.save()
+        logging.info(f'Saved an instance of committee vote storage with score {score}')
+    logging.info('Querying Redis...')
+    results = database.zrangebyscore('BTC_USDT:binance:CommitteeVoteStorage:12', score, score)
+    for result in results:
+        logging.info(f'     {result}')
+    logging.info(f'A total of {len(results)} entries with score {score} found in the database.')
+
+
 class RedisTests:
 
     @staticmethod
