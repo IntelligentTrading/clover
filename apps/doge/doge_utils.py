@@ -1,13 +1,14 @@
 from settings.redis_db import database
 from settings import logger
 from apps.backtesting.utils import datetime_from_timestamp
-from apps.backtesting.data_sources import db_interface
+from apps.backtesting.data_sources import db_interface, Data
 from apps.genetic_algorithms.gp_artemis import ExperimentManager
 import json
 from apps.doge.doge_train_test import GP_TRAINING_CONFIG, DogeCommittee
 import time
 import pandas as pd
 import pickle
+import logging
 from apps.doge.doge_TA_actors import CommitteeStorage
 
 def clean_redis():
@@ -26,7 +27,6 @@ def get_key_values(key):
 
 
 def backtest(doge_trader, start_time, end_time, ticker, exchange, horizon=12):
-    from apps.genetic_algorithms.gp_data import Data
     data = Data(start_time, end_time, ticker, horizon, start_cash=1000, start_crypto=0, source=exchange)
     evaluation = doge_trader.gp.build_evaluation_object(doge_trader.doge, data)
     return evaluation
@@ -38,16 +38,23 @@ def load_committees_in_period(ticker, exchange, start_timestamp, end_timestamp):
         database.zrangebyscore(key, min=CommitteeStorage.score_from_timestamp(start_timestamp),
                                max=CommitteeStorage.score_from_timestamp(end_timestamp))]
     committees = [DogeCommittee(committee_timestamp=timestamp) for timestamp in timestamps]
+    logging.info(f'Loaded {len(committees)} committees.')
     return committees
 
+
 def committees_report(ticker, exchange, start_timestamp, end_timestamp):
-    committees = load_committees_in_period(ticker='BTC_USDT', exchange='binance', start_timestamp=0,
-                                           end_timestamp=time.time())
+    end = db_interface.get_nearest_db_timestamp(end_timestamp, ticker, exchange)
+    start = db_interface.get_nearest_db_timestamp(start_timestamp, ticker, exchange)
+    committees = load_committees_in_period(ticker='BTC_USDT', exchange='binance',
+                                           start_timestamp=start, end_timestamp=end)
     for committee in committees:
         for trader in committee.doge_traders:
-            evaluation = backtest(trader, end_time=time.time(), start_time=time.time() - 60 * 60 * 6, ticker='BTC_USDT',
-                                  exchange='binance')
-            evaluation.get_report()
+            try:
+                evaluation = backtest(trader, end_time=end, start_time=start, ticker=ticker,
+                                      exchange=exchange)
+                evaluation.get_report()
+            except Exception as e:
+                logger.critical(e)
 
 
 class DogePerformanceTimer:

@@ -1,13 +1,22 @@
 from enum import Enum
 
+import numpy as np
+from dateutil import parser
+
 from apps.TA.storages.data.price import PriceStorage
 from apps.TA.storages.data.pv_history import PriceVolumeHistoryStorage
-from apps.backtesting.signals import Signal
+#from apps.backtesting.backtester_ticks import TickDrivenBacktester
+#from apps.backtesting.charting import time_series_chart
+#from apps.backtesting.signals import Signal
 from abc import ABC
+from apps.TA import PERIODS_1HR
 import pandas as pd
 import psycopg2
 import psycopg2.extras
 import logging
+
+#from apps.backtesting.tick_provider import PriceDataframeTickProvider
+from apps.backtesting.utils import time_performance
 
 
 class NoPriceDataException(Exception):
@@ -56,6 +65,7 @@ STORAGE_CLASS = {
     'bb_mid': bbands.BbandsStorage,
     'bb_low': bbands.BbandsStorage,
     'bb_squeeze': bbands_squeeze_180min.BbandsSqueeze180MinStorage,
+    'bb_width': bbands.BbandsStorage,
     'ht_trendline': ht_trendline.HtTrendlineStorage,
     'slowd': stoch.StochStorage,
     'willr': willr.WillrStorage
@@ -397,9 +407,27 @@ class PostgresDatabaseConnection(Database):
 
 
 class RedisDB(Database):
+    default_indicator_periods = {
+        'rsi': 14,
+        'bb_up': 5,
+        'bb_mid': 5,
+        'bb_low': 5,
+        'bb_squeeze': 1,
+        'macd_value': 26,
+        'macd_signal': 26,
+        'macd_hist': 26,
+        'adx': 1,
+        'slowd': 5,
+        'close_price': 1,
+    }
 
-    def __init__(self):
-        pass
+    def _default_indicator_period(self, indicator_name):
+        if indicator_name.startswith('sma') or indicator_name.startswith('ema'):
+            return int(indicator_name[3:])
+        else:
+            return self.default_indicator_periods.get(indicator_name, 1)
+
+
 
     def get_resampled_prices_in_range(self, start_time, end_time,
                                       transaction_currency, counter_currency, horizon,
@@ -534,7 +562,19 @@ class RedisDB(Database):
 
 
     def get_indicator(self, indicator_name, transaction_currency, counter_currency,
-                      timestamp, resample_period, source='binance', periods_range=None):
+                      timestamp, exchange='binance', horizon=PERIODS_1HR, periods_key=None, periods_range=None):
+
+        if periods_range is None:
+            ticker = f'{transaction_currency}_{counter_currency}'
+            cached = self.query_data_cache(ticker, exchange, horizon, timestamp, indicator_name)
+            if cached:
+                return cached
+            else:
+                logging.info(f'No cached value found for {indicator_name}')
+
+        if periods_key is None:
+            indicator_period = self._default_indicator_period(indicator_name)
+            periods_key = horizon * indicator_period
 
         # query Redis to get indicator value at timestamp (+- periods range)
         if indicator_name == 'close_price':
@@ -544,15 +584,15 @@ class RedisDB(Database):
 
         params = dict(
             ticker=f'{transaction_currency}_{counter_currency}',
-            exchange="binance",
+            exchange=exchange,
             timestamp=timestamp,
-            periods_key=resample_period, #//5 TODO
-            timestamp_tolerance=0
+            periods_key=periods_key,
+            timestamp_tolerance=0,
          )
-        if periods_range is not None:
-            params['periods_range'] = periods_range
 
         try:
+            if indicator_name.startswith('sma') or indicator_name.startswith('ema'):
+                indicator_name = indicator_name[:3]
             results = STORAGE_CLASS[indicator_name].query(**params)
 
             # do we want to get multiple values?
@@ -592,14 +632,33 @@ class RedisDB(Database):
             return float(result[1])
         return float(result[0])
 
-    def get_indicator_at_previous_timestamp(self, indicator_name, transaction_currency, counter_currency, timestamp, resample_period, source="binance"):
+    def get_indicator_at_previous_timestamp(self, indicator_name, transaction_currency, counter_currency,
+                      timestamp, exchange='binance', horizon=PERIODS_1HR, periods_key=None, periods_range=None):
         indicator_value = self.get_indicator(indicator_name, transaction_currency, counter_currency,
                            (timestamp - 5*60), # TODO check if this hardcoding is OK
-                           resample_period, source)
+                           exchange, horizon, periods_key, periods_range)
 
         if indicator_value is None:
             logging.debug(f"Indicator {indicator_name} not found at timestamp {timestamp} (previous)")
         return indicator_value
+
+
+    def build_data_object(self, start_time, end_time, ticker, horizon, start_cash, start_crypto, exchange):
+        data = Data(start_time, end_time, ticker, horizon, start_cash, start_crypto, exchange)
+        self.cached_data_objects.append(data)
+        logging.info('Built data object!')
+        return data
+
+    def query_data_cache(self, ticker, exchange, horizon, timestamp, indicator_name):
+        for data in self.cached_data_objects:
+            if data.applicable(ticker, exchange, horizon, timestamp):
+                logging.info('Returning value from cache...')
+                return data.get_indicator(indicator_name, timestamp)
+
+    def __init__(self):
+        self.cached_data_objects = []
+
+
 
 
 class CachedRedis(RedisDB):
@@ -647,3 +706,169 @@ class CachedRedis(RedisDB):
 db_interface = RedisDB()
 
 
+class Data:
+
+    def applicable(self, ticker, exchange, horizon, timestamp):
+        return ticker == self.ticker and exchange == self.exchange \
+               and horizon == self.horizon and self.start_time <= timestamp <= self.end_time
+
+    def _parse_time(self, time_input):
+        if isinstance(time_input, str):
+            time_object = parser.parse(time_input)
+            return time_object.timestamp()
+        return time_input
+
+    def __init__(self, start_time, end_time, ticker, horizon, start_cash, start_crypto, exchange, database=db_interface):
+        self.start_time = self._parse_time(start_time)
+        self.end_time = self._parse_time(end_time)
+        self.transaction_currency, self.counter_currency = ticker.split('_')
+        self.horizon = horizon
+        self.start_cash = start_cash
+        self.start_crypto = start_crypto
+        self.exchange = exchange
+        self.database = database
+        self.resample_period = self.horizon  # legacy compatibility
+        self.ticker = ticker
+        # self.horizon = PERIODS_1HR
+
+
+        self.price_data = self.database.get_resampled_prices_in_range\
+            (self.start_time, self.end_time, self.transaction_currency, self.counter_currency, horizon)
+
+        self.price_data = self.price_data[~self.price_data.index.duplicated(keep='first')]
+
+
+        # do some sanity checks with data
+        if not self.price_data.empty and self.price_data.iloc[0].name > self.start_time + 60*60*8:
+            raise Exception(f"The retrieved price data for {self.transaction_currency}-{self.counter_currency} starts "
+                            f"{(self.price_data.iloc[0].name - self.start_time)/60:.2f} minutes after "
+                            f"the set start time!")
+
+        if not self.price_data.empty and self.end_time - self.price_data.iloc[-1].name > 60*60*8:
+            raise Exception(f"The retrieved price data for {self.transaction_currency}-{self.counter_currency} ends "
+                            f"{(self.end_time - self.price_data.iloc[-1].name)/60:.2f} minutes before "
+                            f"the set end time! (end time = {self.end_time}, data end time = {self.price_data.iloc[-1].name}")
+
+        self._buy_and_hold_benchmark = None
+        self._compute_ta_indicators()
+
+
+    def _fill_indicator_values(self, indicator_name):
+        logging.info(f'Retrieving values for {indicator_name}')
+        timestamp = self.price_data.index.values[-1]
+
+        periods_range = len(self.price_data.index.values)  # we need this many values
+        indicator_values, timestamps = self.database.get_indicator(
+            indicator_name, self.transaction_currency, self.counter_currency,
+            timestamp,
+            periods_range=periods_range
+        )
+
+        if not indicator_values or not timestamps:
+            logging.warning(f'   -> unable to fill values for {indicator_name}, some computations will not work!')
+            return None
+
+        df = pd.DataFrame({'timestamp': timestamps, 'indicator': indicator_values})
+        df = df[~df.index.duplicated(keep='first')]
+        result = pd.merge(self.price_data, df, how='left', on=['timestamp'])
+        return np.array(result['indicator'])
+
+    def get_indicator(self, indicator_name, timestamp):
+        try:
+            return self.indicators[indicator_name][self.price_data.loc(timestamp)]
+        except:
+            return None
+
+    @time_performance
+    def _compute_ta_indicators(self):
+        """
+        prices = np.array(self.price_data.close_price, dtype=float)
+        high_prices = np.array(self.price_data.high_price, dtype=float)
+        low_prices = np.array(self.price_data.low_price, dtype=float)
+
+
+        volumes = np.array(self.price_data.close_volume, dtype=float)
+        if np.isnan(volumes).all():
+            logging.warning(f'Unable to load valid volume data for for {self.transaction_currency}-{self.counter_currency}.')
+            self.sma50_volume = volumes[TICKS_FOR_PRECOMPUTE:]
+        else:
+            self.sma50_volume = talib.SMA(volumes, timeperiod=50)[TICKS_FOR_PRECOMPUTE:]
+
+        self.close_volume = volumes[TICKS_FOR_PRECOMPUTE:]
+        """
+
+        supported_indicators = ['rsi', 'sma20', 'sma50', 'sma200', 'ema20','ema50', 'ema200',
+                                'bb_up', 'bb_mid', 'bb_low', 'bb_squeeze', 'macd', 'macd_signal',
+                                'macd_hist', 'adx', 'slowd',]
+
+        self.indicators = {}
+        for indicator_name in supported_indicators:
+            self.indicators[indicator_name] = self._fill_indicator_values(indicator_name)
+
+        self.close_price = self.price_data.as_matrix(columns=["close_price"])
+        self.timestamps = pd.to_datetime(self.price_data.index.values, unit='s')
+        assert len(self.close_price) == len(self.timestamps)
+
+    def __str__(self):
+        return self.to_string(self.transaction_currency, self.counter_currency, self.start_time, self.end_time)
+
+    @staticmethod
+    def to_string(transaction_currency, counter_currency, start_time, end_time):
+        return f"{transaction_currency}-{counter_currency}-{int(start_time)}-{int(end_time)}"
+
+    @time_performance
+    def _build_buy_and_hold_benchmark(self):
+        from apps.backtesting.backtester_ticks import TickDrivenBacktester
+        from apps.backtesting.tick_provider import PriceDataframeTickProvider
+        self._buy_and_hold_benchmark = TickDrivenBacktester.build_benchmark(
+            transaction_currency=self.transaction_currency,
+            counter_currency=self.counter_currency,
+            start_cash=self.start_cash,
+            start_crypto=self.start_crypto,
+            start_time=self.start_time,
+            end_time=self.end_time,
+            source=self.exchange,
+            tick_provider=PriceDataframeTickProvider(self.price_data,
+                                                     transaction_currency=self.transaction_currency,
+                                                     counter_currency=self.counter_currency,
+                                                     source=self.exchange,
+                                                     resample_period=self.resample_period,
+                                                     ),
+            database=self.database
+        )
+
+
+    @property
+    def buy_and_hold_benchmark(self):
+        if self._buy_and_hold_benchmark is None:
+            self._build_buy_and_hold_benchmark()   # lazily evaluate only when first invoked
+        return self._buy_and_hold_benchmark
+
+
+
+    def plot(self, orders=None, individual_str=None):
+        timestamps = self.price_data.index
+        data_primary_axis = {
+            "Close price" : self.price_data.close_price,
+            "SMA50": self.sma50,
+            "EMA50": self.ema50,
+            "SMA200": self.sma200,
+            "EMA200": self.ema200,
+
+        }
+
+        data_secondary_axis = {
+            "ADX": self.adx,
+            "MACD": self.macd,
+            "MACD signal": self.macd_signal,
+            "RSI": self.rsi
+        }
+
+        if individual_str is not None:
+            data_primary_axis = self._filter_fields(data_primary_axis, individual_str)
+            data_secondary_axis = self._filter_fields(data_secondary_axis, individual_str)
+
+
+
+        time_series_chart(timestamps, series_dict_primary=data_primary_axis, series_dict_secondary=data_secondary_axis,
+                          title=f"{self.transaction_currency} - {self.counter_currency}", orders=orders)

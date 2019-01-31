@@ -5,7 +5,7 @@
         "start_time": "{start_time}",
         "end_time": "{end_time}",
         "horizon": 12,
-        "source": "binance"
+        "exchange": "binance"
         }}
     ],
 
@@ -14,7 +14,7 @@
 
     "fitness_functions": ["ff_benchmarkdiff"],
     "grammar_version": "gv6",
-    "num_generations": 50,
+    "num_generations": 5,
 
     "mating_probabilities": [
         0.7
@@ -25,7 +25,7 @@
     ],
 
     "population_sizes": [
-        500
+        50
     ],
 
     "premade_individuals": [

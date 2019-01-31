@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import copy
 
-from apps.backtesting.data_sources import NoPriceDataException, Horizon
 from apps.backtesting.orders import OrderType
 from apps.backtesting.utils import get_distinct_signal_types, datetime_from_timestamp
 from apps.backtesting.config import transaction_cost_percents
