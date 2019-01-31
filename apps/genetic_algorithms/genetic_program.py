@@ -396,7 +396,7 @@ class GeneticProgram:
             tick_provider = PriceDataframeTickProvider(data.price_data,
                                                        transaction_currency=data.transaction_currency,
                                                        counter_currency=data.counter_currency,
-                                                       source=data.source,
+                                                       source=data.exchange,
                                                        resample_period=data.resample_period, )
 
             # create a new tick based backtester
@@ -405,7 +405,7 @@ class GeneticProgram:
                 strategy=strategy,
                 transaction_currency=data.transaction_currency,
                 counter_currency=data.counter_currency,
-                source=data.source,
+                source=data.exchange,
                 resample_period=data.resample_period,
                 start_cash=data.start_cash,
                 start_crypto=data.start_crypto,

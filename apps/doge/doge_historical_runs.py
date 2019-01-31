@@ -5,7 +5,7 @@ from apps.backtesting.utils import datetime_from_timestamp, parallel_run, time_p
 from apps.doge.doge_train_test import DogeTrainer, DogeCommittee, DogeSubscriber
 from settings import DOGE_TRAINING_PERIOD_DURATION_SECONDS, DOGE_RETRAINING_PERIOD_SECONDS
 from functools import partial
-from apps.genetic_algorithms.leaf_functions import CachedDataTAProvider
+from apps.genetic_algorithms.leaf_functions import TAProvider
 
 class DummyDogeSubscriber(DogeSubscriber):
 
@@ -76,12 +76,12 @@ class DogeHistorySimulator:
                                    transaction_currency=transaction_currency,
                                    counter_currency=counter_currency,
                                    horizon=None)
-        ta_provider = CachedDataTAProvider.build(start_time=training_start_time,
+        ta_provider = TAProvider()
+        cached_redis.build_data_object(start_time=training_start_time,
                                                  end_time=training_end_time,
                                                  ticker=f'{transaction_currency}_{counter_currency}',
                                                  horizon=horizon,
-                                                 exchange=exchange,
-                                                 db_interface=cached_redis)
+                                                 exchange=exchange)
 
         # check if a committee record already exists
         try:

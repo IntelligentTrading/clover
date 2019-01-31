@@ -3,13 +3,12 @@ import json
 import itertools
 import numpy as np
 import pandas as pd
-from apps.backtesting.data_sources import db_interface
+from apps.backtesting.data_sources import db_interface, Data
 from apps.backtesting.utils import datetime_to_timestamp
 
 from artemis.experiments import experiment_root
 from artemis.experiments.experiments import clear_all_experiments
 from collections import OrderedDict
-from apps.genetic_algorithms.gp_data import Data
 from apps.genetic_algorithms.genetic_program import GeneticProgram, FitnessFunction
 from apps.genetic_algorithms.leaf_functions import TAProviderCollection
 from apps.genetic_algorithms.grammar import Grammar
@@ -73,9 +72,13 @@ class ExperimentManager:
         # if function provider is set to none, using cached data
         if function_provider is None:
             # initialize data
-            self.training_data = [Data(start_cash=self.START_CASH, start_crypto=self.START_CRYPTO, database=self.database,
-                                      **dataset) for dataset in self.experiment_json["training_data"]]
-            self.validation_data = [Data(start_cash=self.START_CASH, start_crypto=self.START_CRYPTO, database=self.database,
+
+            self.training_data = [
+                db_interface.build_data_object(start_cash=self.START_CASH, start_crypto=self.START_CRYPTO,
+                                      **dataset) for dataset in self.experiment_json["training_data"]
+            ]
+
+            self.validation_data = [Data(start_cash=self.START_CASH, start_crypto=self.START_CRYPTO,
                                       **dataset) for dataset in self.experiment_json["validation_data"]]
             # create function provider objects based on data
             self.function_provider = TAProviderCollection(self.training_data + self.validation_data)
