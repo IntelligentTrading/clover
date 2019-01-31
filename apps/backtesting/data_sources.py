@@ -68,7 +68,8 @@ STORAGE_CLASS = {
     'bb_width': bbands.BbandsStorage,
     'ht_trendline': ht_trendline.HtTrendlineStorage,
     'slowd': stoch.StochStorage,
-    'willr': willr.WillrStorage
+    'willr': willr.WillrStorage,
+    'close_price': PriceStorage,
 }
 
 
@@ -502,6 +503,7 @@ class RedisDB(Database):
 
 
     def get_price(self, transaction_currency, timestamp, source="binance", counter_currency="BTC", normalize=False):
+        return self.get_indicator('close_price', transaction_currency, counter_currency, timestamp, source)[0]
 
         prices = PriceStorage.query(
             ticker=f'{transaction_currency}_{counter_currency}',
@@ -570,17 +572,18 @@ class RedisDB(Database):
             if cached is not None:
                 return cached
             else:
-                logging.info(f'No cached value found for {indicator_name}')
+                logging.debug(f'No cached value found for {indicator_name} at {timestamp}')
 
         if periods_key is None:
             indicator_period = self._default_indicator_period(indicator_name)
             periods_key = horizon * indicator_period
 
         # query Redis to get indicator value at timestamp (+- periods range)
-        if indicator_name == 'close_price':
-            return self.get_price(transaction_currency=transaction_currency,
-                                  counter_currency=counter_currency,
-                                  timestamp=timestamp)
+        # if indicator_name == 'close_price':
+        #    return self.get_price(transaction_currenc
+        #    y=transaction_currency,
+        #                          counter_currency=counter_currency,
+        #                          timestamp=timestamp)
 
         params = dict(
             ticker=f'{transaction_currency}_{counter_currency}',
@@ -591,14 +594,20 @@ class RedisDB(Database):
          )
 
         try:
+            print(f'Going to Redis for indicator {indicator_name} at {timestamp}...')
             if indicator_name.startswith('sma') or indicator_name.startswith('ema'):
                 indicator_name = indicator_name[:3]
+            if STORAGE_CLASS[indicator_name] == PriceStorage:
+                del params['periods_key']
             results = STORAGE_CLASS[indicator_name].query(**params)
 
             # do we want to get multiple values?
             if periods_range is None:
                 if len(results['values']):
-                    return self._extract_indicator_value(indicator_name, results['values'][-1])
+                    value = self._extract_indicator_value(indicator_name, results['values'][-1])
+                    self.indicator_cache.add_indicator(indicator_name, ticker,
+                      timestamp, value, exchange, horizon=PERIODS_1HR)
+                    return value
             else:
                 # periods_range is not None, we are returning an array of values
                 if len(results['values']):
@@ -645,18 +654,51 @@ class RedisDB(Database):
 
     def build_data_object(self, start_time, end_time, ticker, horizon, start_cash, start_crypto, exchange):
         data = Data(start_time, end_time, ticker, horizon, start_cash, start_crypto, exchange)
+        data.btc_usdt_price_df = self.get_resampled_prices_in_range(data.start_time, data.end_time, 'BTC', 'USDT', horizon,
+                                                                    exchange)
         self.cached_data_objects.append(data)
         logging.info('Built data object!')
         return data
 
     def query_data_cache(self, ticker, exchange, horizon, timestamp, indicator_name):
+        # first try to find it in data
         for data in self.cached_data_objects:
             if data.applicable(ticker, exchange, horizon, timestamp):
                 logging.info('Returning value from cache...')
                 return data.get_indicator(indicator_name, timestamp)
+            if ticker == 'BTC_USDT' and data.start_time <= timestamp <= data.end_time:
+                return data.btc_usdt_price_df.loc[timestamp].close_price
+
+        # if not, maybe it's in the indicator cache?
+        return self.indicator_cache.find_indicator(indicator_name, ticker, timestamp, exchange, horizon)
+
 
     def __init__(self):
+        from collections import OrderedDict
         self.cached_data_objects = []
+        self.indicator_cache = IndicatorCache()
+
+
+
+class IndicatorCache:
+    def __init__(self, max_size=20):
+        from collections import OrderedDict
+        self.cache = OrderedDict()
+        self.max_size = max_size
+
+    def find_indicator(self, indicator_name, ticker,
+                      timestamp, exchange='binance', horizon=PERIODS_1HR ):
+        key = (indicator_name, ticker, timestamp, exchange, horizon)
+        return self.cache.get(key, None)
+
+    def add_indicator(self, indicator_name, ticker,
+                      timestamp, value, exchange='binance', horizon=PERIODS_1HR ):
+        key = (indicator_name, ticker, timestamp, exchange, horizon)
+        if len(self.cache.keys()) > self.max_size:
+            del self.cache[self.cache.keys()[0]]
+        self.cache[key] = value
+
+
 
 
 
