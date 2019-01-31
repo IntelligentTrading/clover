@@ -166,7 +166,8 @@ class DogeTrainer:
         start_time = db_interface.get_nearest_db_timestamp(start_timestamp, ticker)
         end_time = db_interface.get_nearest_db_timestamp(end_timestamp, ticker)
 
-        trainer = DogeTrainer.build_cached_redis_trainer(start_time, end_time, ticker, exchange, horizon)
+        # trainer = DogeTrainer.build_cached_redis_trainer(start_time, end_time, ticker, exchange, horizon)
+        trainer = DogeTrainer(database=db_interface)
 
         if start_time is None or end_time is None:
             logging.error(f'Unable to find close enough timestamp for {ticker},'

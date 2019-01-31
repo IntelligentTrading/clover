@@ -487,8 +487,17 @@ class RedisDB(Database):
 
         df = pd.DataFrame(data, columns=['timestamp', 'close_price', 'high_price', 'low_price', 'close_volume', 'score'])
         df = df.set_index('timestamp')
-
+        df = self._remove_duplicate_indexes(df, 'price data')
         return df
+
+    def _remove_duplicate_indexes(self, df, data_description=''):
+        df_len = len(df)
+        cleaned = df[~df.index.duplicated(keep='first')]
+        if (len(cleaned) != df_len):
+            logging.critical(f'Encountered duplicate values in {data_description} data, {df_len} '
+                             f'values loaded, {len(cleaned)} remain after removal.')
+
+        return cleaned
 
 
     def get_nearest_resampled_price(self, timestamp, transaction_currency, counter_currency, resample_period, source, normalize=False):
@@ -504,15 +513,6 @@ class RedisDB(Database):
 
     def get_price(self, transaction_currency, timestamp, source="binance", counter_currency="BTC", normalize=False):
         return self.get_indicator('close_price', transaction_currency, counter_currency, timestamp, source)[0]
-
-        prices = PriceStorage.query(
-            ticker=f'{transaction_currency}_{counter_currency}',
-            exchange=source,
-            index="close_price",
-            timestamp=timestamp,
-            timestamp_tolerance=0
-        )['values']
-        return float(prices[-1]) if len(prices) else None
 
 
     def get_latest_price(self, transaction_currency, counter_currency="BTC", normalize=False):
@@ -698,51 +698,6 @@ class IndicatorCache:
         if len(self.cache.keys()) > self.max_size:
             del self.cache[self.cache.keys()[0]]
         self.cache[key] = value
-
-
-
-
-
-
-class CachedRedis(RedisDB):
-
-    def _remove_duplicate_indexes(self, df, data_description=''):
-        df_len = len(df)
-        cleaned = df[~df.index.duplicated(keep='first')]
-        if (len(cleaned) != df_len):
-            logging.critical(f'Encountered duplicate values in {data_description} data, {df_len} '
-                             f'values loaded, {len(cleaned)} remain after removal.')
-
-        return cleaned
-
-
-    def __init__(self, start_time, end_time, transaction_currency, counter_currency, horizon, source="binance",
-                 normalize=False):
-        self.transaction_currency = transaction_currency
-        self.counter_currency = counter_currency
-
-        self.price_df = self.get_resampled_prices_in_range(start_time, end_time, transaction_currency,
-                                                           counter_currency, horizon, source)
-        self.price_df = self._remove_duplicate_indexes(self.price_df,
-                                                       f'price ticker {transaction_currency}_{counter_currency}')
-
-        self.btc_usdt_price_df = self.get_resampled_prices_in_range(start_time, end_time, 'BTC', 'USDT', horizon, source)
-        self.btc_usdt_price_df = self._remove_duplicate_indexes(self.btc_usdt_price_df, 'BTC_USDT price data')
-        self.hits = 0
-
-    def get_price(self, transaction_currency, timestamp, source="binance", counter_currency="BTC", normalize=False):
-        if transaction_currency == self.transaction_currency and counter_currency == self.counter_currency:
-            logging.debug(f'Total hits: {self.hits}')
-            self.hits += 1
-            return self.price_df.loc[timestamp].close_price
-        elif transaction_currency == 'BTC' and counter_currency == 'USDT':
-            logging.debug(f'Total hits: {self.hits}')
-            self.hits += 1
-            return self.btc_usdt_price_df.loc[timestamp].close_price
-        else:
-            logging.warning('No cached price data! Querying Redis...')
-            return super().get_price(transaction_currency, timestamp, source="binance", counter_currency="BTC",
-                                     normalize=False)
 
 
 #postgres_db = PostgresDatabaseConnection()

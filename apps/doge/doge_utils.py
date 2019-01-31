@@ -65,18 +65,9 @@ class DogePerformanceTimer:
         self.run_variants_in_parallel = run_variants_in_parallel
         self.time_doge_performance()
 
-    def _build_experiment_manager(self, use_cached_redis, **params):
+    def _build_experiment_manager(self, **params):
 
-        if use_cached_redis:
-            transaction_currency, counter_currency = params['ticker'].split('_')
-
-            from apps.backtesting.data_sources import CachedRedis
-            cached_redis = CachedRedis(start_time=params['start_time'], end_time=params['end_time'],
-                                       transaction_currency=transaction_currency, counter_currency=counter_currency,
-                                       horizon=None)
-            database = cached_redis
-        else:
-            database = db_interface
+        database = db_interface
 
         gp_training_config_json = self.gp_training_config_json.format(
             ticker=params['ticker'],
