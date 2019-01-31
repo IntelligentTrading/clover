@@ -567,7 +567,7 @@ class RedisDB(Database):
         if periods_range is None:
             ticker = f'{transaction_currency}_{counter_currency}'
             cached = self.query_data_cache(ticker, exchange, horizon, timestamp, indicator_name)
-            if cached:
+            if cached is not None:
                 return cached
             else:
                 logging.info(f'No cached value found for {indicator_name}')
@@ -775,7 +775,7 @@ class Data:
 
     def get_indicator(self, indicator_name, timestamp):
         try:
-            return self.indicators[indicator_name][self.price_data.loc(timestamp)]
+            return self.indicators[indicator_name][self.price_data.index.get_loc(timestamp)]
         except:
             return None
 
@@ -806,6 +806,7 @@ class Data:
             self.indicators[indicator_name] = self._fill_indicator_values(indicator_name)
 
         self.close_price = self.price_data.as_matrix(columns=["close_price"])
+        self.indicators['close_price'] = self.close_price
         self.timestamps = pd.to_datetime(self.price_data.index.values, unit='s')
         assert len(self.close_price) == len(self.timestamps)
 
