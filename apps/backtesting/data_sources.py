@@ -566,8 +566,8 @@ class RedisDB(Database):
     def get_indicator(self, indicator_name, transaction_currency, counter_currency,
                       timestamp, exchange='binance', horizon=PERIODS_1HR, periods_key=None, periods_range=None):
 
+        ticker = f'{transaction_currency}_{counter_currency}'
         if periods_range is None:
-            ticker = f'{transaction_currency}_{counter_currency}'
             cached = self.query_data_cache(ticker, exchange, horizon, timestamp, indicator_name)
             if cached is not None:
                 return cached
@@ -594,7 +594,7 @@ class RedisDB(Database):
          )
 
         try:
-            print(f'Going to Redis for indicator {indicator_name} at {timestamp}...')
+            print(f'Going to Redis for indicator {indicator_name} for {ticker} at {timestamp}...')
             if indicator_name.startswith('sma') or indicator_name.startswith('ema'):
                 indicator_name = indicator_name[:3]
             if STORAGE_CLASS[indicator_name] == PriceStorage:
@@ -653,6 +653,7 @@ class RedisDB(Database):
 
 
     def build_data_object(self, start_time, end_time, ticker, horizon, start_cash, start_crypto, exchange):
+        print(f' !!!!!!!!!!!!!! BUILT A DATA OBJECT FOR {ticker}')
         data = Data(start_time, end_time, ticker, horizon, start_cash, start_crypto, exchange)
         data.btc_usdt_price_df = self.get_resampled_prices_in_range(data.start_time, data.end_time, 'BTC', 'USDT', horizon,
                                                                     exchange)
@@ -808,7 +809,7 @@ class Data:
 
         if not indicator_values or not timestamps:
             logging.warning(f'   -> unable to fill values for {indicator_name}, some computations will not work!')
-            return None
+            return [np.nan] * len(self.price_data)  # TODO: verify that this is OK
 
         df = pd.DataFrame({'timestamp': timestamps, 'indicator': indicator_values})
         df = df[~df.index.duplicated(keep='first')]
@@ -818,7 +819,8 @@ class Data:
     def get_indicator(self, indicator_name, timestamp):
         try:
             return self.indicators[indicator_name][self.price_data.index.get_loc(timestamp)]
-        except:
+        except Exception as e:
+            logging.error(e)
             return None
 
     @time_performance

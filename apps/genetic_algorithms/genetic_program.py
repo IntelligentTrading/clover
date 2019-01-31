@@ -58,7 +58,13 @@ class GeneticTickerStrategy(TickerStrategy):
 
     def get_decision(self, ticker_data):
 
-        outcome = self.func([ticker_data.timestamp, ticker_data.transaction_currency, ticker_data.counter_currency])
+
+        try:
+            outcome = self.func([ticker_data.timestamp, ticker_data.transaction_currency, ticker_data.counter_currency])
+        except:
+            outcome = self.gp_object.function_provider.ignore
+            logging.error(f'Unable to form decision for {ticker_data.transaction_currency}'
+                          f'_{ticker_data.counter_currency} at {ticker_data.timestamp}')
 
         decision = None
         if outcome == self.gp_object.function_provider.buy:
