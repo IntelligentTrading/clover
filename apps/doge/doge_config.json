@@ -12,16 +12,16 @@
     "validation_data": [
      ],
 
-    "fitness_functions": ["ff_benchmarkdiff"],
+    "fitness_functions": ["ff_benchmarkdiffabs"],
     "grammar_version": "gv6",
     "num_generations": 5,
 
     "mating_probabilities": [
-        0.7
+        0.9
     ],
 
     "mutation_probabilities": [
-        0.5, 0.8
+        0.8, 1.0
     ],
 
     "population_sizes": [

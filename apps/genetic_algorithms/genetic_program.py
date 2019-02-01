@@ -190,6 +190,12 @@ class BenchmarkDiffFitness(FitnessFunction):
     def compute(self, individual, evaluation, genetic_program):
         return evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent,
 
+class BenchmarkDiffAbsFitness(FitnessFunction):
+    _name = "ff_benchmarkdiffabs"
+
+    def compute(self, individual, evaluation, genetic_program):
+        return (evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent) * abs(evaluation.profit_percent),
+
 
 class BenchmarkDiffTrades(FitnessFunction):
     _name = "ff_benchmarkdiff_trades"
