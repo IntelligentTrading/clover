@@ -18,7 +18,7 @@ from apps.backtesting.config import INF_CASH, INF_CRYPTO
 from apps.backtesting.comparative_evaluation import ComparativeEvaluation, ComparativeReportBuilder
 #from data_sources import get_currencies_trading_against_counter
 from apps.backtesting.backtesting_runs import build_itf_baseline_strategies
-from apps.backtesting.data_sources import NoPriceDataException
+from apps.backtesting.legacy_postgres import NoPriceDataException
 from apps.backtesting.utils import time_performance
 from functools import partial
 #from pathos.multiprocessing import ProcessingPool as Pool
