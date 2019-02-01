@@ -26,8 +26,7 @@ def get_key_values(key):
     return database.zrange(key, 0, -1)
 
 
-def backtest(doge_trader, start_time, end_time, ticker, exchange, horizon=12):
-    data = Data(start_time, end_time, ticker, horizon, start_cash=1000, start_crypto=0, source=exchange)
+def backtest(data, doge_trader):
     evaluation = doge_trader.gp.build_evaluation_object(doge_trader.doge, data)
     return evaluation
 
@@ -47,12 +46,13 @@ def committees_report(ticker, exchange, start_timestamp, end_timestamp):
     start = db_interface.get_nearest_db_timestamp(start_timestamp, ticker, exchange)
     committees = load_committees_in_period(ticker='BTC_USDT', exchange='binance',
                                            start_timestamp=start, end_timestamp=end)
+
+    data = db_interface.build_data_object(start, end, ticker, exchange=exchange)
     for committee in committees:
         for trader in committee.doge_traders:
             try:
-                evaluation = backtest(trader, end_time=end, start_time=start, ticker=ticker,
-                                      exchange=exchange)
-                evaluation.get_report()
+                evaluation = backtest(data, trader)
+                print(evaluation.get_report())
             except Exception as e:
                 logger.critical(e)
 
