@@ -3,7 +3,7 @@ import pandas as pd
 import psycopg2
 
 from enum import Enum
-from apps.backtesting.data_sources import Database, db_interface
+from apps.backtesting.data_sources import Database, DB_INTERFACE
 
 class CounterCurrency(Enum):
     BTC = 0
@@ -155,7 +155,7 @@ class PostgresDatabaseConnection(Database):
             params = tuple(params)
         query += ' ORDER BY timestamp'
         if return_df:
-            connection = db_interface.get_connection()
+            connection = DB_INTERFACE.get_connection()
             signals_df = pd.read_sql(query, con=connection, params=params, index_col="timestamp")
             signals_df['counter_currency'] = [CounterCurrency(counter_currency).name
                                               for counter_currency in signals_df.counter_currency]

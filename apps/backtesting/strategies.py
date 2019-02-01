@@ -121,7 +121,7 @@ class SignalStrategy(Strategy):
 
     def evaluate(self, transaction_currency, counter_currency, start_cash, start_crypto, start_time, end_time,
                  source, resample_period, evaluate_profit_on_last_order=False, verbose=True, time_delay=0,
-                 order_generator=None, database=db_interface):
+                 order_generator=None, database=DB_INTERFACE):
         """
         Builds a signal-based backtester using this strategy.
         See full documentation in SignalDrivenBacktester.
@@ -439,7 +439,7 @@ class RandomTradingStrategy(SimpleTrendBasedStrategy):
 
     def build_signals(self):
         num_signals = random.randint(1, self.max_num_signals)
-        prices = db_interface.get_prices_in_range(self.start_time, self.end_time, self.transaction_currency, self.counter_currency,
+        prices = DB_INTERFACE.get_prices_in_range(self.start_time, self.end_time, self.transaction_currency, self.counter_currency,
                                                   self.source)
         selected_prices = prices.sample(num_signals)
         selected_prices = selected_prices.sort_index()
