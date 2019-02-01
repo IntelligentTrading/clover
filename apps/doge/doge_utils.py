@@ -25,7 +25,9 @@ def view_keys(pattern):
 def get_key_values(key):
     return database.zrange(key, 0, -1)
 
+from apps.backtesting.utils import  time_performance
 
+@time_performance
 def backtest(data, doge_trader):
     evaluation = doge_trader.gp.build_evaluation_object(doge_trader.doge, data)
     return evaluation
@@ -42,6 +44,7 @@ def load_committees_in_period(ticker, exchange, start_timestamp, end_timestamp):
 
 
 def committees_report(ticker, exchange, start_timestamp, end_timestamp):
+    from apps.backtesting.utils import in_notebook
     end = db_interface.get_nearest_db_timestamp(end_timestamp, ticker, exchange)
     start = db_interface.get_nearest_db_timestamp(start_timestamp, ticker, exchange)
     committees = load_committees_in_period(ticker='BTC_USDT', exchange='binance',
@@ -53,6 +56,10 @@ def committees_report(ticker, exchange, start_timestamp, end_timestamp):
             try:
                 evaluation = backtest(data, trader)
                 print(evaluation.get_report())
+                if in_notebook():
+                    from apps.genetic_algorithms.chart_plotter import get_dot_graph
+                    from IPython.display import display
+                    display(get_dot_graph(trader.doge))
             except Exception as e:
                 logger.critical(e)
 
