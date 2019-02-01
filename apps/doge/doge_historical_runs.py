@@ -71,12 +71,12 @@ class DogeHistorySimulator:
                      f'from {datetime_from_timestamp(training_start_time)} '
                      f'to {datetime_from_timestamp(training_end_time)}')
         transaction_currency, counter_currency = ticker.split('_')
-        ta_provider = TAProvider()
+        ta_provider = TAProvider(db_interface=db_interface)
         db_interface.build_data_object(start_time=training_start_time,
-                                                 end_time=training_end_time,
-                                                 ticker=f'{transaction_currency}_{counter_currency}',
-                                                 horizon=horizon,
-                                                 exchange=exchange)
+                                       end_time=training_end_time,
+                                       ticker=f'{transaction_currency}_{counter_currency}',
+                                       horizon=horizon,
+                                       exchange=exchange)
 
         # check if a committee record already exists
         try:
@@ -86,7 +86,7 @@ class DogeHistorySimulator:
         except:
             # no committee, we need to rerun training
             logging.info(f'No committee found, running training for timestamp {training_end_time}...')
-            karen = DogeTrainer(database=db_interface) # see Karen Pryor; TODO: ensure cached TA values are used
+            karen = DogeTrainer(database=db_interface)  # see Karen Pryor; TODO: ensure cached TA values are used
 
             karen.retrain_doges(start_timestamp=training_start_time, end_timestamp=training_end_time,
                                 training_ticker=ticker)

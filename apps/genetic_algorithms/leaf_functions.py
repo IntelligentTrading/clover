@@ -33,7 +33,7 @@ DataKey = namedtuple('DataKey', 'source resample_period transaction_currency cou
 
 class TAProvider(FunctionProvider):
 
-    def __init__(self, db_interface, exchange, resample_period):
+    def __init__(self, db_interface, exchange='binance', resample_period=PERIODS_1HR):
         self._db_interface = db_interface
         self._exchange = exchange
         self._resample_period = resample_period  # TODO horizon, resample period and all that
