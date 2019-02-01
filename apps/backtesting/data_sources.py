@@ -40,7 +40,8 @@ STORAGE_CLASS = {
 
 MAX_CACHED_INDICATORS = 20
 MAXED_CACHED_DATA_OBJECTS = 20
-
+START_CASH = 1000
+START_CRYPTO = 0
 
 class IndicatorCache:
     """
@@ -164,7 +165,7 @@ class RedisDB(Database):
             return int(indicator_name[3:])
         else:
             return self.DEFAULT_INDICATOR_PERIODS.get(indicator_name, 1)
-        
+
     def _remove_duplicate_indexes(self, df, data_description=''):
         df_len = len(df)
         cleaned = df[~df.index.duplicated(keep='first')]
@@ -278,8 +279,6 @@ class RedisDB(Database):
 
         return PriceStorage.timestamp_from_score(results['scores'][-1])
 
-    from functools import lru_cache
-
 
     def get_indicator(self, indicator_name, transaction_currency, counter_currency,
                       timestamp, exchange='binance', horizon=PERIODS_1HR, periods_key=None, periods_range=None):
@@ -377,7 +376,8 @@ class RedisDB(Database):
         return indicator_value
 
 
-    def build_data_object(self, start_time, end_time, ticker, horizon, start_cash, start_crypto, exchange):
+    def build_data_object(self, start_time, end_time, ticker, horizon,
+                          start_cash=START_CASH, start_crypto=START_CRYPTO, exchange='binance'):
         """
         Use this to build Data objects for training GP. This way the built objects will be cached and the retrieved
         values will be used whenever possible instead of going to Redis.
