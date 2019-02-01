@@ -134,6 +134,7 @@ class DogeTrainer:
         new_committee_storage.value = committee_str
         new_committee_storage.save(publish=True)
         logging.info('>>>>>>> GPs saved to database.')
+        return e
 
     def _save_doges(self, redis_entries):
         for i, redis_entry in enumerate(redis_entries):
@@ -178,22 +179,8 @@ class DogeTrainer:
             show_indicator_status(indicator_key='PriceStorage', ticker=ticker)
             return
 
-        trainer.retrain_doges(start_timestamp=start_time, end_timestamp=end_time, max_doges_to_save=10,
+        return trainer.retrain_doges(start_timestamp=start_time, end_timestamp=end_time, max_doges_to_save=10,
                               training_ticker=ticker)
-
-    @staticmethod
-    def build_cached_redis_trainer(start_time, end_time, ticker, exchange, horizon):
-        from apps.backtesting.data_sources import CachedRedis
-        from apps.genetic_algorithms.leaf_functions import CachedDataTAProvider
-        transaction_currency, counter_currency = ticker.split('_')
-
-        cached_redis = CachedRedis(start_time=start_time, end_time=end_time,
-                                   transaction_currency=transaction_currency,
-                                   counter_currency=counter_currency,
-                                   horizon=horizon)
-
-        return DogeTrainer(database=cached_redis)
-
 
 
 class DogeTrader:

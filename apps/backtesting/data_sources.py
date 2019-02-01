@@ -563,31 +563,44 @@ class Data:
             self._build_buy_and_hold_benchmark()   # lazily evaluate only when first invoked
         return self._buy_and_hold_benchmark
 
+    def get_all_indicator_values(self, indicator_name):
+        return self.indicators[indicator_name]
+
+
+    def _filter_fields(self, fields, individual_str):
+        filtered_dict = {}
+        for field in fields:
+            if not field.lower() in individual_str and field != "Close price" and field != "MACD signal":
+                continue
+            if field == "MACD signal" and "macd" not in individual_str:
+                continue
+            filtered_dict[field] = fields[field]
+        return filtered_dict
 
 
     def plot(self, orders=None, individual_str=None):
         timestamps = self.price_data.index
         data_primary_axis = {
             "Close price" : self.price_data.close_price,
-            "SMA50": self.sma50,
-            "EMA50": self.ema50,
-            "SMA200": self.sma200,
-            "EMA200": self.ema200,
+            "SMA50": self.get_all_indicator_values('sma50'),
+            "EMA50": self.get_all_indicator_values('ema50'),
+            "SMA200": self.get_all_indicator_values('sma200'),
+            "EMA200": self.get_all_indicator_values('ema200'),
 
         }
 
         data_secondary_axis = {
-            "ADX": self.adx,
-            "MACD": self.macd,
-            "MACD signal": self.macd_signal,
-            "RSI": self.rsi
+            "ADX": self.get_all_indicator_values('adx'),
+            "MACD": self.get_all_indicator_values('macd'),
+            "MACD signal": self.get_all_indicator_values('macd_signal'),
+            "RSI": self.get_all_indicator_values('rsi')
         }
 
         if individual_str is not None:
             data_primary_axis = self._filter_fields(data_primary_axis, individual_str)
             data_secondary_axis = self._filter_fields(data_secondary_axis, individual_str)
 
-
+        from apps.backtesting.charting import time_series_chart
 
         time_series_chart(timestamps, series_dict_primary=data_primary_axis, series_dict_secondary=data_secondary_axis,
                           title=f"{self.transaction_currency} - {self.counter_currency}", orders=orders)
