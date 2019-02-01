@@ -1,4 +1,6 @@
 import random
+
+from apps.backtesting.legacy_postgres import Horizon
 from apps.backtesting.orders import *
 from apps.backtesting.data_sources import *
 from apps.backtesting.signals import *

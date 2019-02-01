@@ -47,7 +47,7 @@ class PriceDataframeTickProvider(TickProvider):
                 high_price=None, #row.high_price,
                 low_price=None, #row.low_price,
                 close_price=row.close_price,
-                close_volume=row.close_volume,
+                close_volume=None,
                 signals=[],
             )
 

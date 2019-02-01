@@ -6,7 +6,8 @@ import math
 from deap import creator, tools, base
 from deap.gp import PrimitiveTree
 from apps.backtesting.signals import Signal
-from apps.backtesting.strategies import SignalStrategy, Strength, TickerStrategy, StrategyDecision
+from apps.backtesting.strategies import SignalStrategy, TickerStrategy, StrategyDecision
+from apps.backtesting.legacy_postgres import Strength
 from apps.genetic_algorithms.chart_plotter import *
 from apps.genetic_algorithms.custom_deap_algorithms import combined_mutation, eaSimpleCustom, harm
 from apps.backtesting.backtester_ticks import TickDrivenBacktester
