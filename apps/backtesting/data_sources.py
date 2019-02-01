@@ -293,10 +293,12 @@ class RedisDB(Database):
             else:
                 logging.debug(f'No cached value found for {indicator_name} at {timestamp}')
 
+
         # build the periods key
         if periods_key is None:
             indicator_period = self._default_indicator_period(indicator_name)
             periods_key = horizon * indicator_period
+
 
         # we don't have the indicator cached, we'll go to Redis
         params = dict(
@@ -306,6 +308,9 @@ class RedisDB(Database):
             periods_key=periods_key,
             timestamp_tolerance=0,
          )
+
+        if periods_range is not None:
+            params['periods_range'] = periods_range
 
         try:
             logging.info(f'Going to Redis for indicator {indicator_name} for {ticker} at {timestamp}...')
@@ -376,7 +381,7 @@ class RedisDB(Database):
         return indicator_value
 
 
-    def build_data_object(self, start_time, end_time, ticker, horizon,
+    def build_data_object(self, start_time, end_time, ticker, horizon=PERIODS_1HR,
                           start_cash=START_CASH, start_crypto=START_CRYPTO, exchange='binance'):
         """
         Use this to build Data objects for training GP. This way the built objects will be cached and the retrieved
@@ -485,9 +490,11 @@ class Data:
 
     def get_indicator(self, indicator_name, timestamp):
         try:
-            return self.indicators[indicator_name][self.price_data.index.get_loc(timestamp)]
+            value = self.indicators[indicator_name][self.price_data.index.get_loc(timestamp)]
+            #logging.info('Successfully retrieved indicator value')
+            return value
         except Exception as e:
-            logging.error(e)
+            #logging.error(f'Unable to retrieve indicator: {e}')
             return None
 
     @time_performance
