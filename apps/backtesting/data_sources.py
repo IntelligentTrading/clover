@@ -107,7 +107,6 @@ class DataCache:
         return self.cached_data_objects
 
 
-
 class Database(ABC):
     """
     Abstract class encapsulating basic database operations.
@@ -280,6 +279,27 @@ class RedisDB(Database):
         return PriceStorage.timestamp_from_score(results['scores'][-1])
 
 
+    def _extract_indicator_value(self, indicator_name, result):
+        result = result.split(':')
+        if indicator_name == 'bb_up':
+            return float(result[0])
+        elif indicator_name == 'bb_mid':
+            return float(result[1])
+        elif indicator_name == 'bb_low':
+            return float(result[2])
+        elif indicator_name == 'bb_squeeze':
+            return bool(result[1])
+        elif indicator_name == 'macd_value':
+            return float(result[0])
+        elif indicator_name == 'macd_signal':
+            return float(result[1])
+        elif indicator_name == 'macd_hist':
+            return float(result[2])
+        elif indicator_name == 'slowd':
+            return float(result[1])
+        return float(result[0])
+
+
     def get_indicator(self, indicator_name, transaction_currency, counter_currency,
                       timestamp, exchange='binance', horizon=PERIODS_1HR, periods_key=None, periods_range=None):
 
@@ -313,7 +333,7 @@ class RedisDB(Database):
             params['periods_range'] = periods_range
 
         try:
-            logging.info(f'Going to Redis for indicator {indicator_name} for {ticker} at {timestamp}...')
+            logging.debug(f'Going to Redis for indicator {indicator_name} for {ticker} at {timestamp}...')
 
             # remove the periods for sma or ema, as they aren't stored in STORAGE_CLASS
             if indicator_name.startswith('sma') or indicator_name.startswith('ema'):
@@ -344,30 +364,9 @@ class RedisDB(Database):
                     return [], []
 
         except IndexError:
-            return f"Unknown indicator {indicator_name}"
+            logging.error(f"Unknown indicator {indicator_name}")
         except Exception as e:
             raise e
-
-
-    def _extract_indicator_value(self, indicator_name, result):
-        result = result.split(':')
-        if indicator_name == 'bb_up':
-            return float(result[0])
-        elif indicator_name == 'bb_mid':
-            return float(result[1])
-        elif indicator_name == 'bb_low':
-            return float(result[2])
-        elif indicator_name == 'bb_squeeze':
-            return bool(result[1])
-        elif indicator_name == 'macd_value':
-            return float(result[0])
-        elif indicator_name == 'macd_signal':
-            return float(result[1])
-        elif indicator_name == 'macd_hist':
-            return float(result[2])
-        elif indicator_name == 'slowd':
-            return float(result[1])
-        return float(result[0])
 
 
     def get_indicator_at_previous_timestamp(self, indicator_name, transaction_currency, counter_currency,
@@ -417,23 +416,9 @@ class RedisDB(Database):
         return self.indicator_cache.get_indicator(indicator_name, ticker, timestamp, exchange, horizon)
 
 
-
-db_interface = RedisDB()
-
-
 class Data:
 
-    def applicable(self, ticker, exchange, horizon, timestamp):
-        return ticker == self.ticker and exchange == self.exchange \
-               and horizon == self.horizon and self.start_time <= timestamp <= self.end_time
-
-    def _parse_time(self, time_input):
-        if isinstance(time_input, str):
-            time_object = parser.parse(time_input)
-            return time_object.timestamp()
-        return time_input
-
-    def __init__(self, start_time, end_time, ticker, horizon, start_cash, start_crypto, exchange, database=db_interface):
+    def __init__(self, start_time, end_time, ticker, horizon, start_cash, start_crypto, exchange, database=DB_INTERFACE):
         self.start_time = self._parse_time(start_time)
         self.end_time = self._parse_time(end_time)
         self.transaction_currency, self.counter_currency = ticker.split('_')
@@ -468,6 +453,13 @@ class Data:
         self._compute_ta_indicators()
 
 
+    def _parse_time(self, time_input):
+        if isinstance(time_input, str):
+            time_object = parser.parse(time_input)
+            return time_object.timestamp()
+        return time_input
+
+
     def _fill_indicator_values(self, indicator_name):
         logging.info(f'Retrieving values for {indicator_name}')
         timestamp = self.price_data.index.values[-1]
@@ -488,6 +480,7 @@ class Data:
         result = pd.merge(self.price_data, df, how='left', on=['timestamp'])
         return np.array(result['indicator'])
 
+
     def get_indicator(self, indicator_name, timestamp):
         try:
             value = self.indicators[indicator_name][self.price_data.index.get_loc(timestamp)]
@@ -496,6 +489,7 @@ class Data:
         except Exception as e:
             #logging.error(f'Unable to retrieve indicator: {e}')
             return None
+
 
     @time_performance
     def _compute_ta_indicators(self):
@@ -528,6 +522,12 @@ class Data:
         self.timestamps = pd.to_datetime(self.price_data.index.values, unit='s')
         assert len(self.close_price) == len(self.timestamps)
 
+
+    def applicable(self, ticker, exchange, horizon, timestamp):
+        return ticker == self.ticker and exchange == self.exchange \
+               and horizon == self.horizon and self.start_time <= timestamp <= self.end_time
+
+
     def __str__(self):
         return self.to_string(self.transaction_currency, self.counter_currency, self.start_time, self.end_time)
 
@@ -547,12 +547,13 @@ class Data:
             start_time=self.start_time,
             end_time=self.end_time,
             source=self.exchange,
-            tick_provider=PriceDataframeTickProvider(self.price_data,
-                                                     transaction_currency=self.transaction_currency,
-                                                     counter_currency=self.counter_currency,
-                                                     source=self.exchange,
-                                                     resample_period=self.resample_period,
-                                                     ),
+            tick_provider=PriceDataframeTickProvider(
+                price_df=self.price_data,
+                transaction_currency=self.transaction_currency,
+                counter_currency=self.counter_currency,
+                source=self.exchange,
+                resample_period=self.resample_period,
+            ),
             database=self.database
         )
 
@@ -565,7 +566,6 @@ class Data:
 
     def get_all_indicator_values(self, indicator_name):
         return self.indicators[indicator_name]
-
 
     def _filter_fields(self, fields, individual_str):
         filtered_dict = {}
@@ -604,3 +604,6 @@ class Data:
 
         time_series_chart(timestamps, series_dict_primary=data_primary_axis, series_dict_secondary=data_secondary_axis,
                           title=f"{self.transaction_currency} - {self.counter_currency}", orders=orders)
+
+
+DB_INTERFACE = RedisDB()

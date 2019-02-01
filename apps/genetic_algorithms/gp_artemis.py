@@ -3,7 +3,7 @@ import json
 import itertools
 import numpy as np
 import pandas as pd
-from apps.backtesting.data_sources import db_interface, Data
+from apps.backtesting.data_sources import DB_INTERFACE, Data
 from apps.backtesting.utils import datetime_to_timestamp
 
 from artemis.experiments import experiment_root
@@ -51,7 +51,7 @@ class ExperimentManager:
         return hof, best
 
 
-    def __init__(self, experiment_container, read_from_file=True, database=db_interface, hof_size=10,
+    def __init__(self, experiment_container, read_from_file=True, database=DB_INTERFACE, hof_size=10,
                  function_provider=None, rockstars=[], parallel_run=False):
         self.database = database
         self.hof_size = hof_size
@@ -74,8 +74,8 @@ class ExperimentManager:
             # initialize data
 
             self.training_data = [
-                db_interface.build_data_object(start_cash=self.START_CASH, start_crypto=self.START_CRYPTO,
-                                      **dataset) for dataset in self.experiment_json["training_data"]
+                DB_INTERFACE.build_data_object(start_cash=self.START_CASH, start_crypto=self.START_CRYPTO,
+                                               **dataset) for dataset in self.experiment_json["training_data"]
             ]
 
             self.validation_data = [Data(start_cash=self.START_CASH, start_crypto=self.START_CRYPTO,

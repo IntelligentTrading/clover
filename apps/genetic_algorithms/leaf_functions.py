@@ -188,8 +188,8 @@ class TAProvider(FunctionProvider):
 class CachedDataTAProvider(TAProvider):
 
     def __init__(self, data):
-        from apps.backtesting.data_sources import db_interface
-        super().__init__(db_interface, 'binance', PERIODS_1HR)
+        from apps.backtesting.data_sources import DB_INTERFACE
+        super().__init__(DB_INTERFACE, 'binance', PERIODS_1HR)
         self.data = data
 
     def __str__(self):

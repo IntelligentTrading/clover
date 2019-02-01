@@ -1,7 +1,7 @@
 from settings.redis_db import database
 from settings import logger
 from apps.backtesting.utils import datetime_from_timestamp
-from apps.backtesting.data_sources import db_interface, Data
+from apps.backtesting.data_sources import DB_INTERFACE, Data
 from apps.genetic_algorithms.gp_artemis import ExperimentManager
 import json
 from apps.doge.doge_train_test import GP_TRAINING_CONFIG, DogeCommittee
@@ -45,12 +45,12 @@ def load_committees_in_period(ticker, exchange, start_timestamp, end_timestamp):
 
 def committees_report(ticker, exchange, start_timestamp, end_timestamp):
     from apps.backtesting.utils import in_notebook
-    end = db_interface.get_nearest_db_timestamp(end_timestamp, ticker, exchange)
-    start = db_interface.get_nearest_db_timestamp(start_timestamp, ticker, exchange)
+    end = DB_INTERFACE.get_nearest_db_timestamp(end_timestamp, ticker, exchange)
+    start = DB_INTERFACE.get_nearest_db_timestamp(start_timestamp, ticker, exchange)
     committees = load_committees_in_period(ticker='BTC_USDT', exchange='binance',
                                            start_timestamp=start, end_timestamp=end)
 
-    data = db_interface.build_data_object(start, end, ticker, exchange=exchange)
+    data = DB_INTERFACE.build_data_object(start, end, ticker, exchange=exchange)
     for committee in committees:
         for trader in committee.doge_traders:
             try:
@@ -74,7 +74,7 @@ class DogePerformanceTimer:
 
     def _build_experiment_manager(self, **params):
 
-        database = db_interface
+        database = DB_INTERFACE
 
         gp_training_config_json = self.gp_training_config_json.format(
             ticker=params['ticker'],
@@ -122,8 +122,8 @@ class DogePerformanceTimer:
                     end_timestamp = time.time()
                     start_timestamp = end_timestamp - training_period
 
-                    start_time = db_interface.get_nearest_db_timestamp(start_timestamp, 'BTC_USDT')
-                    end_time = db_interface.get_nearest_db_timestamp(end_timestamp, 'BTC_USDT')
+                    start_time = DB_INTERFACE.get_nearest_db_timestamp(start_timestamp, 'BTC_USDT')
+                    end_time = DB_INTERFACE.get_nearest_db_timestamp(end_timestamp, 'BTC_USDT')
 
                     e = self._build_experiment_manager(use_cached_redis=use_cached_redis,
                                                        ticker='BTC_USDT',
