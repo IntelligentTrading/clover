@@ -361,6 +361,19 @@ class RedisDB(Database):
                 if len(results['values']):
                     return [self._extract_indicator_value(indicator_name, result) for result in results['values']], \
                            [PriceStorage.timestamp_from_score(score) for score in results['scores']]
+
+                    """"
+                    # need to remove duplicates first
+                    values = [self._extract_indicator_value(indicator_name, result) for result in results['values']]
+                    timestamps = [PriceStorage.timestamp_from_score(score) for score in results['scores']]
+                    df = pd.DataFrame({'timestamp': timestamps, 'value': values}, columns=['timestamp', 'value'])
+                    df = df.set_index('timestamp')
+                    df = self._remove_duplicate_indexes(df, indicator_name)
+
+                    return list(df['value']), list(df.index.values)
+                    """
+
+
                 else:
                     return [], []
 
@@ -456,6 +469,25 @@ class Data:
         self._buy_and_hold_benchmark = None
         self._compute_ta_indicators()
 
+        data_primary_axis = {
+            "Close price" : self.price_data.close_price,
+            "SMA50": self.get_all_indicator_values('sma50'),
+            "EMA50": self.get_all_indicator_values('ema50'),
+            "SMA200": self.get_all_indicator_values('sma200'),
+            "EMA200": self.get_all_indicator_values('ema200'),
+
+        }
+
+        data_secondary_axis = {
+            "ADX": self.get_all_indicator_values('adx'),
+            "MACD": self.get_all_indicator_values('macd'),
+            "MACD signal": self.get_all_indicator_values('macd_signal'),
+            "RSI": self.get_all_indicator_values('rsi')
+        }
+        print('ok')
+
+
+
 
     def _parse_time(self, time_input):
         if isinstance(time_input, str):
@@ -480,6 +512,7 @@ class Data:
             return [np.nan] * len(self.price_data)  # TODO: verify that this is OK
 
         df = pd.DataFrame({'timestamp': timestamps, 'indicator': indicator_values})
+        df = df.set_index('timestamp')
         df = df[~df.index.duplicated(keep='first')]
         result = pd.merge(self.price_data, df, how='left', on=['timestamp'])
         return np.array(result['indicator'])
@@ -524,6 +557,7 @@ class Data:
         self.close_price = self.price_data.as_matrix(columns=["close_price"])
         self.indicators['close_price'] = self.close_price
         self.timestamps = pd.to_datetime(self.price_data.index.values, unit='s')
+
         assert len(self.close_price) == len(self.timestamps)
 
 
@@ -584,21 +618,6 @@ class Data:
 
     def plot(self, orders=None, individual_str=None):
         timestamps = self.price_data.index
-        data_primary_axis = {
-            "Close price" : self.price_data.close_price,
-            "SMA50": self.get_all_indicator_values('sma50'),
-            "EMA50": self.get_all_indicator_values('ema50'),
-            "SMA200": self.get_all_indicator_values('sma200'),
-            "EMA200": self.get_all_indicator_values('ema200'),
-
-        }
-
-        data_secondary_axis = {
-            "ADX": self.get_all_indicator_values('adx'),
-            "MACD": self.get_all_indicator_values('macd'),
-            "MACD signal": self.get_all_indicator_values('macd_signal'),
-            "RSI": self.get_all_indicator_values('rsi')
-        }
 
         if individual_str is not None:
             data_primary_axis = self._filter_fields(data_primary_axis, individual_str)
