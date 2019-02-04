@@ -1,7 +1,7 @@
 from settings.redis_db import database
 from settings import logger
 from apps.backtesting.utils import datetime_from_timestamp
-from apps.backtesting.data_sources import db_interface, Data
+from apps.backtesting.data_sources import DB_INTERFACE, Data
 from apps.genetic_algorithms.gp_artemis import ExperimentManager
 import json
 from apps.doge.doge_train_test import GP_TRAINING_CONFIG, DogeCommittee
@@ -25,9 +25,10 @@ def view_keys(pattern):
 def get_key_values(key):
     return database.zrange(key, 0, -1)
 
+from apps.backtesting.utils import  time_performance
 
-def backtest(doge_trader, start_time, end_time, ticker, exchange, horizon=12):
-    data = Data(start_time, end_time, ticker, horizon, start_cash=1000, start_crypto=0, source=exchange)
+@time_performance
+def backtest(data, doge_trader):
     evaluation = doge_trader.gp.build_evaluation_object(doge_trader.doge, data)
     return evaluation
 
@@ -43,16 +44,22 @@ def load_committees_in_period(ticker, exchange, start_timestamp, end_timestamp):
 
 
 def committees_report(ticker, exchange, start_timestamp, end_timestamp):
-    end = db_interface.get_nearest_db_timestamp(end_timestamp, ticker, exchange)
-    start = db_interface.get_nearest_db_timestamp(start_timestamp, ticker, exchange)
+    from apps.backtesting.utils import in_notebook
+    end = DB_INTERFACE.get_nearest_db_timestamp(end_timestamp, ticker, exchange)
+    start = DB_INTERFACE.get_nearest_db_timestamp(start_timestamp, ticker, exchange)
     committees = load_committees_in_period(ticker='BTC_USDT', exchange='binance',
                                            start_timestamp=start, end_timestamp=end)
+
+    data = DB_INTERFACE.build_data_object(start, end, ticker, exchange=exchange)
     for committee in committees:
         for trader in committee.doge_traders:
             try:
-                evaluation = backtest(trader, end_time=end, start_time=start, ticker=ticker,
-                                      exchange=exchange)
-                evaluation.get_report()
+                evaluation = backtest(data, trader)
+                print(evaluation.get_report())
+                if in_notebook():
+                    from apps.genetic_algorithms.chart_plotter import get_dot_graph
+                    from IPython.display import display
+                    display(get_dot_graph(trader.doge))
             except Exception as e:
                 logger.critical(e)
 
@@ -65,18 +72,9 @@ class DogePerformanceTimer:
         self.run_variants_in_parallel = run_variants_in_parallel
         self.time_doge_performance()
 
-    def _build_experiment_manager(self, use_cached_redis, **params):
+    def _build_experiment_manager(self, **params):
 
-        if use_cached_redis:
-            transaction_currency, counter_currency = params['ticker'].split('_')
-
-            from apps.backtesting.data_sources import CachedRedis
-            cached_redis = CachedRedis(start_time=params['start_time'], end_time=params['end_time'],
-                                       transaction_currency=transaction_currency, counter_currency=counter_currency,
-                                       horizon=None)
-            database = cached_redis
-        else:
-            database = db_interface
+        database = DB_INTERFACE
 
         gp_training_config_json = self.gp_training_config_json.format(
             ticker=params['ticker'],
@@ -124,8 +122,8 @@ class DogePerformanceTimer:
                     end_timestamp = time.time()
                     start_timestamp = end_timestamp - training_period
 
-                    start_time = db_interface.get_nearest_db_timestamp(start_timestamp, 'BTC_USDT')
-                    end_time = db_interface.get_nearest_db_timestamp(end_timestamp, 'BTC_USDT')
+                    start_time = DB_INTERFACE.get_nearest_db_timestamp(start_timestamp, 'BTC_USDT')
+                    end_time = DB_INTERFACE.get_nearest_db_timestamp(end_timestamp, 'BTC_USDT')
 
                     e = self._build_experiment_manager(use_cached_redis=use_cached_redis,
                                                        ticker='BTC_USDT',

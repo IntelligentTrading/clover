@@ -7,7 +7,7 @@ from apps.TA.storages.abstract.ticker import TickerStorage
 from settings import DOGE_RETRAINING_PERIOD_SECONDS
 from apps.TA.indicators.events import bbands_squeeze_180min
 from apps.TA.indicators.momentum import rsi
-
+import logging
 
 class SignalSubscriberException(SubscriberException):
     pass
@@ -93,9 +93,12 @@ class CommitteeStorage(TickerStorage):
             timestamp = CommitteeStorage.timestamp_from_score(score)
             committee_ids = committee_ids.split(':')
             for doge_id in committee_ids:
-                weight = DogePerformance.performance_at_timestamp(doge_id, ticker, exchange, timestamp)
-                doge_ids.append(doge_id)
-                weights.append(weight)
+                try:
+                    weight = DogePerformance.performance_at_timestamp(doge_id, ticker, exchange, timestamp)
+                    doge_ids.append(doge_id)
+                    weights.append(weight)
+                except Exception as e:
+                    logging.error(e)
         doge_ids = [doge_id for _, doge_id in sorted(zip(weights, doge_ids))]
         rockstar_ids = doge_ids[:max_num_rockstars]
         doge_strs = [DogeStorage.get_doge_str(doge_hash) for doge_hash in rockstar_ids]

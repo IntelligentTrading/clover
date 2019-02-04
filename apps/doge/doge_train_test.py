@@ -1,6 +1,6 @@
 import logging
 
-from apps.backtesting.data_sources import db_interface
+from apps.backtesting.data_sources import DB_INTERFACE
 from apps.backtesting.tick_listener import TickListener
 from apps.backtesting.tick_provider_heartbeat import TickProviderHeartbeat
 from apps.backtesting.tick_provider import TickerData
@@ -134,6 +134,7 @@ class DogeTrainer:
         new_committee_storage.value = committee_str
         new_committee_storage.save(publish=True)
         logging.info('>>>>>>> GPs saved to database.')
+        return e
 
     def _save_doges(self, redis_entries):
         for i, redis_entry in enumerate(redis_entries):
@@ -163,10 +164,11 @@ class DogeTrainer:
         :param end_timestamp:
         :return:
         """
-        start_time = db_interface.get_nearest_db_timestamp(start_timestamp, ticker)
-        end_time = db_interface.get_nearest_db_timestamp(end_timestamp, ticker)
+        start_time = DB_INTERFACE.get_nearest_db_timestamp(start_timestamp, ticker)
+        end_time = DB_INTERFACE.get_nearest_db_timestamp(end_timestamp, ticker)
 
-        trainer = DogeTrainer.build_cached_redis_trainer(start_time, end_time, ticker, exchange, horizon)
+        # trainer = DogeTrainer.build_cached_redis_trainer(start_time, end_time, ticker, exchange, horizon)
+        trainer = DogeTrainer(database=DB_INTERFACE)
 
         if start_time is None or end_time is None:
             logging.error(f'Unable to find close enough timestamp for {ticker},'
@@ -177,22 +179,8 @@ class DogeTrainer:
             show_indicator_status(indicator_key='PriceStorage', ticker=ticker)
             return
 
-        trainer.retrain_doges(start_timestamp=start_time, end_timestamp=end_time, max_doges_to_save=10,
+        return trainer.retrain_doges(start_timestamp=start_time, end_timestamp=end_time, max_doges_to_save=10,
                               training_ticker=ticker)
-
-    @staticmethod
-    def build_cached_redis_trainer(start_time, end_time, ticker, exchange, horizon):
-        from apps.backtesting.data_sources import CachedRedis
-        from apps.genetic_algorithms.leaf_functions import CachedDataTAProvider
-        transaction_currency, counter_currency = ticker.split('_')
-
-        cached_redis = CachedRedis(start_time=start_time, end_time=end_time,
-                                   transaction_currency=transaction_currency,
-                                   counter_currency=counter_currency,
-                                   horizon=horizon)
-
-        return DogeTrainer(database=cached_redis)
-
 
 
 class DogeTrader:
@@ -244,7 +232,7 @@ class DogeCommittee:
 
     def __init__(self, committee_timestamp=None, max_doges=100,
                  ttl=DOGE_RETRAINING_PERIOD_SECONDS, training_ticker='BTC_USDT',
-                 db_interface=db_interface, function_provider=None):
+                 db_interface=DB_INTERFACE, function_provider=None):
         with open(GP_TRAINING_CONFIG, 'r') as f:
             self.gp_training_config_json = f.read()
 
@@ -344,7 +332,7 @@ class DogeTradingManager(TickListener):
     trades on them using a DogeCommittee.
     """
 
-    def __init__(self, database=db_interface, heartbeat_period_secs=60):
+    def __init__(self, database=DB_INTERFACE, heartbeat_period_secs=60):
 
         self.doge_committee = DogeCommittee()
         self.doge_committee.generate_doge_images()
