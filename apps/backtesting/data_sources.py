@@ -43,6 +43,7 @@ MAXED_CACHED_DATA_OBJECTS = 20
 START_CASH = 1000
 START_CRYPTO = 0
 
+
 class IndicatorCache:
     """
     Caches up to MAX_CACHED_INDICATORS indicators.
@@ -416,6 +417,9 @@ class RedisDB(Database):
         return self.indicator_cache.get_indicator(indicator_name, ticker, timestamp, exchange, horizon)
 
 
+DB_INTERFACE = RedisDB()
+
+
 class Data:
 
     def __init__(self, start_time, end_time, ticker, horizon, start_cash, start_crypto, exchange, database=DB_INTERFACE):
@@ -606,4 +610,3 @@ class Data:
                           title=f"{self.transaction_currency} - {self.counter_currency}", orders=orders)
 
 
-DB_INTERFACE = RedisDB()
