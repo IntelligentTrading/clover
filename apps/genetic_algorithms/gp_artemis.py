@@ -25,7 +25,7 @@ from functools import partial
 from apps.backtesting.utils import parallel_run
 from apps.genetic_algorithms.gp_utils import Period
 from apps.genetic_algorithms.leaf_functions import TAProviderCollection
-
+from numba import jit
 
 
 from apps.backtesting.utils import LogDuplicateFilter
@@ -227,11 +227,16 @@ class ExperimentManager:
             logging.warning(f">>> No records found for variant {variant.name}, skipping...")
             return
         hof, best = latest.get_result()
+
+        # look at best of all time and best in every generation
+        individuals = hof.items + best
+        individuals = sorted(individuals, key=lambda x: x.fitness, reverse=True)
+
         result = []
         if top_n is None:
-            top_n = len(hof) # just take all of them
+            top_n = len(hof)  # just take all of them
         for i in range(top_n):
-            best_individual = hof[i]
+            best_individual = individuals[i]
             evaluations = []
             for data in datasets:
                 evaluation = self._build_evaluation_object(best_individual, variant, data)
@@ -239,7 +244,8 @@ class ExperimentManager:
             result.append((best_individual, evaluations))
         return result
 
-    def get_best_performing_across_variants_and_datasets(self, datasets, sort_by=["mean_profit"], top_n_per_variant=5,
+
+    def get_best_performing_across_variants_and_datasets(self, datasets, sort_by=["mean_profit"], top_n_per_variant=None,
                                                          remove_duplicates=True):
         """
         Returns a list of best performing individuals, top_n_per_variant per experiment variant.
@@ -259,7 +265,7 @@ class ExperimentManager:
                 if remove_duplicates and str(best_individual) in df.doge.values:
                     continue
 
-                if i > top_n_per_variant: # already got enough from this variant
+                if top_n_per_variant is not None and i > top_n_per_variant: # already got enough from this variant
                     break
 
                 profits = [evaluation.profit_percent for evaluation in evaluations]
