@@ -234,7 +234,7 @@ class ExperimentManager:
 
         result = []
         if top_n is None:
-            top_n = len(hof)  # just take all of them
+            top_n = len(individuals)  # just take all of them
         for i in range(top_n):
             best_individual = individuals[i]
             evaluations = []
