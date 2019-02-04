@@ -1,11 +1,11 @@
 import logging
 
-from apps.backtesting.data_sources import db_interface
+from apps.backtesting.data_sources import DB_INTERFACE
 from apps.backtesting.utils import datetime_from_timestamp, parallel_run, time_performance
 from apps.doge.doge_train_test import DogeTrainer, DogeCommittee, DogeSubscriber
 from settings import DOGE_TRAINING_PERIOD_DURATION_SECONDS, DOGE_RETRAINING_PERIOD_SECONDS
 from functools import partial
-from apps.genetic_algorithms.leaf_functions import CachedDataTAProvider
+from apps.genetic_algorithms.leaf_functions import TAProvider
 
 class DummyDogeSubscriber(DogeSubscriber):
 
@@ -24,8 +24,8 @@ class DogeHistorySimulator:
                  training_period_length=DOGE_TRAINING_PERIOD_DURATION_SECONDS,
                  time_to_retrain_seconds=DOGE_RETRAINING_PERIOD_SECONDS,
                  parallel=True):
-        self._start_time = db_interface.get_nearest_db_timestamp(start_time, ticker, exchange)
-        self._end_time = db_interface.get_nearest_db_timestamp(end_time, ticker, exchange)
+        self._start_time = DB_INTERFACE.get_nearest_db_timestamp(start_time, ticker, exchange)
+        self._end_time = DB_INTERFACE.get_nearest_db_timestamp(end_time, ticker, exchange)
         self._training_period_length = training_period_length
         self._time_to_retrain_seconds = time_to_retrain_seconds
         self._ticker = ticker
@@ -70,34 +70,29 @@ class DogeHistorySimulator:
         logging.info(f'Processing data for committee trained on data '
                      f'from {datetime_from_timestamp(training_start_time)} '
                      f'to {datetime_from_timestamp(training_end_time)}')
-        from apps.backtesting.data_sources import CachedRedis
         transaction_currency, counter_currency = ticker.split('_')
-        cached_redis = CachedRedis(start_time=training_start_time, end_time=training_end_time,
-                                   transaction_currency=transaction_currency,
-                                   counter_currency=counter_currency,
-                                   horizon=None)
-        ta_provider = CachedDataTAProvider.build(start_time=training_start_time,
-                                                 end_time=training_end_time,
-                                                 ticker=f'{transaction_currency}_{counter_currency}',
-                                                 horizon=horizon,
-                                                 exchange=exchange,
-                                                 db_interface=cached_redis)
+        ta_provider = TAProvider(db_interface=DB_INTERFACE)
+        DB_INTERFACE.build_data_object(start_time=training_start_time,
+                                       end_time=training_end_time,
+                                       ticker=f'{transaction_currency}_{counter_currency}',
+                                       horizon=horizon,
+                                       exchange=exchange)
 
         # check if a committee record already exists
         try:
-            committee = DogeCommittee(committee_timestamp=training_end_time, db_interface=cached_redis,
+            committee = DogeCommittee(committee_timestamp=training_end_time, db_interface=DB_INTERFACE,
                                       function_provider=ta_provider)
             logging.info(f'Committee successfully loaded at {training_end_time}')
         except:
             # no committee, we need to rerun training
             logging.info(f'No committee found, running training for timestamp {training_end_time}...')
-            karen = DogeTrainer(database=cached_redis) # see Karen Pryor; TODO: ensure cached TA values are used
+            karen = DogeTrainer(database=DB_INTERFACE)  # see Karen Pryor; TODO: ensure cached TA values are used
 
             karen.retrain_doges(start_timestamp=training_start_time, end_timestamp=training_end_time,
                                 training_ticker=ticker)
 
             # now that Karen did her job we should totally have a working committee
-            committee = DogeCommittee(committee_timestamp=training_end_time, db_interface=cached_redis,
+            committee = DogeCommittee(committee_timestamp=training_end_time, db_interface=DB_INTERFACE,
                                       function_provider=ta_provider)
         # we need to simulate incoming price data
         DogeHistorySimulator.feed_price_to_doge(committee=committee,
@@ -113,7 +108,7 @@ class DogeHistorySimulator:
     def feed_price_to_doge(committee, committee_valid_from, committee_valid_to, ticker, horizon, exchange):
         logging.info('Feeding prices to doge...')
         transaction_currency, counter_currency = ticker.split('_')
-        prices_df = db_interface.get_resampled_prices_in_range(
+        prices_df = DB_INTERFACE.get_resampled_prices_in_range(
             start_time=committee_valid_from,
             end_time=committee_valid_to,
             transaction_currency=transaction_currency,

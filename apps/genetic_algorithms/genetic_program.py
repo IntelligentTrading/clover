@@ -6,7 +6,8 @@ import math
 from deap import creator, tools, base
 from deap.gp import PrimitiveTree
 from apps.backtesting.signals import Signal
-from apps.backtesting.strategies import SignalStrategy, Strength, TickerStrategy, StrategyDecision
+from apps.backtesting.strategies import SignalStrategy, TickerStrategy, StrategyDecision
+from apps.backtesting.legacy_postgres import Strength
 from apps.genetic_algorithms.chart_plotter import *
 from apps.genetic_algorithms.custom_deap_algorithms import combined_mutation, eaSimpleCustom, harm
 from apps.backtesting.backtester_ticks import TickDrivenBacktester
@@ -58,7 +59,13 @@ class GeneticTickerStrategy(TickerStrategy):
 
     def get_decision(self, ticker_data):
 
-        outcome = self.func([ticker_data.timestamp, ticker_data.transaction_currency, ticker_data.counter_currency])
+
+        try:
+            outcome = self.func([ticker_data.timestamp, ticker_data.transaction_currency, ticker_data.counter_currency])
+        except:
+            outcome = self.gp_object.function_provider.ignore
+            logging.error(f'Unable to form decision for {ticker_data.transaction_currency}'
+                          f'_{ticker_data.counter_currency} at {ticker_data.timestamp}')
 
         decision = None
         if outcome == self.gp_object.function_provider.buy:
@@ -182,6 +189,12 @@ class BenchmarkDiffFitness(FitnessFunction):
 
     def compute(self, individual, evaluation, genetic_program):
         return evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent,
+
+class BenchmarkDiffAbsFitness(FitnessFunction):
+    _name = "ff_benchmarkdiffabs"
+
+    def compute(self, individual, evaluation, genetic_program):
+        return (evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent) * abs(evaluation.profit_percent),
 
 
 class BenchmarkDiffTrades(FitnessFunction):
@@ -396,7 +409,7 @@ class GeneticProgram:
             tick_provider = PriceDataframeTickProvider(data.price_data,
                                                        transaction_currency=data.transaction_currency,
                                                        counter_currency=data.counter_currency,
-                                                       source=data.source,
+                                                       source=data.exchange,
                                                        resample_period=data.resample_period, )
 
             # create a new tick based backtester
@@ -405,7 +418,7 @@ class GeneticProgram:
                 strategy=strategy,
                 transaction_currency=data.transaction_currency,
                 counter_currency=data.counter_currency,
-                source=data.source,
+                source=data.exchange,
                 resample_period=data.resample_period,
                 start_cash=data.start_cash,
                 start_crypto=data.start_crypto,
