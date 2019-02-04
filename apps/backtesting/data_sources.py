@@ -469,25 +469,6 @@ class Data:
         self._buy_and_hold_benchmark = None
         self._compute_ta_indicators()
 
-        data_primary_axis = {
-            "Close price" : self.price_data.close_price,
-            "SMA50": self.get_all_indicator_values('sma50'),
-            "EMA50": self.get_all_indicator_values('ema50'),
-            "SMA200": self.get_all_indicator_values('sma200'),
-            "EMA200": self.get_all_indicator_values('ema200'),
-
-        }
-
-        data_secondary_axis = {
-            "ADX": self.get_all_indicator_values('adx'),
-            "MACD": self.get_all_indicator_values('macd'),
-            "MACD signal": self.get_all_indicator_values('macd_signal'),
-            "RSI": self.get_all_indicator_values('rsi')
-        }
-        print('ok')
-
-
-
 
     def _parse_time(self, time_input):
         if isinstance(time_input, str):
@@ -618,6 +599,22 @@ class Data:
 
     def plot(self, orders=None, individual_str=None):
         timestamps = self.price_data.index
+
+        data_primary_axis = {
+            "Close price" : self.price_data.close_price,
+            "SMA50": self.get_all_indicator_values('sma50'),
+            "EMA50": self.get_all_indicator_values('ema50'),
+            "SMA200": self.get_all_indicator_values('sma200'),
+            "EMA200": self.get_all_indicator_values('ema200'),
+
+        }
+
+        data_secondary_axis = {
+            "ADX": self.get_all_indicator_values('adx'),
+            "MACD": self.get_all_indicator_values('macd'),
+            "MACD signal": self.get_all_indicator_values('macd_signal'),
+            "RSI": self.get_all_indicator_values('rsi')
+        }
 
         if individual_str is not None:
             data_primary_axis = self._filter_fields(data_primary_axis, individual_str)
