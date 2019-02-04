@@ -37,7 +37,7 @@ from apps.genetic_algorithms.gp_utils import compress
 
 
 def eaSimpleCustom(population, toolbox, cxpb, mutpb, ngen, stats=None,
-             halloffame=None, verbose=__debug__, genetic_program=None):
+             halloffame=None, verbose=__debug__, genetic_program=None, filter_same_fitnesses_in_hof=True):
     """This algorithm reproduce the simplest evolutionary algorithm as
     presented in chapter 7 of [Back2000]_.
 
@@ -134,15 +134,20 @@ def eaSimpleCustom(population, toolbox, cxpb, mutpb, ngen, stats=None,
         # compress offspring
         offspring = compress_population(offspring, genetic_program)
 
+        hof_fitnesses = set([x.fitness.values[0] for x in halloffame.items])
+        filtered_offspring = []
+
         # Evaluate the individuals with an invalid fitness
         invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
         fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
         for ind, fit in zip(invalid_ind, fitnesses):
             ind.fitness.values = fit
+            if not filter_same_fitnesses_in_hof or filter_same_fitnesses_in_hof and fit[0] in hof_fitnesses:
+                filtered_offspring.append(ind)
 
         # Update the hall of fame with the generated individuals
         if halloffame is not None:
-            halloffame.update(offspring)
+            halloffame.update(filtered_offspring)
 
         # Replace the current population by the offspring
         population[:] = offspring
