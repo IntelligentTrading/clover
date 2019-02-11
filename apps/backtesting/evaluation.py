@@ -12,7 +12,7 @@ from apps.backtesting.charting import BacktestingChart
 
 from apps.backtesting.order_generator import OrderGenerator
 from apps.backtesting.config import INF_CRYPTO, INF_CASH
-from apps.backtesting.data_sources import DB_INTERFACE
+from apps.backtesting.data_sources import DB_INTERFACE, NoPriceDataException
 
 logging.getLogger().setLevel(logging.INFO)
 pd.options.mode.chained_assignment = None

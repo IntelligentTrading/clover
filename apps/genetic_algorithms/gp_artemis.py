@@ -3,7 +3,7 @@ import json
 import itertools
 import numpy as np
 import pandas as pd
-from apps.backtesting.data_sources import DB_INTERFACE, Data
+from apps.backtesting.data_sources import DB_INTERFACE, Data, NoPriceDataException
 from apps.backtesting.utils import datetime_to_timestamp
 
 from artemis.experiments import experiment_root
@@ -18,7 +18,6 @@ from apps.backtesting.config import INF_CASH, INF_CRYPTO
 from apps.backtesting.comparative_evaluation import ComparativeEvaluation, ComparativeReportBuilder
 #from data_sources import get_currencies_trading_against_counter
 from apps.backtesting.backtesting_runs import build_itf_baseline_strategies
-from apps.backtesting.legacy_postgres import NoPriceDataException
 from apps.backtesting.utils import time_performance
 from functools import partial
 #from pathos.multiprocessing import ProcessingPool as Pool
@@ -438,6 +437,14 @@ class ExperimentManager:
             return
         hof, best = latest.get_result()
 
+        print('HoF::::::')
+        for item in hof.items:
+            print(f'    {str(item)[:10]} {item.fitness.values[0]}')
+
+        print('GenBest::::::')
+        for item in best:
+            print(f'    {str(item)[:10]} {item.fitness.values[0]}')
+
         for rank, individual in enumerate(hof):
             row = self.generate_performance_df_row(data, individual, variant, rank)
             performance_rows.append(row)
@@ -477,7 +484,7 @@ class ExperimentManager:
     def get_joined_performance_dfs_over_all_variants(self, verbose=True):
         """
         Produces a list of N dataframes, where N is the number of training sets in the training collection.
-        Each dataframe shows profits on the the corresponding training set across all experiment variants.
+        Each dataframe shows profits on the corresponding training set across all experiment variants.
         :return: a list of dataframes
         """
         joined_dfs = []

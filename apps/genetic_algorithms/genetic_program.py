@@ -62,6 +62,7 @@ class GeneticTickerStrategy(TickerStrategy):
 
         try:
             outcome = self.func([ticker_data.timestamp, ticker_data.transaction_currency, ticker_data.counter_currency])
+            # logging.info('Successfully decided on the outcome.')
         except:
             outcome = self.gp_object.function_provider.ignore
             logging.error(f'Unable to form decision for {ticker_data.transaction_currency}'
@@ -194,7 +195,8 @@ class BenchmarkDiffAbsFitness(FitnessFunction):
     _name = "ff_benchmarkdiffabs"
 
     def compute(self, individual, evaluation, genetic_program):
-        return (evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent) * abs(evaluation.profit_percent),
+        return (evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent) * \
+               abs(evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent),
 
 
 class BenchmarkDiffTrades(FitnessFunction):

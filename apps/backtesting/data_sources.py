@@ -14,6 +14,10 @@ from apps.TA.indicators.events import bbands_squeeze_180min
 from collections import OrderedDict
 
 
+class NoPriceDataException(Exception):
+    pass
+
+
 STORAGE_CLASS = {
     'rsi': rsi.RsiStorage,
     'stoch_rsi': stochrsi.StochrsiStorage,
@@ -229,7 +233,10 @@ class RedisDB(Database):
         return prices[-1] if len(prices) else None
 
     def get_price(self, transaction_currency, timestamp, source="binance", counter_currency="BTC", normalize=False):
-        return self.get_indicator('close_price', transaction_currency, counter_currency, timestamp, source)[0]
+        try:
+            return self.get_indicator('close_price', transaction_currency, counter_currency, timestamp, source)
+        except:
+            pass
 
 
     def get_latest_price(self, transaction_currency, counter_currency="BTC", normalize=False, exchange="binance"):
@@ -302,7 +309,8 @@ class RedisDB(Database):
 
 
     def get_indicator(self, indicator_name, transaction_currency, counter_currency,
-                      timestamp, exchange='binance', horizon=PERIODS_1HR, periods_key=None, periods_range=None):
+                      timestamp, exchange='binance', horizon=PERIODS_1HR, periods_key=None, periods_range=None,
+                      timestamp_tolerance=0):
 
         ticker = f'{transaction_currency}_{counter_currency}'
 
@@ -327,7 +335,7 @@ class RedisDB(Database):
             exchange=exchange,
             timestamp=timestamp,
             periods_key=periods_key,
-            timestamp_tolerance=0,
+            timestamp_tolerance=timestamp_tolerance,
          )
 
         if periods_range is not None:
@@ -387,7 +395,7 @@ class RedisDB(Database):
                       timestamp, exchange='binance', horizon=PERIODS_1HR, periods_key=None, periods_range=None):
         indicator_value = self.get_indicator(indicator_name, transaction_currency, counter_currency,
                            (timestamp - 5*60),  # TODO check if this hardcoding is OK
-                           exchange, horizon, periods_key, periods_range)
+                           exchange, horizon, periods_key, periods_range, timestamp_tolerance=200)
 
         if indicator_value is None:
             logging.debug(f"Indicator {indicator_name} not found at timestamp {timestamp} (previous)")
@@ -501,11 +509,13 @@ class Data:
 
     def get_indicator(self, indicator_name, timestamp):
         try:
+            if indicator_name == 'close_price':
+                return self.price_data.loc[timestamp]['close_price']
             value = self.indicators[indicator_name][self.price_data.index.get_loc(timestamp)]
             #logging.info('Successfully retrieved indicator value')
             return value
         except Exception as e:
-            #logging.error(f'Unable to retrieve indicator: {e}')
+            logging.error(f'Unable to retrieve indicator: {e}')
             return None
 
 
@@ -624,5 +634,3 @@ class Data:
 
         time_series_chart(timestamps, series_dict_primary=data_primary_axis, series_dict_secondary=data_secondary_axis,
                           title=f"{self.transaction_currency} - {self.counter_currency}", orders=orders)
-
-
