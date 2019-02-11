@@ -24,7 +24,6 @@ from functools import partial
 from apps.backtesting.utils import parallel_run
 from apps.genetic_algorithms.gp_utils import Period
 from apps.genetic_algorithms.leaf_functions import TAProviderCollection
-from numba import jit
 
 
 from apps.backtesting.utils import LogDuplicateFilter
@@ -80,7 +79,8 @@ class ExperimentManager:
             self.validation_data = [Data(start_cash=self.START_CASH, start_crypto=self.START_CRYPTO,
                                       **dataset) for dataset in self.experiment_json["validation_data"]]
             # create function provider objects based on data
-            self.function_provider = TAProviderCollection(self.training_data + self.validation_data)
+            from apps.genetic_algorithms.leaf_functions import TAProvider
+            self.function_provider = TAProvider(db_interface=DB_INTERFACE) #Collection(self.training_data + self.validation_data)
 
         else:
             self.training_data = [Data.to_string(dataset['transaction_currency'],

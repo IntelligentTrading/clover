@@ -318,7 +318,9 @@ class Evaluation(ABC):
     def benchmark_backtest(self):
         return self._benchmark_backtest
 
-
+    @property
+    def num_trades_per_hour(self):
+        return self.num_trades / ((self._end_time - self._start_time)/3600)
 
     def _write_trading_df_row(self):
         total_value = self._crypto * self._current_price + self._cash
