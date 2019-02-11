@@ -12,7 +12,7 @@
     "validation_data": [
      ],
 
-    "fitness_functions": ["ff_benchmarkdiffabs"],
+    "fitness_functions": ["ff_benchmarkdiffabsv2"],
     "grammar_version": "gv6",
     "num_generations": 5,
 

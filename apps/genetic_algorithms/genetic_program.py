@@ -63,10 +63,10 @@ class GeneticTickerStrategy(TickerStrategy):
         try:
             outcome = self.func([ticker_data.timestamp, ticker_data.transaction_currency, ticker_data.counter_currency])
             # logging.info('Successfully decided on the outcome.')
-        except:
+        except Exception as e:
             outcome = self.gp_object.function_provider.ignore
             logging.error(f'Unable to form decision for {ticker_data.transaction_currency}'
-                          f'_{ticker_data.counter_currency} at {ticker_data.timestamp}')
+                          f'_{ticker_data.counter_currency} at {ticker_data.timestamp}: {e}')
 
         decision = None
         if outcome == self.gp_object.function_provider.buy:
@@ -198,6 +198,39 @@ class BenchmarkDiffAbsFitness(FitnessFunction):
         return (evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent) * \
                abs(evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent),
 
+class BenchmarkDiffAbsFitness(FitnessFunction):
+    _name = "ff_benchmarkdiffabsv2"
+
+    def compute(self, individual, evaluation, genetic_program):
+        terminals = set()
+        for element in individual:
+            if not element.name in ('buy', 'sell', 'ignore'):
+                continue
+            terminals.add(element.name)
+            if len(terminals) == 3:
+                break
+
+        return (evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent) * \
+               abs(evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent)\
+               * evaluation.num_trades / ((evaluation._end_time - evaluation._start_time) / 3600) \
+               * len(terminals),
+
+class BenchmarkDiffAbsFitness(FitnessFunction):
+    _name = "ff_benchmarkdiffabsv3"
+
+    def compute(self, individual, evaluation, genetic_program):
+        terminals = set()
+        for element in individual:
+            if not element.name in ('buy', 'sell', 'ignore'):
+                continue
+            terminals.add(element.name)
+            if len(terminals) == 3:
+                break
+
+        return (evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent) * \
+               abs(evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent)\
+               * (1 - (1/math.exp(evaluation.num_trades_per_hour))) \
+               * len(terminals),
 
 class BenchmarkDiffTrades(FitnessFunction):
     _name = "ff_benchmarkdiff_trades"
