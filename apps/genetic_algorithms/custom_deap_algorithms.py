@@ -167,14 +167,14 @@ def _compute_fitnesses_and_update_hof(filter_same_fitnesses_in_hof, halloffame, 
 
     filtered_offspring = list(filtered_offspring.values())
 
-    print(f'Filtered offspring fitnesses: {sorted(set([x.fitness.values[0] for x in filtered_offspring]))}')
-    print(f'HoF fitnesses before update (a total of {len(halloffame.items)} items): {sorted(hof_fitnesses)}')
+    #print(f'Filtered offspring fitnesses: {sorted(set([x.fitness.values[0] for x in filtered_offspring]))}')
+    #print(f'HoF fitnesses before update (a total of {len(halloffame.items)} items): {sorted(hof_fitnesses)}')
     # Update the hall of fame with the generated individuals
     if halloffame is not None:
         halloffame.update(filtered_offspring)
-    print(f'HoF fitnesses after update: {sorted(set([x.fitness.values[0] for x in halloffame.items]))} '
-          f'(a total of {len(halloffame.items)} items)')
-    print(f'Offspring fitnesses: {sorted(set([x.fitness.values[0] for x in offspring]))}')
+    #print(f'HoF fitnesses after update: {sorted(set([x.fitness.values[0] for x in halloffame.items]))} '
+    #      f'(a total of {len(halloffame.items)} items)')
+    #print(f'Offspring fitnesses: {sorted(set([x.fitness.values[0] for x in offspring]))}')
     return invalid_ind
 
 

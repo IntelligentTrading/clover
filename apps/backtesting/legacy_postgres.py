@@ -3,7 +3,8 @@ import pandas as pd
 import psycopg2
 
 from enum import Enum
-from apps.backtesting.data_sources import Database, DB_INTERFACE
+from apps.backtesting.data_sources import Database, DB_INTERFACE, NoPriceDataException
+
 
 class CounterCurrency(Enum):
     BTC = 0
@@ -24,10 +25,6 @@ class Strength(Enum):
     short = 1
     medium = 2
     long = 3
-
-
-class NoPriceDataException(Exception):
-    pass
 
 
 class PostgresDatabaseConnection(Database):

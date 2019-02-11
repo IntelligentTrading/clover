@@ -122,7 +122,7 @@ class TAProvider(FunctionProvider):
 
     def candlestick_momentum_sell(self, input):
         return self.get_indicator('close_price', input) <\
-               0.5 * self.get_indicator_at_previous_timestamp('close_price', input)
+            0.5 * self.get_indicator_at_previous_timestamp('close_price', input)
 
     def _crosses_from_below(self, indicator, other, input):
         current_indicator = self.get_indicator(indicator, input)
