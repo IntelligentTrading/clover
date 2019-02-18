@@ -237,9 +237,11 @@ class RedisDB(Database):
         )['values']
         return prices[-1] if len(prices) else None
 
-    def get_price(self, transaction_currency, timestamp, source="binance", counter_currency="BTC", normalize=False):
+    def get_price(self, transaction_currency, timestamp, source="binance", counter_currency="BTC",
+                  normalize=False, timestamp_tolerance=0):
         try:
-            return self.get_indicator('close_price', transaction_currency, counter_currency, timestamp, source)
+            return self.get_indicator('close_price', transaction_currency, counter_currency,
+                                      timestamp, source, timestamp_tolerance=timestamp_tolerance)
         except:
             pass
 
