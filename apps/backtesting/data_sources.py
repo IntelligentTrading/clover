@@ -47,6 +47,8 @@ MAXED_CACHED_DATA_OBJECTS = 20
 START_CASH = 1000
 START_CRYPTO = 0
 
+class NoCachedDataException(Exception):
+    pass
 
 class IndicatorCache:
     """
@@ -69,7 +71,10 @@ class IndicatorCache:
         :return: indicator value if cached, None if not
         """
         key = (indicator_name, ticker, timestamp, exchange, horizon)
-        return self.cache.get(key, None)
+        if key in self.cache:
+            return self.cache[key]
+        else:
+            raise NoCachedDataException
 
     def save_indicator(self, indicator_name, ticker,
                        timestamp, value, exchange='binance', horizon=PERIODS_1HR):
@@ -316,11 +321,10 @@ class RedisDB(Database):
 
         # if we're looking for just one indicator, check if we have it cached
         if periods_range is None:
-            cached = self.query_data_cache(ticker, exchange, horizon, timestamp, indicator_name)
-            if cached is not None:
-                return cached
-            else:
-                logging.debug(f'No cached value found for {indicator_name} at {timestamp}')
+            try:
+                return self.query_data_cache(ticker, exchange, horizon, timestamp, indicator_name)
+            except NoCachedDataException:
+                logging.info(f'No cached value found for {indicator_name} at {timestamp}')
 
 
         # build the periods key
@@ -342,7 +346,7 @@ class RedisDB(Database):
             params['periods_range'] = periods_range
 
         try:
-            logging.debug(f'Going to Redis for indicator {indicator_name} for {ticker} at {timestamp}...')
+            logging.info(f'Going to Redis for indicator {indicator_name} for {ticker} at {timestamp}...')
 
             # remove the periods for sma or ema, as they aren't stored in STORAGE_CLASS
             if indicator_name.startswith('sma') or indicator_name.startswith('ema'):
@@ -432,7 +436,10 @@ class RedisDB(Database):
                 logging.info('Returning value from cache...')
                 return data.get_indicator(indicator_name, timestamp)
             if ticker == 'BTC_USDT' and data.start_time <= timestamp <= data.end_time:
-                return data.btc_usdt_price_df.loc[timestamp].close_price
+                try:
+                    return data.btc_usdt_price_df.loc[timestamp].close_price
+                except:
+                    return None
 
         # if not, maybe it's in the indicator cache?
         return self.indicator_cache.get_indicator(indicator_name, ticker, timestamp, exchange, horizon)

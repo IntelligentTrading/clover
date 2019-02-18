@@ -12,9 +12,9 @@
     "validation_data": [
      ],
 
-    "fitness_functions": ["ff_trades"],
+    "fitness_functions": ["ff_trades_percent"],
     "grammar_version": "gv6",
-    "num_generations": 20,
+    "num_generations": 2,
 
     "mating_probabilities": [
         0.9

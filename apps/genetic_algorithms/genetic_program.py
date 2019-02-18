@@ -65,7 +65,7 @@ class GeneticTickerStrategy(TickerStrategy):
             # logging.info('Successfully decided on the outcome.')
         except Exception as e:
             outcome = self.gp_object.function_provider.ignore
-            logging.error(f'Unable to form decision for {ticker_data.transaction_currency}'
+            logging.info(f'Unable to form decision for {ticker_data.transaction_currency}'
                           f'_{ticker_data.counter_currency} at {ticker_data.timestamp}: {e}')
 
         decision = None
@@ -232,12 +232,41 @@ class BenchmarkDiffAbsFitness(FitnessFunction):
                * (1 - (1/math.exp(evaluation.num_trades_per_hour))) \
                * len(terminals),
 
+class BenchmarkDiffAbsFitness(FitnessFunction):
+    _name = "ff_benchmarkdiffabsv4"
+
+    def compute(self, individual, evaluation, genetic_program):
+        terminals = set()
+        for element in individual:
+            if not element.name in ('buy', 'sell', 'ignore'):
+                continue
+            terminals.add(element.name)
+            if len(terminals) == 3:
+                break
+
+        return (evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent) * \
+               abs(evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent)\
+               * evaluation.num_profitable_trades \
+               * len(terminals),
+
 class BenchmarkDiffTrades(FitnessFunction):
     _name = "ff_benchmarkdiff_trades"
 
     def compute(self, individual, evaluation, genetic_program):
         return (evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent)*evaluation.num_profitable_trades,
 
+
+class FitnessTrades(FitnessFunction):
+    _name = "ff_trades"
+
+    def compute(self, individual, evaluation, genetic_program):
+        return evaluation.num_profitable_trades,
+
+class FitnessTradesPercent(FitnessFunction):
+    _name = "ff_trades_percent"
+
+    def compute(self, individual, evaluation, genetic_program):
+        return evaluation.num_profitable_trades / evaluation.num_trades if evaluation.num_trades > 0 else 0,
 
 class BenchmarkLengthControlFitness(FitnessFunction):
     _name = "ff_benchlenctrl"
