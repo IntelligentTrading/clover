@@ -26,20 +26,22 @@ GP_TRAINING_CONFIG = os.path.join(BASE, 'doge_config.json')
 
 class DogeRecord:
 
-    def __init__(self, train_end_timestamp, doge_str, metric_id, metric_value, rank):
+    def __init__(self, train_end_timestamp, doge_str, metric_id, metric_value, rank, fitness_function):
         self.train_end_timestamp = train_end_timestamp
         self.doge_str = doge_str
         self.metric_id = metric_id
         self.metric_value = metric_value
         self.rank = rank  # TODO remove rank information if not needed
+        self.fitness_function = fitness_function
+        self.value = f'{doge_str}:{fitness_function}'
 
     @property
     def hash(self):
-        return DogeStorage.hash(self.doge_str)
+        return DogeStorage.hash(self.value)
 
     def save_to_storage(self):
         # save the doge itself
-        new_doge_storage = DogeStorage(value=self.doge_str, key_suffix=str(self.hash))
+        new_doge_storage = DogeStorage(value=self.value, key_suffix=str(self.hash))
         new_doge_storage.save()
 
         if self.metric_value is None:
@@ -108,21 +110,20 @@ class DogeTrainer:
         # retrieve best performing doges
         logging.info('>>>>>>> Ranking doges by performance...')
         doge_df = e.get_best_performing_across_variants_and_datasets(datasets=e.training_data,
-                                                                     sort_by=['mean_profit'],
-                                                                     top_n_per_variant=1)
+                                                                     sort_by=['mean_profit'], min_fitness=0)
         logging.info('>>>>>>> Ranking completed.')
 
         # write these doges to database
         logging.info('>>>>>>> Saving GPs to database...')
 
-        string_representations = []
         redis_entries = []
         for i, row in enumerate(doge_df.itertuples()):
             if i > max_doges_to_save:
                 break
             redis_entries.append(
                 DogeRecord(train_end_timestamp=end_timestamp, doge_str=str(row.doge),
-                           metric_id=METRIC_IDS['mean_profit'], metric_value=row.mean_profit, rank=i))
+                           metric_id=METRIC_IDS['mean_profit'], metric_value=row.mean_profit, rank=i,
+                           fitness_function=row.fitness_function))
 
 
         # save individual doges
@@ -189,7 +190,7 @@ class DogeTrader:
     NOTE: instantiated in DogeCommittee, no need to manually instantiate
     """
 
-    def __init__(self, doge_str, doge_id, function_provider, gp_training_config_json):
+    def __init__(self, doge_str, doge_id, function_provider, gp_training_config_json, fitness_function):
         """
         Instantiates a doge trader.
         :param doge_str: the decision tree in string format
@@ -202,7 +203,7 @@ class DogeTrader:
         self.gp_training_config_json = gp_training_config_json
         experiment_json = DogeTrainer.fill_json_template(self.gp_training_config_json, 0, 0, '_')
                 # filling the template with empty values, because training data info isn't used when resurrecting
-        self.doge, self.gp = ExperimentManager.resurrect_doge(experiment_json, self.doge_str, function_provider)
+        self.doge, self.gp = ExperimentManager.resurrect_doge(experiment_json, self.doge_str, function_provider, fitness_function)
         self.strategy = GeneticTickerStrategy(tree=self.doge, gp_object=self.gp)
 
     def vote(self, ticker_data):
@@ -270,11 +271,12 @@ class DogeCommittee:
         doge_committee_ids = query_response['values'][-1].split(':')
         for doge_id in doge_committee_ids:
             doge_storage = DogeStorage(key_suffix=doge_id)
-            doge_str = doge_storage.get_value().decode('utf-8')
+            doge_str, fitness_function = doge_storage.get_value().decode('utf-8').split(':')
 
             doge = DogeTrader(doge_str=doge_str, doge_id=doge_id,
                               function_provider=self.function_provider,
-                              gp_training_config_json=self.gp_training_config_json)
+                              gp_training_config_json=self.gp_training_config_json,
+                              fitness_function=fitness_function)
             doge_traders.append(doge)
 
         return doge_traders

@@ -245,7 +245,7 @@ class ExperimentManager:
 
 
     def get_best_performing_across_variants_and_datasets(self, datasets, sort_by=["mean_profit"], top_n_per_variant=None,
-                                                         remove_duplicates=True):
+                                                         remove_duplicates=True, min_fitness=None):
         """
         Returns a list of best performing individuals, top_n_per_variant per experiment variant.
         :return:
@@ -286,6 +286,8 @@ class ExperimentManager:
                            "individual": best_individual}, ignore_index=True)
 
         df = df.sort_values(by=sort_by, ascending=False)
+        if min_fitness is not None:
+            df = df[df.fitness_value >= min_fitness]
         return df
 
 
@@ -708,7 +710,7 @@ class ExperimentManager:
 
 
     @staticmethod
-    def resurrect_doge(experiment_json, individual_str, function_provider):
+    def resurrect_doge(experiment_json, individual_str, function_provider, fitness_function):
         experiment_json = json.loads(experiment_json)
         grammar = Grammar.construct(
             grammar_name=experiment_json['grammar_version'],
@@ -719,7 +721,7 @@ class ExperimentManager:
             data_collection=None,
             function_provider=function_provider,
             grammar=grammar,
-            fitness_function=experiment_json['fitness_functions'][0],
+            fitness_function=fitness_function,
             tree_depth=experiment_json['tree_depth'],
             order_generator=experiment_json['order_generator']
 
