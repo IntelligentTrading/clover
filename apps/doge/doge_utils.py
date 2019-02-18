@@ -76,6 +76,9 @@ class DogePerformanceTimer:
 
         database = DB_INTERFACE
 
+        params['end_time'] = 1548806400  # int(time.time())  # UTC timestamp
+        params['start_time'] = 1548806400 - 60 * 60 * 24
+
         gp_training_config_json = self.gp_training_config_json.format(
             ticker=params['ticker'],
             start_time=datetime_from_timestamp(params['start_time']),
@@ -105,6 +108,12 @@ class DogePerformanceTimer:
 
         population_sizes = [50, 100, 200, 500]
         num_generations = [5, 10, 50, 100]
+
+        training_periods_secs = [60 * 60 * 24,  # 24 hours
+                                 60 * 60 * 24 * 3]  # 3 days
+
+        population_sizes = [500]
+        num_generations = [2]
 
         for training_period in training_periods_secs:
             for generations in num_generations:
