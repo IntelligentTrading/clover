@@ -100,6 +100,17 @@ class PortfolioSnapshot:
         for allocation in self._allocations:
             logging.info(f'       {allocation.amount} {allocation.coin} worth {allocation.value} BTC, {allocation.portion*100:2}% total')
 
+    def update_to_timestamp(self, timestamp):
+        updated_allocations = []
+        for allocation in self._allocations:
+            new_price = get_price(allocation.coin, timestamp)
+            new_allocation = Allocation(amount=allocation.amount,
+                                        coin=allocation.coin,
+                                        portion=allocation.portion,
+                                        unit_price=new_price,
+                                        value=new_price*allocation.amount)
+            updated_allocations.append(new_allocation)
+        return PortfolioSnapshot(timestamp, updated_allocations, load_from_json=False)
 
 
 class PortfolioBacktester:
@@ -108,8 +119,11 @@ class PortfolioBacktester:
         self._portfolio_snapshots = OrderedDict()
 
     def simulate(self, start_time, end_time, step_seconds, portions_dict, start_value_of_portfolio):
+        snapshot = None
         current_value_of_portfolio = start_value_of_portfolio
         for timestamp in range(start_time, end_time, step_seconds):
+            if snapshot is not None:
+                current_value_of_portfolio = snapshot.update_to_timestamp(timestamp).total_value
             allocations = []
             # calculate the held amount for each coin
             for coin in portions_dict:
