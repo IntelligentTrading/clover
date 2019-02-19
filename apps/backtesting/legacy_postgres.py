@@ -30,8 +30,8 @@ class Strength(Enum):
 class PostgresDatabaseConnection(Database):
 
     def __init__(self):
-        from settings import postgres_connection_string
-        self.conn = psycopg2.connect(postgres_connection_string)
+        from settings import POSTGRES_CONNECTION_STRING
+        self.conn = psycopg2.connect(POSTGRES_CONNECTION_STRING)
         self.cursor = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     def log_price_error(self, msg, counter_currency):
