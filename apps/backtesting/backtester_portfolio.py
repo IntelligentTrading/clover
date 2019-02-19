@@ -115,27 +115,39 @@ class PortfolioSnapshot:
 
 class PortfolioBacktester:
 
-    def __init__(self):
-        self._portfolio_snapshots = OrderedDict()
+    def __init__(self, start_time, end_time, step_seconds, portions_dict, start_value_of_portfolio):
+        self._start_time = start_time
+        self._end_time = end_time
+        self._step_seconds = step_seconds
+        self._portions_dict = portions_dict
+        self._start_value_of_portfolio = start_value_of_portfolio
+        self._simulate()
 
-    def simulate(self, start_time, end_time, step_seconds, portions_dict, start_value_of_portfolio):
-        snapshot = None
-        current_value_of_portfolio = start_value_of_portfolio
-        for timestamp in range(start_time, end_time, step_seconds):
-            if snapshot is not None:
-                current_value_of_portfolio = snapshot.update_to_timestamp(timestamp).total_value
-            allocations = []
-            # calculate the held amount for each coin
-            for coin in portions_dict:
-                portion = portions_dict[coin]
-                unit_price = get_price(coin, timestamp)
-                value = portion * current_value_of_portfolio
-                amount = value / unit_price
-                allocation = Allocation(coin=coin, portion=portion, unit_price=unit_price, value=value, amount=amount)
-                allocations.append(allocation)
-            snapshot = PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations, load_from_json=False)
-            snapshot.report()
-            current_value_of_portfolio = snapshot.total_value
+    def _build_portfolio(self, timestamp, total_value):
+        allocations = []
+        # calculate the held amount for each coin
+        for coin in self._portions_dict:
+            portion = self._portions_dict[coin]
+            unit_price = get_price(coin, timestamp)
+            value = portion * total_value
+            amount = value / unit_price
+            allocation = Allocation(coin=coin, portion=portion, unit_price=unit_price, value=value, amount=amount)
+            allocations.append(allocation)
+        return PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations, load_from_json=False)
+
+
+
+    def _simulate(self):
+        self._portfolio_snapshots = OrderedDict()
+        current_snapshot = None
+        current_value_of_portfolio = self._start_value_of_portfolio
+        for timestamp in range(self._start_time, self._end_time, self._step_seconds):
+            if current_snapshot is None:
+                current_snapshot = self._build_portfolio(self._start_time, self._start_value_of_portfolio)
+            else:
+                current_snapshot = self._build_portfolio(timestamp, current_snapshot.update_to_timestamp(timestamp).total_value)
+            current_snapshot.report()
+            current_value_of_portfolio = current_snapshot.total_value
 
     def process_allocations(self, timestamp, allocations_data):
         self._portfolio_snapshots[timestamp] = PortfolioSnapshot(timestamp, allocations_data)
@@ -178,12 +190,12 @@ class DummyDataProvider:
 
     def run(self):
         from apps.backtesting.utils import datetime_to_timestamp
-        backtester = PortfolioBacktester()
-        timestamp = datetime_to_timestamp('2018/06/01 00:00:00 UTC')
-        for i in range(10):
-            backtester.process_allocations(timestamp+i*60*60*24, self.sample_allocations)
-        backtester.value_report()
-        backtester.simulate(start_time=int(datetime_to_timestamp('2018/06/01 00:00:00 UTC')),
+        # backtester = PortfolioBacktester()
+        # timestamp = datetime_to_timestamp('2018/06/01 00:00:00 UTC')
+        # for i in range(10):
+        #     backtester.process_allocations(timestamp+i*60*60*24, self.sample_allocations)
+        # backtester.value_report()
+        backtester = PortfolioBacktester(start_time=int(datetime_to_timestamp('2018/06/01 00:00:00 UTC')),
                             end_time=int(datetime_to_timestamp('2018/06/02 00:00:00 UTC')),
                             step_seconds=60*60,
                             portions_dict={
