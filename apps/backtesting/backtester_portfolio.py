@@ -159,6 +159,7 @@ class PortfolioBacktester:
             value_df_dicts.append(coin_values_dict)
         self._dataframes = {coin: pd.DataFrame(self._dataframes[coin]) for coin in self._dataframes.keys()}
         self._value_dataframe = pd.DataFrame(value_df_dicts).set_index(['timestamp'])
+        self._value_dataframe.index = pd.to_datetime(self._value_dataframe.index, unit='s')
 
     def process_allocations(self, timestamp, allocations_data):
         self._portfolio_snapshots[timestamp] = PortfolioSnapshot(timestamp, allocations_data)
