@@ -1,5 +1,6 @@
 import logging
 import json
+import pandas as pd
 from apps.backtesting.data_sources import DB_INTERFACE
 from apps.backtesting.legacy_postgres import PostgresDatabaseConnection
 from collections import namedtuple, OrderedDict
@@ -23,7 +24,8 @@ class Allocation:
             'coin': self.coin,
             'portion': self.portion,
             'unit_price': self.unit_price,
-            'value': self.value
+            'value': self.value,
+            'timestamp': self.timestamp
         }
 
 
@@ -137,6 +139,7 @@ class PortfolioBacktester:
 
     def _simulate(self):
         self._portfolio_snapshots = OrderedDict()
+        self._dataframes = {}
         current_snapshot = None
         current_value_of_portfolio = self._start_value_of_portfolio
         for timestamp in range(self._start_time, self._end_time, self._step_seconds):
@@ -145,7 +148,12 @@ class PortfolioBacktester:
             else:
                 current_snapshot = self._build_portfolio(timestamp, current_snapshot.update_to_timestamp(timestamp).total_value)
             current_snapshot.report()
+            logging.info(current_snapshot.to_dict())
             current_value_of_portfolio = current_snapshot.total_value
+            for coin in current_snapshot.to_dict().keys():
+                self._dataframes.setdefault(coin, []).append(current_snapshot.to_dict()[coin])
+        self._dataframes = {coin: pd.DataFrame(self._dataframes[coin]) for coin in self._dataframes.keys()}
+
 
     def process_allocations(self, timestamp, allocations_data):
         self._portfolio_snapshots[timestamp] = PortfolioSnapshot(timestamp, allocations_data)
