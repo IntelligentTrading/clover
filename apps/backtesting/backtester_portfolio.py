@@ -4,31 +4,27 @@ from apps.backtesting.data_sources import DB_INTERFACE
 from apps.backtesting.legacy_postgres import PostgresDatabaseConnection
 from collections import namedtuple, OrderedDict
 
-Allocation = namedtuple('Allocation', 'amount coin portion unit_price value')
-
 POSTGRES = PostgresDatabaseConnection()
 
-"""
+
 class Allocation:
     
-    def __init__(self, amount, coin, portion, unit_price=None):
+    def __init__(self, amount, coin, portion, unit_price, value, timestamp):
         self.amount = amount
         self.coin = coin
         self.portion = portion
-        if unit_price is None:
-            
-        
-    def _fill_internals(self, allocations_dict):
-            unit_price = self._get_price(item['coin'])
-            value = unit_price * item['amount']
-            allocation = Allocation(**item, unit_price=unit_price, value=value)
-            self._held_coins.add(allocation.coin)
-            self._portion_sum += float(allocation.portion)
-            self._total_value += allocation.value
-            self._allocations[allocation.coin] = allocation
-        
+        self.unit_price = unit_price
+        self.value = value
+        self.timestamp = timestamp
 
-"""
+    def to_dict(self):
+        return {
+            'amount': self.amount,
+            'coin': self.coin,
+            'portion': self.portion,
+            'unit_price': self.unit_price,
+            'value': self.value
+        }
 
 
 def get_price(coin, timestamp, db_interface=POSTGRES):
@@ -108,9 +104,13 @@ class PortfolioSnapshot:
                                         coin=allocation.coin,
                                         portion=allocation.portion,
                                         unit_price=new_price,
-                                        value=new_price*allocation.amount)
+                                        value=new_price*allocation.amount,
+                                        timestamp=timestamp)
             updated_allocations.append(new_allocation)
         return PortfolioSnapshot(timestamp, updated_allocations, load_from_json=False)
+
+    def to_dict(self):
+        return {coin: self.get_allocation(coin).to_dict() for coin in self.held_coins}
 
 
 class PortfolioBacktester:
@@ -131,11 +131,9 @@ class PortfolioBacktester:
             unit_price = get_price(coin, timestamp)
             value = portion * total_value
             amount = value / unit_price
-            allocation = Allocation(coin=coin, portion=portion, unit_price=unit_price, value=value, amount=amount)
+            allocation = Allocation(coin=coin, portion=portion, unit_price=unit_price, value=value, amount=amount, timestamp=timestamp)
             allocations.append(allocation)
         return PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations, load_from_json=False)
-
-
 
     def _simulate(self):
         self._portfolio_snapshots = OrderedDict()
