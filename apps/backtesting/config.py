@@ -34,8 +34,9 @@ backtesting_report_columns = list(backtesting_cols_to_names.keys())
 backtesting_report_column_names = list(backtesting_cols_to_names.values())
 
 
-transaction_cost_percents = {
-    "binance": 0.001
+TRANSACTION_COST_PERCENTS = {
+    "binance": 0.001,
+    2: 0.001  # temp fix for Postgres backward compatibility
 }
 
 # top 20 altcoins on Coinmarketcap (USDT not included)

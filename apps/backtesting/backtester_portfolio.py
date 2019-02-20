@@ -1,12 +1,11 @@
 import logging
 import json
 import pandas as pd
-from apps.backtesting.data_sources import DB_INTERFACE
+from apps.backtesting.tick_provider import TickerData, TickProvider
 from apps.backtesting.legacy_postgres import PostgresDatabaseConnection
-from collections import namedtuple, OrderedDict
+from collections import OrderedDict
 
 POSTGRES = PostgresDatabaseConnection()
-
 
 class Allocation:
     
@@ -124,6 +123,7 @@ class PortfolioBacktester:
         self._portions_dict = portions_dict
         self._start_value_of_portfolio = start_value_of_portfolio
         self._simulate()
+        self._build_benchmark_baselines()
 
     def _build_portfolio(self, timestamp, total_value):
         allocations = []
@@ -136,6 +136,22 @@ class PortfolioBacktester:
             allocation = Allocation(coin=coin, portion=portion, unit_price=unit_price, value=value, amount=amount, timestamp=timestamp)
             allocations.append(allocation)
         return PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations, load_from_json=False)
+
+    def _build_benchmark_baselines(self):
+        self._benchmarks = {}
+        from apps.backtesting.backtester_ticks import TickDrivenBacktester
+        for coin in self.held_coins:
+            coin_df = self.get_dataframe_for_coin(coin)
+            tick_provider = TickProviderDataframe(transaction_currency=coin,
+                                                  counter_currency='BTC',
+                                                  source='binance',
+                                                  dataframe=coin_df,
+                                                  close_price_column_name='unit_price')
+            self._benchmarks[coin] = TickDrivenBacktester.build_benchmark(coin, 'BTC', self._start_value_of_portfolio,
+                                                                          0, self._start_time, self._end_time,
+                                                                          source=2, tick_provider=tick_provider,
+                                                                          database=POSTGRES)
+
 
     def _simulate(self):
         self._portfolio_snapshots = OrderedDict()
@@ -175,6 +191,49 @@ class PortfolioBacktester:
     def value_dataframe(self):
         return self._value_dataframe
 
+    @property
+    def held_coins(self):
+        return self._portions_dict.keys()
+
+    def get_benchmark_for_coin(self, coin):
+        return self._benchmarks.get(coin, None)
+
+    def get_benchmark_trading_dataframe_for_coin(self, coin):
+        if coin not in self._benchmarks:
+            return None
+        return self._benchmarks[coin].trading_df
+
+
+class TickProviderDataframe(TickProvider):
+
+    def __init__(self, transaction_currency, counter_currency, source, dataframe, close_price_column_name):
+        super(TickProviderDataframe, self).__init__()
+        self._transaction_currency = transaction_currency
+        self._counter_currency = counter_currency
+        self._source = source
+        self._dataframe = dataframe
+        self._close_price_column_name = close_price_column_name
+
+
+    def run(self):
+        for i, row in self._dataframe.iterrows():
+            timestamp = row['timestamp']
+            close_price = row[self._close_price_column_name]
+            ticker_data = TickerData(
+                timestamp=timestamp,
+                transaction_currency=self._transaction_currency,
+                counter_currency=self._counter_currency,
+                source=self._source,
+                resample_period=None,
+                open_price=close_price,  # row.open_price,
+                high_price=close_price,  # row.high_price,
+                low_price=close_price,  # row.low_price,
+                close_price=close_price,
+                close_volume=0,
+                signals=[],
+            )
+            self.notify_listeners(ticker_data)
+        self.broadcast_ended()
 
 
 class DummyDataProvider:
@@ -223,6 +282,7 @@ class DummyDataProvider:
                                 'OMG': 0.25
                             },
                             start_value_of_portfolio=1000)
+        backtester.get_benchmark_trading_dataframe_for_coin('ETH')
 
 
 
