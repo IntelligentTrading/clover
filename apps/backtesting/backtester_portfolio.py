@@ -140,8 +140,8 @@ class PortfolioBacktester:
     def _simulate(self):
         self._portfolio_snapshots = OrderedDict()
         self._dataframes = {}
+        value_df_dicts = []
         current_snapshot = None
-        current_value_of_portfolio = self._start_value_of_portfolio
         for timestamp in range(self._start_time, self._end_time, self._step_seconds):
             if current_snapshot is None:
                 current_snapshot = self._build_portfolio(self._start_time, self._start_value_of_portfolio)
@@ -150,10 +150,15 @@ class PortfolioBacktester:
             current_snapshot.report()
             logging.info(current_snapshot.to_dict())
             current_value_of_portfolio = current_snapshot.total_value
+            coin_values_dict = {}
             for coin in current_snapshot.to_dict().keys():
                 self._dataframes.setdefault(coin, []).append(current_snapshot.to_dict()[coin])
+                coin_values_dict[coin] = current_snapshot.get_allocation(coin).value
+            coin_values_dict['timestamp'] = timestamp
+            coin_values_dict['total_value'] = current_value_of_portfolio
+            value_df_dicts.append(coin_values_dict)
         self._dataframes = {coin: pd.DataFrame(self._dataframes[coin]) for coin in self._dataframes.keys()}
-
+        self._value_dataframe = pd.DataFrame(value_df_dicts).set_index(['timestamp'])
 
     def process_allocations(self, timestamp, allocations_data):
         self._portfolio_snapshots[timestamp] = PortfolioSnapshot(timestamp, allocations_data)
@@ -161,6 +166,13 @@ class PortfolioBacktester:
     def value_report(self):
         for timestamp, snapshot in self._portfolio_snapshots.items():
             snapshot.report()
+
+    def get_dataframe_for_coin(self, coin):
+        return self._dataframes.get(coin, None)
+
+    @property
+    def value_dataframe(self):
+        return self._value_dataframe
 
 
 
