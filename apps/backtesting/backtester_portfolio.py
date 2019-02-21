@@ -2,7 +2,7 @@ import logging
 import json
 import pandas as pd
 from apps.backtesting.tick_provider import TickerData, TickProvider
-from apps.backtesting.legacy_postgres import PostgresDatabaseConnection
+from apps.backtesting.legacy_postgres import PostgresDatabaseConnection, NoPriceDataException
 from collections import OrderedDict
 
 POSTGRES = PostgresDatabaseConnection()
@@ -160,23 +160,27 @@ class PortfolioBacktester:
         value_df_dicts = []
         current_snapshot = None
         for timestamp in range(self._start_time, self._end_time, self._step_seconds):
-            if current_snapshot is None:
-                current_snapshot = self._build_portfolio(self._start_time, self._start_value_of_portfolio)
-            else:
-                current_snapshot = self._build_portfolio(timestamp, current_snapshot.update_to_timestamp(timestamp).total_value)
-            current_snapshot.report()
-            logging.info(current_snapshot.to_dict())
-            current_value_of_portfolio = current_snapshot.total_value
-            coin_values_dict = {}
-            for coin in current_snapshot.to_dict().keys():
-                self._dataframes.setdefault(coin, []).append(current_snapshot.to_dict()[coin])
-                allocation_dict = current_snapshot.get_allocation(coin).to_dict(prefix=f'{coin}_')
-                for key in allocation_dict:
-                    coin_values_dict[key] = allocation_dict[key]
-                #coin_values_dict[coin] = current_snapshot.get_allocation(coin).value
-            coin_values_dict['timestamp'] = timestamp
-            coin_values_dict['total_value'] = current_value_of_portfolio
-            value_df_dicts.append(coin_values_dict)
+            try:
+                if current_snapshot is None:
+                    current_snapshot = self._build_portfolio(self._start_time, self._start_value_of_portfolio)
+                else:
+                    current_snapshot = self._build_portfolio(timestamp, current_snapshot.update_to_timestamp(timestamp).total_value)
+                current_snapshot.report()
+                logging.info(current_snapshot.to_dict())
+                current_value_of_portfolio = current_snapshot.total_value
+                coin_values_dict = {}
+                for coin in current_snapshot.to_dict().keys():
+                    self._dataframes.setdefault(coin, []).append(current_snapshot.to_dict()[coin])
+                    allocation_dict = current_snapshot.get_allocation(coin).to_dict(prefix=f'{coin}_')
+                    for key in allocation_dict:
+                        coin_values_dict[key] = allocation_dict[key]
+                    #coin_values_dict[coin] = current_snapshot.get_allocation(coin).value
+                coin_values_dict['timestamp'] = timestamp
+                coin_values_dict['total_value'] = current_value_of_portfolio
+                value_df_dicts.append(coin_values_dict)
+            except NoPriceDataException as e:
+                logging.error(e)
+                continue
         self._dataframes = {coin: pd.DataFrame(self._dataframes[coin]).set_index(['timestamp']) for coin in self._dataframes.keys()}
         self._value_dataframe = pd.DataFrame(value_df_dicts).set_index(['timestamp'])
         # self._value_dataframe.index = pd.to_datetime(self._value_dataframe.index, unit='s')
@@ -199,6 +203,7 @@ class PortfolioBacktester:
         columns_list = [f'total_value_{coin}' for coin in self.held_coins]
         columns_list.append('total_value_rebalancing')
         columns_list.append('total_value_benchmark')
+        df.index = pd.to_datetime(df.index, unit='s')
         return df
 
     @property
