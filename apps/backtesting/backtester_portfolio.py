@@ -175,7 +175,7 @@ class PortfolioBacktester:
             value_df_dicts.append(coin_values_dict)
         self._dataframes = {coin: pd.DataFrame(self._dataframes[coin]) for coin in self._dataframes.keys()}
         self._value_dataframe = pd.DataFrame(value_df_dicts).set_index(['timestamp'])
-        self._value_dataframe.index = pd.to_datetime(self._value_dataframe.index, unit='s')
+        # self._value_dataframe.index = pd.to_datetime(self._value_dataframe.index, unit='s')
 
     def process_allocations(self, timestamp, allocations_data):
         self._portfolio_snapshots[timestamp] = PortfolioSnapshot(timestamp, allocations_data)
@@ -186,6 +186,17 @@ class PortfolioBacktester:
 
     def get_dataframe_for_coin(self, coin):
         return self._dataframes.get(coin, None)
+
+    def get_rebalancing_vs_benchmark_dataframe(self):
+        value_df = self.value_dataframe
+        benchmark_value_df = self.get_benchmark_trading_df_for_all_coins()
+
+        df = value_df.join(benchmark_value_df, lsuffix='_rebalancing', rsuffix='_benchmark')
+        columns_list = [f'total_value_{coin}' for coin in self.held_coins]
+        columns_list.append('total_value')
+        # columns_list.append('total_value_rebalancing')
+        # columns_list.append('total_value_benchmark')
+        return df[columns_list]
 
     @property
     def value_dataframe(self):
@@ -202,6 +213,21 @@ class PortfolioBacktester:
         if coin not in self._benchmarks:
             return None
         return self._benchmarks[coin].trading_df
+
+    def get_benchmark_trading_df_for_all_coins(self):
+        df = None
+        for coin in self.held_coins:
+            if df is None:
+                df = self._benchmarks[coin].trading_df.copy()
+                df = df.add_suffix(f'_{coin}')
+            else:
+                right = self._benchmarks.get(coin, None).trading_df.add_suffix(f'_{coin}')
+                df = df.join(right)
+        return df
+
+
+
+
 
 
 class TickProviderDataframe(TickProvider):
@@ -283,6 +309,8 @@ class DummyDataProvider:
                             },
                             start_value_of_portfolio=1000)
         backtester.get_benchmark_trading_dataframe_for_coin('ETH')
+        backtester.get_benchmark_trading_df_for_all_coins()
+        backtester.get_rebalancing_vs_benchmark_dataframe()
 
 
 
