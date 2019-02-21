@@ -17,14 +17,14 @@ class Allocation:
         self.value = value
         self.timestamp = timestamp
 
-    def to_dict(self):
+    def to_dict(self, prefix=''):
         return {
-            'amount': self.amount,
-            'coin': self.coin,
-            'portion': self.portion,
-            'unit_price': self.unit_price,
-            'value': self.value,
-            'timestamp': self.timestamp
+            f'{prefix}amount': self.amount,
+            f'{prefix}coin': self.coin,
+            f'{prefix}portion': self.portion,
+            f'{prefix}unit_price': self.unit_price,
+            f'{prefix}value': self.value,
+            f'{prefix}timestamp': self.timestamp
         }
 
 
@@ -147,7 +147,8 @@ class PortfolioBacktester:
                                                   source='binance',
                                                   dataframe=coin_df,
                                                   close_price_column_name='unit_price')
-            self._benchmarks[coin] = TickDrivenBacktester.build_benchmark(coin, 'BTC', self._start_value_of_portfolio,
+            self._benchmarks[coin] = TickDrivenBacktester.build_benchmark(coin, 'BTC',
+                                                                          self._start_value_of_portfolio*self._portions_dict[coin],
                                                                           0, self._start_time, self._end_time,
                                                                           source=2, tick_provider=tick_provider,
                                                                           database=POSTGRES)
@@ -169,11 +170,14 @@ class PortfolioBacktester:
             coin_values_dict = {}
             for coin in current_snapshot.to_dict().keys():
                 self._dataframes.setdefault(coin, []).append(current_snapshot.to_dict()[coin])
-                coin_values_dict[coin] = current_snapshot.get_allocation(coin).value
+                allocation_dict = current_snapshot.get_allocation(coin).to_dict(prefix=f'{coin}_')
+                for key in allocation_dict:
+                    coin_values_dict[key] = allocation_dict[key]
+                #coin_values_dict[coin] = current_snapshot.get_allocation(coin).value
             coin_values_dict['timestamp'] = timestamp
             coin_values_dict['total_value'] = current_value_of_portfolio
             value_df_dicts.append(coin_values_dict)
-        self._dataframes = {coin: pd.DataFrame(self._dataframes[coin]) for coin in self._dataframes.keys()}
+        self._dataframes = {coin: pd.DataFrame(self._dataframes[coin]).set_index(['timestamp']) for coin in self._dataframes.keys()}
         self._value_dataframe = pd.DataFrame(value_df_dicts).set_index(['timestamp'])
         # self._value_dataframe.index = pd.to_datetime(self._value_dataframe.index, unit='s')
 
@@ -195,7 +199,7 @@ class PortfolioBacktester:
         columns_list = [f'total_value_{coin}' for coin in self.held_coins]
         columns_list.append('total_value_rebalancing')
         columns_list.append('total_value_benchmark')
-        return df[columns_list]
+        return df
 
     @property
     def value_dataframe(self):
@@ -241,8 +245,7 @@ class TickProviderDataframe(TickProvider):
 
 
     def run(self):
-        for i, row in self._dataframe.iterrows():
-            timestamp = row['timestamp']
+        for timestamp, row in self._dataframe.iterrows():
             close_price = row[self._close_price_column_name]
             ticker_data = TickerData(
                 timestamp=timestamp,
