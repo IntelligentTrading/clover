@@ -193,9 +193,8 @@ class PortfolioBacktester:
 
         df = value_df.join(benchmark_value_df, lsuffix='_rebalancing', rsuffix='_benchmark')
         columns_list = [f'total_value_{coin}' for coin in self.held_coins]
-        columns_list.append('total_value')
-        # columns_list.append('total_value_rebalancing')
-        # columns_list.append('total_value_benchmark')
+        columns_list.append('total_value_rebalancing')
+        columns_list.append('total_value_benchmark')
         return df[columns_list]
 
     @property
@@ -223,10 +222,10 @@ class PortfolioBacktester:
             else:
                 right = self._benchmarks.get(coin, None).trading_df.add_suffix(f'_{coin}')
                 df = df.join(right)
+        sum_columns = [f'total_value_{coin}' for coin in self.held_coins]
+        df['total_value'] = df[sum_columns].sum(axis=1)
+
         return df
-
-
-
 
 
 
