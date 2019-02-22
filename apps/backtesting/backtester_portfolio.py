@@ -23,6 +23,8 @@ class Allocation:
         else:
             self.unit_price_usdt = unit_price
 
+        self.value_usdt = self.amount * self.unit_price_usdt
+
 
     def to_dict(self, prefix=''):
         return {
@@ -108,18 +110,22 @@ class PortfolioSnapshot:
         self._held_coins = set()
         self._portion_sum = 0
         self._total_value = 0
+        self._total_value_usdt = 0
         for allocation in self._allocations:
             self._held_coins.add(allocation.coin)
             self._portion_sum += float(allocation.portion)
             self._total_value += allocation.value
+            self._total_value_usdt += allocation.value_usdt
             self._allocations_by_coin[allocation.coin] = allocation
 
     def get_allocation(self, coin):
         return self._allocations_by_coin.get(coin, None)
 
-    @property
-    def total_value(self):
-        return self._total_value
+    def total_value(self, counter_currency):
+        if counter_currency == 'BTC':
+            return self._total_value
+        elif counter_currency == 'USDT':
+            return self._total_value_usdt
 
     @property
     def held_coins(self):
@@ -154,12 +160,13 @@ class PortfolioSnapshot:
 
 class PortfolioBacktester:
 
-    def __init__(self, start_time, end_time, step_seconds, portions_dict, start_value_of_portfolio):
+    def __init__(self, start_time, end_time, step_seconds, portions_dict, start_value_of_portfolio, counter_currency):
         self._start_time = start_time
         self._end_time = end_time
         self._step_seconds = step_seconds
         self._portions_dict = portions_dict
         self._start_value_of_portfolio = start_value_of_portfolio
+        self._counter_currency = counter_currency
         self._simulate()
         self._build_benchmark_baselines()
 
@@ -202,10 +209,11 @@ class PortfolioBacktester:
                 if current_snapshot is None:
                     current_snapshot = self._build_portfolio(self._start_time, self._start_value_of_portfolio)
                 else:
-                    current_snapshot = self._build_portfolio(timestamp, current_snapshot.update_to_timestamp(timestamp).total_value)
+                    current_snapshot = self._build_portfolio(
+                        timestamp, current_snapshot.update_to_timestamp(timestamp).total_value(self._counter_currency))
                 current_snapshot.report()
                 logging.info(current_snapshot.to_dict())
-                current_value_of_portfolio = current_snapshot.total_value
+                current_value_of_portfolio = current_snapshot.total_value(self._counter_currency)
                 coin_values_dict = {}
                 for coin in current_snapshot.to_dict().keys():
                     self._dataframes.setdefault(coin, []).append(current_snapshot.to_dict()[coin])
@@ -215,6 +223,8 @@ class PortfolioBacktester:
                     #coin_values_dict[coin] = current_snapshot.get_allocation(coin).value
                 coin_values_dict['timestamp'] = timestamp
                 coin_values_dict['total_value'] = current_value_of_portfolio
+
+                coin_values_dict['total_value_usdt'] = current_snapshot.total_value('USDT')
                 value_df_dicts.append(coin_values_dict)
             except NoPriceDataException as e:
                 logging.error(e)
@@ -352,7 +362,8 @@ class DummyDataProvider:
                                 'ETH': 0.25,
                                 'OMG': 0.25
                             },
-                            start_value_of_portfolio=1000)
+                            start_value_of_portfolio=1000,
+                            counter_currency='BTC')
         backtester.get_benchmark_trading_dataframe_for_coin('ETH')
         backtester.get_benchmark_trading_df_for_all_coins()
         backtester.get_rebalancing_vs_benchmark_dataframe()
