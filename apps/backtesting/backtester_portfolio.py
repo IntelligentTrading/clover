@@ -33,16 +33,47 @@ def get_price(coin, timestamp, db_interface=POSTGRES):
         return 1
     elif coin == 'USDT':
         # get BTC_USDT price and invert
-        btc_usdt_price = db_interface.get_price_nearest_to_timestamp(currency='BTC',
+        btc_usdt_price, _ = db_interface.get_price_nearest_to_timestamp(currency='BTC',
                                                                           timestamp=timestamp,
                                                                           source=2,  # Binance
-                                                                          counter_currency='USDT') / 1E8
-        return 1.0 / btc_usdt_price
+                                                                          counter_currency='USDT')
+        return 1E8 / btc_usdt_price
 
-    return db_interface.get_price_nearest_to_timestamp(currency=coin,
+    price, _ = db_interface.get_price_nearest_to_timestamp(currency=coin,
                                                             timestamp=timestamp,
                                                             source=2,  # Binance
-                                                            counter_currency='BTC') / 1E8
+                                                            counter_currency='BTC')
+    return price / 1E8
+
+
+def get_price_with_counter(coin, counter_currency, timestamp, db_interface=POSTGRES):
+    if coin == counter_currency:
+        return 1
+    elif coin == 'USDT' and counter_currency == 'BTC':
+        # get BTC_USDT price and invert
+        btc_usdt_price, _ = db_interface.get_price_nearest_to_timestamp(currency='BTC',
+                                                                        timestamp=timestamp,
+                                                                        source=2,  # Binance
+                                                                        counter_currency='USDT',
+                                                                        normalize=True)
+        return 1.0 / btc_usdt_price
+
+    try:
+        price, retrieved_timestamp = db_interface.get_price_nearest_to_timestamp(currency=coin,
+                                                           timestamp=timestamp,
+                                                           source=2,  # Binance
+                                                           counter_currency='BTC',
+                                                           normalize=True)
+        return price
+    except NoPriceDataException:
+        if counter_currency == 'USDT':
+            btc_price, retrieved_timestamp = db_interface.get_price_nearest_to_timestamp(currency=coin,
+                                                           timestamp=timestamp,
+                                                           source=2,  # Binance
+                                                           counter_currency='BTC',
+                                                           normalize=True)
+            return POSTGRES.convert_value_to_USDT(value=1, timestamp=retrieved_timestamp, transaction_currency=coin, source=2)
+
 
 class PortfolioSnapshot:
 
@@ -130,7 +161,7 @@ class PortfolioBacktester:
         # calculate the held amount for each coin
         for coin in self._portions_dict:
             portion = self._portions_dict[coin]
-            unit_price = get_price(coin, timestamp)
+            unit_price = get_price_with_counter(coin, 'BTC', timestamp)
             value = portion * total_value
             amount = value / unit_price
             allocation = Allocation(coin=coin, portion=portion, unit_price=unit_price, value=value, amount=amount, timestamp=timestamp)

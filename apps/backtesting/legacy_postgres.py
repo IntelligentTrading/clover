@@ -190,7 +190,7 @@ class PostgresDatabaseConnection(Database):
 
         price = cursor.fetchall()
         if cursor.rowcount == 0:
-            price = self.get_price_nearest_to_timestamp(currency, timestamp, source, counter_currency)
+            price, _ = self.get_price_nearest_to_timestamp(currency, timestamp, source, counter_currency)
         else:
             assert cursor.rowcount == 1
             price = price[0][0]
@@ -214,7 +214,7 @@ class PostgresDatabaseConnection(Database):
 
 
     def get_price_nearest_to_timestamp(self, currency, timestamp, source, counter_currency, max_delta_seconds_past=60*60,
-                                       max_delta_seconds_future=60*5):
+                                       max_delta_seconds_future=60*5, normalize=False):
 
         counter_currency_id = CounterCurrency[counter_currency].value
         cursor = self.execute(self.price_in_range_query_desc, params=(currency, counter_currency_id, source,
@@ -236,11 +236,15 @@ class PostgresDatabaseConnection(Database):
             else:
                 logging.warning("Returning future price...")
 
-                return future[0][0]
+                price = future[0][0]
+                retrieved_timestamp = history[0][1]
         else:
             logging.debug("Returning historical price data for timestamp {} (difference of {} minutes)"
                   .format(timestamp,(timestamp - history[0][1])/60))
-            return history[0][0]
+            price = history[0][0]
+            retrieved_timestamp = history[0][1]
+
+        return (price / 1E8, retrieved_timestamp) if normalize else (price, retrieved_timestamp)
 
     def get_prices_in_range(self, start_time, end_time, transaction_currency, counter_currency, source):
         counter_currency_id = CounterCurrency[counter_currency].value
