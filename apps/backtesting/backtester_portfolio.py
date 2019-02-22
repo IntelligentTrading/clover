@@ -9,13 +9,20 @@ POSTGRES = PostgresDatabaseConnection()
 
 class Allocation:
     
-    def __init__(self, amount, coin, portion, unit_price, value, timestamp):
+    def __init__(self, amount, coin, portion, unit_price, value, timestamp, counter_currency='BTC'):
         self.amount = amount
         self.coin = coin
         self.portion = portion
         self.unit_price = unit_price
         self.value = value
         self.timestamp = timestamp
+        self.counter_currency = counter_currency
+
+        if counter_currency != 'USDT':
+            self.unit_price_usdt = get_price(coin, timestamp, counter_currency='USDT')
+        else:
+            self.unit_price_usdt = unit_price
+
 
     def to_dict(self, prefix=''):
         return {
@@ -28,7 +35,7 @@ class Allocation:
         }
 
 
-def get_price(coin, timestamp, db_interface=POSTGRES):
+def get_price_old(coin, timestamp, db_interface=POSTGRES):
     if coin == 'BTC':
         return 1
     elif coin == 'USDT':
@@ -46,7 +53,7 @@ def get_price(coin, timestamp, db_interface=POSTGRES):
     return price / 1E8
 
 
-def get_price_with_counter(coin, counter_currency, timestamp, db_interface=POSTGRES):
+def get_price(coin, timestamp, db_interface=POSTGRES, counter_currency='BTC'):
     if coin == counter_currency:
         return 1
     elif coin == 'USDT' and counter_currency == 'BTC':
@@ -62,7 +69,7 @@ def get_price_with_counter(coin, counter_currency, timestamp, db_interface=POSTG
         price, retrieved_timestamp = db_interface.get_price_nearest_to_timestamp(currency=coin,
                                                            timestamp=timestamp,
                                                            source=2,  # Binance
-                                                           counter_currency='BTC',
+                                                           counter_currency=counter_currency,
                                                            normalize=True)
         return price
     except NoPriceDataException:
@@ -161,7 +168,7 @@ class PortfolioBacktester:
         # calculate the held amount for each coin
         for coin in self._portions_dict:
             portion = self._portions_dict[coin]
-            unit_price = get_price_with_counter(coin, 'BTC', timestamp)
+            unit_price = get_price(coin, timestamp)
             value = portion * total_value
             amount = value / unit_price
             allocation = Allocation(coin=coin, portion=portion, unit_price=unit_price, value=value, amount=amount, timestamp=timestamp)
