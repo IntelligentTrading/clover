@@ -192,7 +192,8 @@ class PostgresDatabaseConnection(Database):
         if cursor.rowcount == 0:
             price, _ = self.get_price_nearest_to_timestamp(currency, timestamp, source, counter_currency)
         else:
-            assert cursor.rowcount == 1
+            if cursor.rowcount > 1:
+                logging.warning(f'Multiple price points encountered for {currency}-{counter_currency} at {timestamp}: {price}')
             price = price[0][0]
 
         if normalize:

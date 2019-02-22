@@ -33,6 +33,8 @@ class Allocation:
             f'{prefix}portion': self.portion,
             f'{prefix}unit_price': self.unit_price,
             f'{prefix}value': self.value,
+            f'{prefix}unit_price_usdt': self.unit_price_usdt,
+            f'{prefix}value_usdt': self.value_usdt,
             f'{prefix}timestamp': self.timestamp
         }
 
@@ -56,6 +58,7 @@ def get_price_old(coin, timestamp, db_interface=POSTGRES):
 
 
 def get_price(coin, timestamp, db_interface=POSTGRES, counter_currency='BTC'):
+    price = None
     if coin == counter_currency:
         return 1
     elif coin == 'USDT' and counter_currency == 'BTC':
@@ -82,6 +85,9 @@ def get_price(coin, timestamp, db_interface=POSTGRES, counter_currency='BTC'):
                                                            counter_currency='BTC',
                                                            normalize=True)
             return POSTGRES.convert_value_to_USDT(value=1, timestamp=retrieved_timestamp, transaction_currency=coin, source=2)
+
+    if price is None:
+        raise NoPriceDataException
 
 
 class PortfolioSnapshot:
@@ -223,7 +229,6 @@ class PortfolioBacktester:
                     #coin_values_dict[coin] = current_snapshot.get_allocation(coin).value
                 coin_values_dict['timestamp'] = timestamp
                 coin_values_dict['total_value'] = current_value_of_portfolio
-
                 coin_values_dict['total_value_usdt'] = current_snapshot.total_value('USDT')
                 value_df_dicts.append(coin_values_dict)
             except NoPriceDataException as e:
@@ -281,6 +286,9 @@ class PortfolioBacktester:
                 df = df.join(right)
         sum_columns = [f'total_value_{coin}' for coin in self.held_coins]
         df['total_value'] = df[sum_columns].sum(axis=1)
+
+        sum_columns_usdt = [f'total_value_usdt_{coin}' for coin in self.held_coins]
+        df['total_value_usdt'] = df[sum_columns_usdt].sum(axis=1)
 
         return df
 
@@ -354,13 +362,14 @@ class DummyDataProvider:
         # for i in range(10):
         #     backtester.process_allocations(timestamp+i*60*60*24, self.sample_allocations)
         # backtester.value_report()
-        backtester = PortfolioBacktester(start_time=int(datetime_to_timestamp('2018/06/01 00:00:00 UTC')),
-                            end_time=int(datetime_to_timestamp('2018/06/02 00:00:00 UTC')),
+        backtester = PortfolioBacktester(start_time=int(datetime_to_timestamp('2018/10/01 00:00:00 UTC')),
+                            end_time=int(datetime_to_timestamp('2018/10/30 00:00:00 UTC')),
                             step_seconds=60*60,
                             portions_dict={
-                                'BTC': 0.5,
+                                'LTC': 0.25,
                                 'ETH': 0.25,
-                                'OMG': 0.25
+                                'OMG': 0.25,
+                                'ETC': 0.25,
                             },
                             start_value_of_portfolio=1000,
                             counter_currency='BTC')
