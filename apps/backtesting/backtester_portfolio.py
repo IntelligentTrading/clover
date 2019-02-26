@@ -166,7 +166,8 @@ class PortfolioSnapshot:
 
 class PortfolioBacktester:
 
-    def __init__(self, start_time, end_time, step_seconds, portions_dict, start_value_of_portfolio, counter_currency):
+    def __init__(self, start_time, end_time, step_seconds, portions_dict,
+                 start_value_of_portfolio, counter_currency, verbose=False):
         self._start_time = start_time
         self._end_time = end_time
         self._step_seconds = step_seconds
@@ -174,6 +175,7 @@ class PortfolioBacktester:
         self._start_value_of_portfolio = start_value_of_portfolio
         self._start_value_of_portfolio_usdt = start_value_of_portfolio * get_price('BTC', start_time, counter_currency='USDT')
         self._counter_currency = counter_currency
+        self._verbose = verbose
         self._simulate()
         self._build_benchmark_baselines()
 
@@ -229,7 +231,8 @@ class PortfolioBacktester:
                 else:
                     current_snapshot = self._build_portfolio(
                         timestamp, current_snapshot.update_to_timestamp(timestamp).total_value(self._counter_currency))
-                current_snapshot.report()
+                if self._verbose:
+                    current_snapshot.report()
                 logging.info(current_snapshot.to_dict())
                 current_value_of_portfolio = current_snapshot.total_value(self._counter_currency)
                 coin_values_dict = {}
@@ -330,7 +333,7 @@ class PortfolioBacktester:
         #   matplotlib.use('Agg')
 
         df = self.get_rebalancing_vs_benchmark_dataframe()
-        df.rename(index=str, columns={"return_relative_to_past_tick_benchmark": "Buy & hold"})
+        df = df.rename(columns={"return_relative_to_past_tick_benchmark": "Buy & hold"})
         f = pf.create_returns_tear_sheet(returns=df['return_relative_to_past_tick_rebalancing'],
                                          return_fig=True,
                                          bootstrap=None,
@@ -411,7 +414,7 @@ class DummyDataProvider:
         # for i in range(10):
         #     backtester.process_allocations(timestamp+i*60*60*24, self.sample_allocations)
         # backtester.value_report()
-        backtester = PortfolioBacktester(start_time=int(datetime_to_timestamp('2018/05/01 00:00:00 UTC')),
+        backtester = PortfolioBacktester(start_time=int(datetime_to_timestamp('2018/10/01 00:00:00 UTC')),
                             end_time=int(datetime_to_timestamp('2018/10/30 00:00:00 UTC')),
                             step_seconds=60*60,
                             portions_dict={
@@ -422,6 +425,7 @@ class DummyDataProvider:
                             },
                             start_value_of_portfolio=1000,
                             counter_currency='BTC')
+        backtester.draw_returns_tear_sheet()
         backtester.get_benchmark_trading_dataframe_for_coin('ETH')
         backtester.get_benchmark_trading_df_for_all_coins()
         backtester.get_rebalancing_vs_benchmark_dataframe()
