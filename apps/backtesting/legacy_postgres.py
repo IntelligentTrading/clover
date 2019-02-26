@@ -238,7 +238,7 @@ class PostgresDatabaseConnection(Database):
                 logging.warning("Returning future price...")
 
                 price = future[0][0]
-                retrieved_timestamp = history[0][1]
+                retrieved_timestamp = future[0][1]
         else:
             logging.debug("Returning historical price data for timestamp {} (difference of {} minutes)"
                   .format(timestamp,(timestamp - history[0][1])/60))
