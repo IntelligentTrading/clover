@@ -172,6 +172,7 @@ class PortfolioBacktester:
         self._step_seconds = step_seconds
         self._portions_dict = portions_dict
         self._start_value_of_portfolio = start_value_of_portfolio
+        self._start_value_of_portfolio_usdt = start_value_of_portfolio * get_price('BTC', start_time, counter_currency='USDT')
         self._counter_currency = counter_currency
         self._simulate()
         self._build_benchmark_baselines()
@@ -190,6 +191,7 @@ class PortfolioBacktester:
 
     def _build_benchmark_baselines(self):
         self._benchmarks = {}
+        self._usdt_benchmarks = {}
         from apps.backtesting.backtester_ticks import TickDrivenBacktester
         for coin in self.held_coins:
             coin_df = self.get_dataframe_for_coin(coin)
@@ -202,6 +204,16 @@ class PortfolioBacktester:
                                                                           self._start_value_of_portfolio*self._portions_dict[coin],
                                                                           0, self._start_time, self._end_time,
                                                                           source=2, tick_provider=tick_provider,
+                                                                          database=POSTGRES)
+            tick_provider_usdt = TickProviderDataframe(transaction_currency=coin,
+                                                  counter_currency='USDT',
+                                                  source='binance',
+                                                  dataframe=coin_df,
+                                                  close_price_column_name='unit_price_usdt')
+            self._usdt_benchmarks[coin] = TickDrivenBacktester.build_benchmark(coin, 'USDT',
+                                                                          self._start_value_of_portfolio_usdt*self._portions_dict[coin],
+                                                                          0, self._start_time, self._end_time,
+                                                                          source=2, tick_provider=tick_provider_usdt,
                                                                           database=POSTGRES)
 
 
@@ -236,7 +248,18 @@ class PortfolioBacktester:
                 continue
         self._dataframes = {coin: pd.DataFrame(self._dataframes[coin]).set_index(['timestamp']) for coin in self._dataframes.keys()}
         self._value_dataframe = pd.DataFrame(value_df_dicts).set_index(['timestamp'])
+        self._value_dataframe = self._fill_relative_returns(self._value_dataframe,
+                                                            total_value_column_name='total_value',
+                                                            relative_returns_column_name='return_relative_to_past_tick')
+        self._value_dataframe = self._fill_relative_returns(self._value_dataframe,
+                                                            total_value_column_name='total_value_usdt',
+                                                            relative_returns_column_name='return_relative_to_past_tick_usdt')
+
         # self._value_dataframe.index = pd.to_datetime(self._value_dataframe.index, unit='s')
+
+    def _fill_relative_returns(self, df, total_value_column_name='total_value', relative_returns_column_name='return_relative_to_past_tick'):
+        df['return_relative_to_past_tick'] = df[total_value_column_name].diff() / df[total_value_column_name].shift(1)
+        return df
 
     def process_allocations(self, timestamp, allocations_data):
         self._portfolio_snapshots[timestamp] = PortfolioSnapshot(timestamp, allocations_data)
@@ -281,16 +304,42 @@ class PortfolioBacktester:
             if df is None:
                 df = self._benchmarks[coin].trading_df.copy()
                 df = df.add_suffix(f'_{coin}')
+                right_usdt = self._usdt_benchmarks[coin].trading_df.copy().add_suffix(f'_usdt_{coin}')
+                df = df.join(right_usdt)
             else:
                 right = self._benchmarks.get(coin, None).trading_df.add_suffix(f'_{coin}')
                 df = df.join(right)
+                right_usdt = self._usdt_benchmarks[coin].trading_df.copy().add_suffix(f'_usdt_{coin}')
+                df = df.join(right_usdt)
         sum_columns = [f'total_value_{coin}' for coin in self.held_coins]
         df['total_value'] = df[sum_columns].sum(axis=1)
+        df = self._fill_relative_returns(df, total_value_column_name='total_value', 
+                                         relative_returns_column_name='return_relative_to_past_tick')
 
         sum_columns_usdt = [f'total_value_usdt_{coin}' for coin in self.held_coins]
         df['total_value_usdt'] = df[sum_columns_usdt].sum(axis=1)
+        df = self._fill_relative_returns(df, total_value_column_name='total_value_usdt', 
+                                         relative_returns_column_name='return_relative_to_past_tick_usdt')
 
         return df
+
+    def draw_returns_tear_sheet(self, save_file=True, out_filename='pyfolio_returns_tear_sheet.png'):
+        import pyfolio as pf
+        import matplotlib
+        # if save_file:
+        #   matplotlib.use('Agg')
+
+        df = self.get_rebalancing_vs_benchmark_dataframe()
+        df.rename(index=str, columns={"return_relative_to_past_tick_benchmark": "Buy & hold"})
+        f = pf.create_returns_tear_sheet(returns=df['return_relative_to_past_tick_rebalancing'],
+                                         return_fig=True,
+                                         bootstrap=None,
+                                         benchmark_rets=df['Buy & hold'])
+
+        if save_file:
+            f.savefig(out_filename)
+        return f
+
 
 
 
@@ -362,14 +411,14 @@ class DummyDataProvider:
         # for i in range(10):
         #     backtester.process_allocations(timestamp+i*60*60*24, self.sample_allocations)
         # backtester.value_report()
-        backtester = PortfolioBacktester(start_time=int(datetime_to_timestamp('2018/10/01 00:00:00 UTC')),
+        backtester = PortfolioBacktester(start_time=int(datetime_to_timestamp('2018/05/01 00:00:00 UTC')),
                             end_time=int(datetime_to_timestamp('2018/10/30 00:00:00 UTC')),
                             step_seconds=60*60,
                             portions_dict={
-                                'LTC': 0.25,
+                                'BTC': 0.25,
                                 'ETH': 0.25,
-                                'OMG': 0.25,
-                                'ETC': 0.25,
+                                'XRP': 0.25,
+                                'EOS': 0.25,
                             },
                             start_value_of_portfolio=1000,
                             counter_currency='BTC')
