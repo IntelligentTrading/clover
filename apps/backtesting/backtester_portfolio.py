@@ -178,6 +178,7 @@ class PortfolioBacktester:
         self._verbose = verbose
         self._simulate()
         self._build_benchmark_baselines()
+        self._fill_benchmark_dataframe()
 
     def _build_portfolio(self, timestamp, total_value):
         allocations = []
@@ -301,7 +302,7 @@ class PortfolioBacktester:
             return None
         return self._benchmarks[coin].trading_df
 
-    def get_benchmark_trading_df_for_all_coins(self):
+    def _fill_benchmark_dataframe(self):
         df = None
         for coin in self.held_coins:
             if df is None:
@@ -324,7 +325,59 @@ class PortfolioBacktester:
         df = self._fill_relative_returns(df, total_value_column_name='total_value_usdt', 
                                          relative_returns_column_name='return_relative_to_past_tick_usdt')
 
-        return df
+        self._benchmark_dataframe = df
+
+    def get_benchmark_trading_df_for_all_coins(self):
+        return self._benchmark_dataframe
+
+    @property
+    def profit(self):
+        end_value = self.value_dataframe.iloc[-1].total_value
+        return end_value - self._start_value_of_portfolio
+
+    @property
+    def profit_usdt(self):
+        end_value = self.value_dataframe.iloc[-1].total_value
+        return end_value - self._start_value_of_portfolio_usdt
+
+    @property
+    def profit_percent(self):
+        return self.profit / float(self._start_value_of_portfolio)
+
+    @property
+    def profit_percent_usdt(self):
+        return self.profit_usdt / float(self._start_value_of_portfolio)
+
+    @property
+    def benchmark_profit(self):
+        end_value = self._benchmark_dataframe.iloc[-1].total_value
+        return end_value - self._start_value_of_portfolio
+
+    @property
+    def benchmark_profit_usdt(self):
+        end_value = self._benchmark_dataframe.iloc[-1].total_value
+        return end_value - self._start_value_of_portfolio_usdt
+
+    @property
+    def benchmark_profit_percent(self):
+        return self.benchmark_profit / float(self._start_value_of_portfolio)
+
+    @property
+    def benchmark_profit_percent_usdt(self):
+        return self.benchmark_profit_usdt / float(self._start_value_of_portfolio_usdt)
+
+    @property
+    def summary_dict(self):
+        return {
+            'allocations': ','.join([f'{coin} ({self.get_portion(coin)*100:.2}%)' for coin in self.held_coins]),
+            'profit_percent': self.profit_percent,
+            'profit_percent_usdt': self.profit_percent_usdt,
+            'benchmark_profit_percent': self.benchmark_profit_percent,
+            'benchmark_profit_percent_usdt': self.benchmark_profit_percent_usdt
+        }
+
+    def get_portion(self, coin):
+        return self._portions_dict.get(coin, None)
 
     def draw_returns_tear_sheet(self, save_file=True, out_filename='pyfolio_returns_tear_sheet.png'):
         import pyfolio as pf
@@ -342,7 +395,6 @@ class PortfolioBacktester:
         if save_file:
             f.savefig(out_filename)
         return f
-
 
 
 
