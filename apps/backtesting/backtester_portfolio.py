@@ -337,7 +337,7 @@ class PortfolioBacktester:
 
     @property
     def profit_usdt(self):
-        end_value = self.value_dataframe.iloc[-1].total_value
+        end_value = self.value_dataframe.iloc[-1].total_value_usdt
         return end_value - self._start_value_of_portfolio_usdt
 
     @property
@@ -346,7 +346,7 @@ class PortfolioBacktester:
 
     @property
     def profit_percent_usdt(self):
-        return self.profit_usdt / float(self._start_value_of_portfolio)
+        return self.profit_usdt / float(self._start_value_of_portfolio_usdt)
 
     @property
     def benchmark_profit(self):
@@ -355,7 +355,7 @@ class PortfolioBacktester:
 
     @property
     def benchmark_profit_usdt(self):
-        end_value = self._benchmark_dataframe.iloc[-1].total_value
+        end_value = self._benchmark_dataframe.iloc[-1].total_value_usdt
         return end_value - self._start_value_of_portfolio_usdt
 
     @property
