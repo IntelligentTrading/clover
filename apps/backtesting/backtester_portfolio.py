@@ -441,6 +441,12 @@ class ComparativePortfolioEvaluation:
     def comparative_df(self):
         return self._comparative_df
 
+    def plot_all_returns(self):
+        for (portfolio_name, rebalancing_period), portfolio_backtest in self._portfolio_backtests.items():
+            title = portfolio_backtest.summary_dict['allocations']
+            portfolio_backtest.plot_returns(title=f'{portfolio_name} / {title} / rebalanced every {rebalancing_period /60/60:.0f} hours')
+
+
 
 class TickProviderDataframe(TickProvider):
 
