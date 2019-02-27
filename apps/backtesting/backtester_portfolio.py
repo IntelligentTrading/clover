@@ -1,9 +1,11 @@
 import logging
 import json
 import pandas as pd
+import itertools
 from apps.backtesting.tick_provider import TickerData, TickProvider
 from apps.backtesting.legacy_postgres import PostgresDatabaseConnection, NoPriceDataException
 from collections import OrderedDict
+from apps.backtesting.utils import datetime_to_timestamp
 
 POSTGRES = PostgresDatabaseConnection()
 
@@ -168,6 +170,10 @@ class PortfolioBacktester:
 
     def __init__(self, start_time, end_time, step_seconds, portions_dict,
                  start_value_of_portfolio, counter_currency, verbose=False):
+        if isinstance(start_time, str):
+            start_time = int(datetime_to_timestamp(start_time))
+        if isinstance(end_time, str):
+            end_time = int(datetime_to_timestamp(end_time))
         self._start_time = start_time
         self._end_time = end_time
         self._step_seconds = step_seconds
@@ -369,7 +375,7 @@ class PortfolioBacktester:
     @property
     def summary_dict(self):
         return {
-            'allocations': ','.join([f'{coin} ({self.get_portion(coin)*100:.2}%)' for coin in self.held_coins]),
+            'allocations': ', '.join([f'{coin} ({self.get_portion(coin)*100:.0f}%)' for coin in self.held_coins]),
             'profit_percent': self.profit_percent,
             'profit_percent_usdt': self.profit_percent_usdt,
             'benchmark_profit_percent': self.benchmark_profit_percent,
@@ -396,6 +402,44 @@ class PortfolioBacktester:
             f.savefig(out_filename)
         return f
 
+    def plot_returns(self, title=None):
+        if title is None:
+            title = self.summary_dict['allocations']
+        self.get_rebalancing_vs_benchmark_dataframe()[
+            ['total_value_usdt_rebalancing', 'total_value_usdt_benchmark']].plot(title=title)
+
+
+class ComparativePortfolioEvaluation:
+    def __init__(self, portion_dicts, start_time, end_time, rebalancing_periods, start_value_of_portfolio, counter_currency):
+        self._portion_dicts = portion_dicts
+        self._start_time = start_time
+        self._end_time = end_time
+        self._rebalancing_periods = rebalancing_periods
+        self._start_value_of_portfolio = start_value_of_portfolio
+        self._counter_currency = counter_currency
+        self._run()
+
+    def _run(self):
+        df_rows = []
+        self._portfolio_backtests = {}
+        for portfolio_name, rebalancing_period in itertools.product(self._portion_dicts.keys(), self._rebalancing_periods):
+            portions_dict = self._portion_dicts[portfolio_name]
+            portfolio_backtest = PortfolioBacktester(start_time=self._start_time,
+                                                     end_time=self._end_time,
+                                                     step_seconds=rebalancing_period,
+                                                     portions_dict=portions_dict,
+                                                     start_value_of_portfolio=self._start_value_of_portfolio,
+                                                     counter_currency=self._counter_currency)
+            result = portfolio_backtest.summary_dict
+            result['portfolio'] = portfolio_name
+            result['rebalancing_period_hours'] = rebalancing_period / 60 / 60
+            df_rows.append(result)
+            self._portfolio_backtests[(portfolio_name, rebalancing_period)] = portfolio_backtest
+        self._comparative_df = pd.DataFrame(df_rows)
+
+    @property
+    def comparative_df(self):
+        return self._comparative_df
 
 
 class TickProviderDataframe(TickProvider):
