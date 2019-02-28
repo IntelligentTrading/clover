@@ -373,13 +373,23 @@ class PortfolioBacktester:
         return self.benchmark_profit_usdt / float(self._start_value_of_portfolio_usdt)
 
     @property
+    def percent_gain_over_benchmark(self):
+        return (self.profit - self.benchmark_profit) / self.benchmark_profit
+
+    @property
+    def percent_gain_over_benchmark_usdt(self):
+        return (self.profit_usdt - self.benchmark_profit_usdt) / self.benchmark_profit_percent_usdt
+
+    @property
     def summary_dict(self):
         return {
             'allocations': ', '.join([f'{coin} ({self.get_portion(coin)*100:.0f}%)' for coin in self.held_coins]),
             'profit_percent': self.profit_percent,
             'profit_percent_usdt': self.profit_percent_usdt,
             'benchmark_profit_percent': self.benchmark_profit_percent,
-            'benchmark_profit_percent_usdt': self.benchmark_profit_percent_usdt
+            'benchmark_profit_percent_usdt': self.benchmark_profit_percent_usdt,
+            'percent_gain_over_benchmark': self.percent_gain_over_benchmark,
+            'percent_gain_over_benchmark_usdt': self.percent_gain_over_benchmark_usdt
         }
 
     def get_portion(self, coin):
