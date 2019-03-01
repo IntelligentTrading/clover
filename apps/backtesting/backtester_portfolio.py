@@ -208,14 +208,19 @@ class PortfolioBacktester:
         # calculate the held amount for each coin
         for coin in self._portions_dict:
             previous = previous_portfolio.get_allocation(coin)
-            portion = self._portions_dict[coin]
             new_unit_price = get_price(coin, timestamp)
+            portion = self._portions_dict[coin]
             # new_amount = (total_value*portion + new_unit_price*previous.amount*(1-trading_fee)) / (new_unit_price*(2-trading_fee))
             new_amount = (total_value*portion + new_unit_price*previous.amount*trading_fee) / (new_unit_price*(1+trading_fee))
             new_value = new_amount * new_unit_price
+            portion = new_value / total_value
             # amount = value / unit_price
             allocation = Allocation(coin=coin, portion=portion, unit_price=new_unit_price, value=new_value, amount=new_amount, timestamp=timestamp)
             allocations.append(allocation)
+        total_value = sum([allocation.value for allocation in allocations])
+        for allocation in allocations:
+            allocation.portion = allocation.value / total_value
+
         p = PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations, load_from_json=False)
         return p
 
