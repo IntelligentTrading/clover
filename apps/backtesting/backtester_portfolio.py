@@ -160,6 +160,7 @@ class PortfolioSnapshot:
                                         value=new_price*allocation.amount,
                                         timestamp=timestamp)
             updated_allocations.append(new_allocation)
+
         return PortfolioSnapshot(timestamp, updated_allocations, load_from_json=False)
 
     def to_dict(self):
@@ -169,7 +170,7 @@ class PortfolioSnapshot:
 class PortfolioBacktester:
 
     def __init__(self, start_time, end_time, step_seconds, portions_dict,
-                 start_value_of_portfolio, counter_currency, verbose=False):
+                 start_value_of_portfolio, counter_currency, verbose=False, trading_cost_percent=0):
         if isinstance(start_time, str):
             start_time = int(datetime_to_timestamp(start_time))
         if isinstance(end_time, str):
@@ -182,6 +183,7 @@ class PortfolioBacktester:
         self._start_value_of_portfolio_usdt = start_value_of_portfolio * get_price('BTC', start_time, counter_currency='USDT')
         self._counter_currency = counter_currency
         self._verbose = verbose
+        self._trading_cost_percent = trading_cost_percent
         self._simulate()
         self._build_benchmark_baselines()
         self._fill_benchmark_dataframe()
@@ -192,9 +194,26 @@ class PortfolioBacktester:
         for coin in self._portions_dict:
             portion = self._portions_dict[coin]
             unit_price = get_price(coin, timestamp)
-            value = portion * total_value
+            value = (portion * total_value) * (1 - self._trading_cost_percent/100)
             amount = value / unit_price
             allocation = Allocation(coin=coin, portion=portion, unit_price=unit_price, value=value, amount=amount, timestamp=timestamp)
+            allocations.append(allocation)
+        return PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations, load_from_json=False)
+
+    def _build_portfolio_with_trading_fee(self, timestamp, total_value, previous_portfolio):
+        if previous_portfolio is None:
+            return self._build_portfolio(timestamp, total_value)
+        allocations = []
+        trading_fee = self._trading_cost_percent / 100
+        # calculate the held amount for each coin
+        for coin in self._portions_dict:
+            previous = previous_portfolio.get_allocation(coin)
+            portion = self._portions_dict[coin]
+            new_unit_price = get_price(coin, timestamp)
+            new_amount = (total_value*portion + new_unit_price*previous.amount*(1-trading_fee)) / (new_unit_price*(2-trading_fee))
+            new_value = new_amount * new_unit_price
+            # amount = value / unit_price
+            allocation = Allocation(coin=coin, portion=portion, unit_price=new_unit_price, value=new_value, amount=new_amount, timestamp=timestamp)
             allocations.append(allocation)
         return PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations, load_from_json=False)
 
@@ -234,10 +253,11 @@ class PortfolioBacktester:
         for timestamp in range(self._start_time, self._end_time, self._step_seconds):
             try:
                 if current_snapshot is None:
-                    current_snapshot = self._build_portfolio(self._start_time, self._start_value_of_portfolio)
+                    current_snapshot = self._build_portfolio_with_trading_fee(self._start_time, self._start_value_of_portfolio, previous_portfolio=None)
                 else:
-                    current_snapshot = self._build_portfolio(
-                        timestamp, current_snapshot.update_to_timestamp(timestamp).total_value(self._counter_currency))
+                    current_snapshot = self._build_portfolio_with_trading_fee(
+                        timestamp, current_snapshot.update_to_timestamp(timestamp).total_value(self._counter_currency),
+                        previous_portfolio=previous_snapshot)
                 if self._verbose:
                     current_snapshot.report()
                 logging.info(current_snapshot.to_dict())
@@ -253,6 +273,7 @@ class PortfolioBacktester:
                 coin_values_dict['total_value'] = current_value_of_portfolio
                 coin_values_dict['total_value_usdt'] = current_snapshot.total_value('USDT')
                 value_df_dicts.append(coin_values_dict)
+                previous_snapshot = current_snapshot
             except NoPriceDataException as e:
                 logging.error(e)
                 continue
@@ -373,12 +394,20 @@ class PortfolioBacktester:
         return self.benchmark_profit_usdt / float(self._start_value_of_portfolio_usdt)
 
     @property
+    def gain_over_benchmark(self):
+        return self.profit - self.benchmark_profit
+
+    @property
+    def gain_over_benchmark_usdt(self):
+        return self.profit_usdt - self.benchmark_profit_usdt
+
+    @property
     def percent_gain_over_benchmark(self):
-        return (self.profit - self.benchmark_profit) / self.benchmark_profit
+        return self.gain_over_benchmark / self._start_value_of_portfolio
 
     @property
     def percent_gain_over_benchmark_usdt(self):
-        return (self.profit_usdt - self.benchmark_profit_usdt) / self.benchmark_profit_percent_usdt
+        return self.gain_over_benchmark_usdt / self._start_value_of_portfolio_usdt
 
     @property
     def summary_dict(self):
@@ -389,7 +418,9 @@ class PortfolioBacktester:
             'benchmark_profit_percent': self.benchmark_profit_percent,
             'benchmark_profit_percent_usdt': self.benchmark_profit_percent_usdt,
             'percent_gain_over_benchmark': self.percent_gain_over_benchmark,
-            'percent_gain_over_benchmark_usdt': self.percent_gain_over_benchmark_usdt
+            'percent_gain_over_benchmark_usdt': self.percent_gain_over_benchmark_usdt,
+            'gain_over_benchmark': self.gain_over_benchmark,
+            'gain_over_benchmark_usdt': self.gain_over_benchmark_usdt
         }
 
     def get_portion(self, coin):
@@ -420,13 +451,15 @@ class PortfolioBacktester:
 
 
 class ComparativePortfolioEvaluation:
-    def __init__(self, portion_dicts, start_time, end_time, rebalancing_periods, start_value_of_portfolio, counter_currency):
+    def __init__(self, portion_dicts, start_time, end_time, rebalancing_periods, start_value_of_portfolio, counter_currency,
+                 trading_cost_percent=0):
         self._portion_dicts = portion_dicts
         self._start_time = start_time
         self._end_time = end_time
         self._rebalancing_periods = rebalancing_periods
         self._start_value_of_portfolio = start_value_of_portfolio
         self._counter_currency = counter_currency
+        self._trading_cost_percent = trading_cost_percent
         self._run()
 
     def _run(self):
@@ -439,7 +472,8 @@ class ComparativePortfolioEvaluation:
                                                      step_seconds=rebalancing_period,
                                                      portions_dict=portions_dict,
                                                      start_value_of_portfolio=self._start_value_of_portfolio,
-                                                     counter_currency=self._counter_currency)
+                                                     counter_currency=self._counter_currency,
+                                                     trading_cost_percent=self._trading_cost_percent)
             result = portfolio_backtest.summary_dict
             result['portfolio'] = portfolio_name
             result['rebalancing_period_hours'] = rebalancing_period / 60 / 60
