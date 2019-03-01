@@ -204,18 +204,20 @@ class PortfolioBacktester:
         if previous_portfolio is None:
             return self._build_portfolio(timestamp, total_value)
         allocations = []
-        trading_fee = self._trading_cost_percent / 100
+        trading_fee = self._trading_cost_percent
         # calculate the held amount for each coin
         for coin in self._portions_dict:
             previous = previous_portfolio.get_allocation(coin)
             portion = self._portions_dict[coin]
             new_unit_price = get_price(coin, timestamp)
-            new_amount = (total_value*portion + new_unit_price*previous.amount*(1-trading_fee)) / (new_unit_price*(2-trading_fee))
+            # new_amount = (total_value*portion + new_unit_price*previous.amount*(1-trading_fee)) / (new_unit_price*(2-trading_fee))
+            new_amount = (total_value*portion + new_unit_price*previous.amount*trading_fee) / (new_unit_price*(1+trading_fee))
             new_value = new_amount * new_unit_price
             # amount = value / unit_price
             allocation = Allocation(coin=coin, portion=portion, unit_price=new_unit_price, value=new_value, amount=new_amount, timestamp=timestamp)
             allocations.append(allocation)
-        return PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations, load_from_json=False)
+        p = PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations, load_from_json=False)
+        return p
 
     def _build_benchmark_baselines(self):
         self._benchmarks = {}
@@ -570,7 +572,8 @@ class DummyDataProvider:
                                 'EOS': 0.25,
                             },
                             start_value_of_portfolio=1000,
-                            counter_currency='BTC')
+                            counter_currency='BTC',
+                            trading_cost_percent=0.1)
         backtester.draw_returns_tear_sheet()
         backtester.get_benchmark_trading_dataframe_for_coin('ETH')
         backtester.get_benchmark_trading_df_for_all_coins()
