@@ -200,6 +200,7 @@ class PortfolioBacktester:
             allocations.append(allocation)
         return PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations, load_from_json=False)
 
+    """
     def _build_portfolio_with_trading_fee(self, timestamp, total_value, previous_portfolio):
         if previous_portfolio is None:
             return self._build_portfolio(timestamp, total_value)
@@ -223,6 +224,35 @@ class PortfolioBacktester:
 
         p = PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations, load_from_json=False)
         return p
+        
+    """
+
+    def _build_portfolio_with_trading_fee(self, timestamp, total_value, previous_portfolio):
+        if previous_portfolio is None:
+            return self._build_portfolio(timestamp, total_value)
+        allocations = []
+        trading_fee = self._trading_cost_percent / 100
+        # calculate the held amount for each coin
+        for coin in self._portions_dict:
+            previous = previous_portfolio.get_allocation(coin)
+            new_unit_price = get_price(coin, timestamp)
+            portion = self._portions_dict[coin]
+            delta_value = abs(total_value*portion - previous.amount*new_unit_price)
+            fee = delta_value * trading_fee
+            obtained_amount = (delta_value - fee) / new_unit_price
+            new_amount = previous.amount + (obtained_amount if total_value*portion > previous.amount*new_unit_price else -obtained_amount)
+            new_value = new_amount * new_unit_price
+            portion = new_value / total_value
+            # amount = value / unit_price
+            allocation = Allocation(coin=coin, portion=portion, unit_price=new_unit_price, value=new_value, amount=new_amount, timestamp=timestamp)
+            allocations.append(allocation)
+        total_value = sum([allocation.value for allocation in allocations])
+        for allocation in allocations:
+            allocation.portion = allocation.value / total_value
+
+        p = PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations, load_from_json=False)
+        return p
+
 
     def _build_benchmark_baselines(self):
         self._benchmarks = {}
@@ -257,7 +287,7 @@ class PortfolioBacktester:
         self._dataframes = {}
         value_df_dicts = []
         current_snapshot = None
-        for timestamp in range(self._start_time, self._end_time, self._step_seconds):
+        for timestamp in range(self._start_time, self._end_time+1, self._step_seconds):
             try:
                 if current_snapshot is None:
                     current_snapshot = self._build_portfolio_with_trading_fee(self._start_time, self._start_value_of_portfolio, previous_portfolio=None)
