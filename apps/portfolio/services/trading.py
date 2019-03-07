@@ -80,7 +80,11 @@ def set_portfolio(portfolio, allocation):
         response_data = response.json()
         while 'retry_after' in response_data:
             try:
-                proccess_uuid = response_data['portfolio_processing_request'].strip("/api/portfolio_process/")
+                #  CAREFUL: this will strip ANY of the characters from the string!!!
+                # proccess_uuid = response_data['portfolio_processing_request'].strip("/api/portfolio_process/")
+
+                proccess_uuid = response_data['portfolio_processing_request'][len("/api/portfolio_process/"):]
+
                 logging.debug(f"sleeping for {response_data['retry_after']}ms...")
                 time.sleep(max([int(response_data['retry_after'])/1000/2, 5]))
                 api_url = ITF_TRADING_API_URL + "portfolio_process/" + proccess_uuid
