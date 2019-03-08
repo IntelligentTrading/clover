@@ -76,7 +76,7 @@ def get_allocations_from_signals(horizon="all", at_datetime=None):
                 horizon_periods[horizon] * horizon_life_spans[horizon]
         ))
         r = requests.get(
-            url, headers={"API-KEY": ITF_CORE_API_KEY},
+            url, headers={"Authorization": f"Token {ITF_CORE_API_TOKEN}"},
             params={
                 "horizon": horizon,
                 "source": source,
