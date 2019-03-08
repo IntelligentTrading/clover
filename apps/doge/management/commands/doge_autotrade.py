@@ -27,7 +27,9 @@ class Command(BaseCommand):
             # check if retrain is needed, run retraining
             try:
                 for ticker in SUPPORTED_DOGE_TICKERS:
-                    if time.time() - DogeCommittee.latest_training_timestamp(ticker) > DOGE_RETRAINING_PERIOD_SECONDS:
+                    latest_trading_timestamp = DogeCommittee.latest_training_timestamp(ticker)
+
+                    if latest_trading_timestamp is None or (time.time() - latest_trading_timestamp > DOGE_RETRAINING_PERIOD_SECONDS):
                         end_timestamp = int(time.time())  # UTC timestamp
                         start_timestamp = end_timestamp - DOGE_TRAINING_PERIOD_DURATION_SECONDS
 
