@@ -331,9 +331,12 @@ class DogeCommittee:
 
     @staticmethod
     def latest_training_timestamp(ticker, exchange='binance'):
-        query_response = CommitteeStorage.query(ticker=ticker, exchange=exchange, timestamp=None)
-        loaded_timestamp = CommitteeStorage.timestamp_from_score(query_response['scores'][-1])
-        return loaded_timestamp
+        try:
+            query_response = CommitteeStorage.query(ticker=ticker, exchange=exchange, timestamp=None)
+            loaded_timestamp = CommitteeStorage.timestamp_from_score(query_response['scores'][-1])
+            return loaded_timestamp
+        except:
+            return None
 
 
 class DogeTradingManager(TickListener):
@@ -439,7 +442,7 @@ class DogeSubscriber(SignalSubscriber):
             ticker_votes, weights = self.committees[self.ticker].vote(transaction_currency, counter_currency, self.timestamp)
             # weighted_vote = sum([ticker_votes[i] * weights[i] for i in range(len(ticker_votes))]) / sum(weights)
 
-            new_doge_storage.value = (sum(ticker_votes) * 100 / len(ticker_votes))  # normalize to +-100 scale
+            new_doge_storage.value = (sum(ticker_votes) / len(ticker_votes))  # normalize to +-1 scale
             new_doge_storage.save(publish=True)
             logger.debug('Doge vote saved')
         except Exception as e:

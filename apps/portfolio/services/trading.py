@@ -41,7 +41,7 @@ def get_binance_portfolio_data(binance_account):
     return (response.status_code, response.json())
 
 
-# @start_new_thread
+@start_new_thread
 def set_portfolio(portfolio, allocation):
     binance_account = portfolio.exchange_accounts.first()
     if not binance_account:

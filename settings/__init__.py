@@ -213,7 +213,7 @@ ONE_DAY = 60*60*24
 ONE_HOUR = 60*60
 
 # doge training schedule (how often to retrain and reinit the committee)
-DOGE_RETRAINING_PERIOD_SECONDS = ONE_HOUR       # how often to retrain and reinit the committee
+DOGE_RETRAINING_PERIOD_SECONDS = ONE_HOUR           # how often to retrain and reinit the committee
 DOGE_TRAINING_PERIOD_DURATION_SECONDS = ONE_DAY     # the duration of the training period
 DOGE_LOAD_ROCKSTARS = True
 DOGE_MAX_ROCKSTARS = 20
