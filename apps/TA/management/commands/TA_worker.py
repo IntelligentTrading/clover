@@ -29,8 +29,8 @@ class Command(BaseCommand):
         logger.info("Starting TA worker.")
 
         subscribers = {}
-        # all_subscriber_classes = get_subscriber_classes() + get_doge_subscriber_classes()
-        all_subscriber_classes = get_doge_subscriber_classes()
+        all_subscriber_classes = get_subscriber_classes() + get_doge_subscriber_classes()
+        # all_subscriber_classes = get_doge_subscriber_classes()
         for subscriber_class in all_subscriber_classes:
             subscribers[subscriber_class.__name__] = subscriber_class()
             logger.debug(f'added subscriber {subscriber_class}')
