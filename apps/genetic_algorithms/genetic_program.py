@@ -15,6 +15,7 @@ from apps.backtesting.tick_provider import PriceDataframeTickProvider
 from abc import ABC, abstractmethod
 from apps.backtesting.order_generator import OrderGenerator
 import dill as pickle
+from apps.backtesting.utils import datetime_from_timestamp
 #logger = logging.getLogger()
 #logger.setLevel(logging.DEBUG)
 
@@ -66,7 +67,7 @@ class GeneticTickerStrategy(TickerStrategy):
         except Exception as e:
             outcome = self.gp_object.function_provider.ignore
             logging.info(f'Unable to form decision for {ticker_data.transaction_currency}'
-                          f'_{ticker_data.counter_currency} at {ticker_data.timestamp}: {e}')
+                          f'_{ticker_data.counter_currency} at {datetime_from_timestamp(ticker_data.timestamp)}: {e}')
 
         decision = None
         if outcome == self.gp_object.function_provider.buy:

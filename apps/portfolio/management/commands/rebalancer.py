@@ -13,6 +13,8 @@ from apps.portfolio.models.allocation import ITF1HR, ITF6HR, ITF24HR, ITFPRIV, M
 from apps.portfolio.services.signals import get_allocations_from_signals, SHORT_HORIZON, MEDIUM_HORIZON, LONG_HORIZON
 from apps.portfolio.services.doge_votes import get_allocations_from_doge
 from apps.portfolio.services.trading import set_portfolio
+from apps.backtesting.utils import datetime_from_timestamp
+
 
 logger = logging.getLogger(__name__)
 
@@ -40,10 +42,9 @@ def balance_portfolios():
     ITF_doge_binance_allocations = get_allocations_from_doge(at_datetime=datetime.now())
 
     ITF_binance_allocations = {
-        itf_group: get_allocations_from_signals(horizon=horizon, at_datetime=datetime.now())
+         itf_group: get_allocations_from_signals(horizon=horizon, at_datetime=datetime.now())
         for itf_group, horizon in ITF_PACK_HORIZONS.items()
     }
-
 
     for portfolio in Portfolio.objects.all():
         if portfolio.recently_rebalanced:
@@ -83,6 +84,10 @@ def balance_portfolios():
 
         except Exception as e:
             logging.error(str(e))
+
+
+    logging.info(f'>>>> Porfolio successfully rebalanced at {datetime_from_timestamp(int(time.time()))} '
+                 f'(final target allocation = {final_target_allocation})')
 
 
 def clean_allocation(allocation):
