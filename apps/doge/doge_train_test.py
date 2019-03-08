@@ -279,6 +279,8 @@ class DogeCommittee:
                               fitness_function=fitness_function)
             doge_traders.append(doge)
 
+        logging.info(f'Loaded a committee of {len(doge_traders)} traders for {self._training_ticker} '
+                     f'trained at {datetime_from_timestamp(self._committee_timestamp)}')
         return doge_traders
 
     def vote(self, transaction_currency, counter_currency, timestamp, source='binance', resample_period=5):
@@ -326,6 +328,12 @@ class DogeCommittee:
     def generate_doge_images(self):
         for i, doge in enumerate(self.doge_traders):
             doge.save_doge_img(out_filename=f'apps/doge/static/{i}')
+
+    @staticmethod
+    def latest_training_timestamp(ticker, exchange='binance'):
+        query_response = CommitteeStorage.query(ticker=ticker, exchange=exchange, timestamp=None)
+        loaded_timestamp = CommitteeStorage.timestamp_from_score(query_response['scores'][-1])
+        return loaded_timestamp
 
 
 class DogeTradingManager(TickListener):
@@ -398,7 +406,6 @@ class DogeSubscriber(SignalSubscriber):
         return self.committees[ticker].expired(at_timestamp=self.timestamp)
 
     def handle(self, channel, data, *args, **kwargs):
-        logger.debug('Doge subscriber invoked')
         # check if we received data for a ticker we support
         if self.ticker not in SUPPORTED_DOGE_TICKERS:  # @tomcounsell please check if this is OK or I should register
                                                        # for tickers of interest in some other way
@@ -410,7 +417,7 @@ class DogeSubscriber(SignalSubscriber):
             logger.info(f'Doge committee for ticker {self.ticker} expired, reloading...')
             self._reload_committee(ticker=self.ticker)
 
-        logger.debug(f'Doge subscriber invoked at {datetime_from_timestamp(self.timestamp)}, '
+        logger.info(f'Doge subscriber invoked at {datetime_from_timestamp(self.timestamp)}, '
                     f'channel={str(channel)}, data={str(data)} '
                     f'(it is now {datetime_from_timestamp(time.time())})')
         transaction_currency, counter_currency = self.ticker.split('_')
@@ -436,7 +443,7 @@ class DogeSubscriber(SignalSubscriber):
             new_doge_storage.save(publish=True)
             logger.debug('Doge vote saved')
         except Exception as e:
-            logging.debug(f'Unable to vote for {self.ticker} '
+            logging.info(f'Unable to vote for {self.ticker} '
                           f'at {datetime_from_timestamp(self.timestamp)}')
 
 

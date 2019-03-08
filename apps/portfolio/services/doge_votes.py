@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from apps.TA import HORIZONS, PERIODS_1HR
 from apps.doge.doge_TA_actors import CommitteeVoteStorage
 from settings import SUPPORTED_DOGE_TICKERS
+from apps.backtesting.utils import datetime_from_timestamp
 
 (SHORT_HORIZON, MEDIUM_HORIZON, LONG_HORIZON) = list(range(3))
 (POLONIEX, BITTREX, BINANCE, BITFINEX, KUCOIN, GDAX, HITBTC) = list(range(7))
@@ -79,6 +80,7 @@ def get_allocations_from_doge(at_datetime=None):
 
             for score, weighted_vote in zip(query_result['scores'], query_result['values']):
                 timestamp = CommitteeVoteStorage.datetime_from_score(score)
+                logging.info(f'           Loaded committee votes for {timestamp}')
 
                 time_weight = float(1) - (
                         (now_datetime - timestamp).total_seconds() / (
@@ -141,6 +143,8 @@ def get_allocations_from_doge(at_datetime=None):
 
     allocations_list = [{"coin": coin, "portion": (portion // 0.0001 / 10000)} for coin, portion in allocations_dict.items()]
     logging.debug(f'Final SUM of allocations: {round(sum([a["portion"] for a in allocations_list])*100,3)}%')
+
+
 
     return allocations_list
 
