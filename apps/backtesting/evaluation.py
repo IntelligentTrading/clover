@@ -6,7 +6,7 @@ import copy
 
 from apps.backtesting.orders import OrderType
 from apps.backtesting.utils import get_distinct_signal_types, datetime_from_timestamp
-from apps.backtesting.config import transaction_cost_percents
+from apps.backtesting.config import TRANSACTION_COST_PERCENTS
 from abc import ABC, abstractmethod
 from apps.backtesting.charting import BacktestingChart
 
@@ -36,7 +36,7 @@ class Evaluation(ABC):
         self._source = source
         self._resample_period = resample_period
         self._evaluate_profit_on_last_order = evaluate_profit_on_last_order
-        self._transaction_cost_percent = transaction_cost_percents[source]
+        self._transaction_cost_percent = TRANSACTION_COST_PERCENTS[source]
         self._verbose = verbose
         self._benchmark_backtest = benchmark_backtest
         self._time_delay = time_delay
@@ -190,7 +190,7 @@ class Evaluation(ABC):
     @property
     def end_value(self):
         try:
-            return self.end_cash + (self.end_price * self.end_crypto) * (1-transaction_cost_percents[self._source])
+            return self.end_cash + (self.end_price * self.end_crypto) * (1 - TRANSACTION_COST_PERCENTS[self._source])
         except:
             return None
 
