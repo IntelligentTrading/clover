@@ -72,12 +72,21 @@ class CryptoPriceProvider(PriceProvider):
 
 class GoldPriceProvider(PriceProvider):
 
-    def __init__(self):
+    def __init__(self, csv_path='../../GLD.csv'):
         # load the CSV file data
-        pass
+        df = pd.read_csv(csv_path)
+        df['Date'] = pd.to_datetime(df['Date'])
+        df = df.set_index('Date')
+        self.price_df = df
 
-    def get_price(self):
-        pass
+    def get_price(self, timestamp):
+        dt = pd.to_datetime(timestamp, unit='s')
+        result = self.price_df.iloc[self.price_df.index.get_loc(dt, method='nearest')]
+        delta_time = abs(result.name.timestamp() - dt.timestamp())
+        if delta_time > 60*60*24*3:
+            logging.warning(f'Retrieved price of gold more than +-3 days from the requested timestamp! '
+                            f'(requested: {dt}, retrieved: {result.name})')
+        return result.Close
 
     def can_handle(self, asset_name):
         return asset_name == 'GLD_ETF'
@@ -227,32 +236,6 @@ class PortfolioBacktester:
             allocations.append(allocation)
         return PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations, load_from_json=False)
 
-    """
-    def _build_portfolio_with_trading_fee(self, timestamp, total_value, previous_portfolio):
-        if previous_portfolio is None:
-            return self._build_portfolio(timestamp, total_value)
-        allocations = []
-        trading_fee = self._trading_cost_percent
-        # calculate the held amount for each asset
-        for asset in self._portions_dict:
-            previous = previous_portfolio.get_allocation(asset)
-            new_unit_price = get_price(asset, timestamp)
-            portion = self._portions_dict[asset]
-            # new_amount = (total_value*portion + new_unit_price*previous.amount*(1-trading_fee)) / (new_unit_price*(2-trading_fee))
-            new_amount = (total_value*portion + new_unit_price*previous.amount*trading_fee) / (new_unit_price*(1+trading_fee))
-            new_value = new_amount * new_unit_price
-            portion = new_value / total_value
-            # amount = value / unit_price
-            allocation = Allocation(asset=asset, portion=portion, unit_price=new_unit_price, value=new_value, amount=new_amount, timestamp=timestamp)
-            allocations.append(allocation)
-        total_value = sum([allocation.value for allocation in allocations])
-        for allocation in allocations:
-            allocation.portion = allocation.value / total_value
-
-        p = PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations, load_from_json=False)
-        return p
-        
-    """
 
     def _build_portfolio_with_trading_fee(self, timestamp, total_value, previous_portfolio):
         if previous_portfolio is None:
