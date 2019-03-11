@@ -21,7 +21,7 @@ class PriceProvider:
     def get_price(self, asset, timestamp, **kwargs):
         for provider in self.providers:
             if provider.can_handle(asset):
-                provider.get_price(asset, timestamp, **kwargs)
+                return provider.get_price(asset, timestamp, **kwargs)
         return self.default_provider.get_price(asset, timestamp, **kwargs)
 
     def can_handle(self, asset_name):
@@ -79,7 +79,8 @@ class GoldPriceProvider(PriceProvider):
         df = df.set_index('Date')
         self.price_df = df
 
-    def get_price(self, timestamp):
+    def get_price(self, asset, timestamp, **kwargs):
+        assert asset == 'GLD_ETF'
         dt = pd.to_datetime(timestamp, unit='s')
         result = self.price_df.iloc[self.price_df.index.get_loc(dt, method='nearest')]
         delta_time = abs(result.name.timestamp() - dt.timestamp())
@@ -216,7 +217,10 @@ class PortfolioBacktester:
         self._step_seconds = step_seconds
         self._portions_dict = portions_dict
         self._start_value_of_portfolio = start_value_of_portfolio
-        self._start_value_of_portfolio_usdt = start_value_of_portfolio * PRICE_PROVIDER.get_price('BTC', start_time, counter_currency='USDT')
+        if counter_currency == 'BTC':
+            self._start_value_of_portfolio_usdt = start_value_of_portfolio * PRICE_PROVIDER.get_price('BTC', start_time, counter_currency='USDT')
+        else:
+            self._start_value_of_portfolio_usdt = self._start_value_of_portfolio
         self._counter_currency = counter_currency
         self._verbose = verbose
         self._trading_cost_percent = trading_cost_percent
