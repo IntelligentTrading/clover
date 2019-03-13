@@ -62,4 +62,4 @@ def update_BTC_price(sender, instance, **kwargs):
     if not getattr(instance, 'BTC_price_updated', False):
         instance.BTC_price = get_BTC_price()
         instance.BTC_price_updated = True
-        instance.save()
+        # instance.save()

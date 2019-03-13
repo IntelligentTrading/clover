@@ -47,8 +47,8 @@ def balance_portfolios():
     }
 
     for portfolio in Portfolio.objects.all():
-        if portfolio.recently_rebalanced:
-            continue
+        # if portfolio.recently_rebalanced:  # we don't need this logic for Clover so far
+        #       continue
 
         binance_account = portfolio.exchange_accounts.first()
 
@@ -86,8 +86,7 @@ def balance_portfolios():
             logging.error(str(e))
 
 
-    logging.info(f'>>>> Porfolio successfully rebalanced at {datetime_from_timestamp(int(time.time()))} '
-                 f'(final target allocation = {final_target_allocation})')
+
 
 
 def clean_allocation(allocation):
