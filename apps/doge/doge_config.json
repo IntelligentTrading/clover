@@ -14,7 +14,7 @@
 
     "fitness_functions": ["ff_trades_percent"],
     "grammar_version": "gv6",
-    "num_generations": 2,
+    "num_generations": 50,
 
     "mating_probabilities": [
         0.9

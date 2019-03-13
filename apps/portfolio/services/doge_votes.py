@@ -142,7 +142,7 @@ def get_allocations_from_doge(at_datetime=None):
                                    (0.9999 - minimum_reserves['BNB'] - allocations_sum + allocations_dict.get("BTC", 0))])
 
     allocations_list = [{"coin": coin, "portion": (portion // 0.0001 / 10000)} for coin, portion in allocations_dict.items()]
-    logging.debug(f'Final SUM of allocations: {round(sum([a["portion"] for a in allocations_list])*100,3)}%')
+    logging.debug(f'Final SUM of allocations for doge: {round(sum([a["portion"] for a in allocations_list])*100,3)}%')
 
 
 
