@@ -72,12 +72,16 @@ class CryptoPriceProvider(PriceProvider):
 
 class GoldPriceProvider(PriceProvider):
 
-    def __init__(self, csv_path='../../GLD.csv'):
+    def __init__(self, csv_relative_path='GLD.csv'):
         # load the CSV file data
+        import os
+        from settings import BASE_DIR
+        csv_path = os.path.join(BASE_DIR, csv_relative_path)
         df = pd.read_csv(csv_path)
         df['Date'] = pd.to_datetime(df['Date'])
         df = df.set_index('Date')
         self.price_df = df
+        self.btc_price_provider = CryptoPriceProvider()
 
     def get_price(self, asset, timestamp, **kwargs):
         assert asset == 'GLD_ETF'
@@ -87,7 +91,14 @@ class GoldPriceProvider(PriceProvider):
         if delta_time > 60*60*24*3:
             logging.warning(f'Retrieved price of gold more than +-3 days from the requested timestamp! '
                             f'(requested: {dt}, retrieved: {result.name})')
-        return result.Close
+
+        counter_currency = kwargs.get('counter_currency', 'BTC')
+        if counter_currency == 'USDT':
+            return result.Close
+        else:
+            # someone wants to know how much this costs in Bitcoin
+            btc_price = self.btc_price_provider.get_price('BTC', timestamp, counter_currency='USDT')
+            return result.Close / btc_price
 
     def can_handle(self, asset_name):
         return asset_name == 'GLD_ETF'
