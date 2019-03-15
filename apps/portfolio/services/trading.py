@@ -10,6 +10,7 @@ from apps.common.utilities.multithreading import start_new_thread
 from apps.portfolio.services.binance import translate_allocs_binance_coins, reverse_translate_allocs_binance_coins
 from apps.portfolio.services.signals import get_BTC_price
 from settings import ITF_TRADING_API_URL, ITF_TRADING_API_KEY, DEBUG
+from apps.backtesting.utils import datetime_from_timestamp
 
 
 def get_binance_portfolio_data(binance_account):
@@ -99,6 +100,8 @@ def set_portfolio(portfolio, allocation):
             return
 
         from apps.portfolio.models import Allocation
+        print(f'Storing allocation {portfolio.target_allocation}, BTC price is {get_BTC_price()}')
+
         Allocation.objects.create(
             portfolio=portfolio,
             target_allocation=portfolio.target_allocation,
@@ -107,6 +110,8 @@ def set_portfolio(portfolio, allocation):
             BTC_value=float(response_data['binance']['value']),
             BTC_price=get_BTC_price()
         )
+        print(f'>>>> Porfolio successfully rebalanced at {datetime_from_timestamp(int(time.time()))} '
+              f'(final target allocation = {allocation})')
 
         portfolio.rebalanced_at = datetime.now()
         portfolio.save()
