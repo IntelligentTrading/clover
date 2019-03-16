@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from apps.backtesting.backtester_portfolio import DummyDataProvider
+from apps.backtesting.rebalancing.backtester_portfolio import DummyDataProvider
 
 
 class Command(BaseCommand):
