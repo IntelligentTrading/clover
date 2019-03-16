@@ -11,6 +11,7 @@ urlpatterns = [
     url(r'^$', RedirectView.as_view(url='/accounts/login'), name="home"),
     url(r'^portfolio/', include('apps.portfolio.urls', namespace='porfolio')),
     url(r'^TA/', include('apps.TA.urls', namespace='TA')),
+    url(r'^doge/', include('apps.doge.urls', namespace='doge')),
 
     path('accounts/', include('django.contrib.auth.urls')),
     url(r'^admin/', admin.site.urls),

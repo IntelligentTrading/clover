@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block tab_title %}
+  Allocations
+{% endblock tab_title %}
+
+{#{% block content_title %}#}
+{#  Portfolio#}
+{#{% endblock content_title %}#}
+
+{% block content %}
+<div class="container">
+
+
+
+
+    {% for committee in committees %}
+
+      <div class="row">
+            {{ committee.time_str }}
+
+            {% for trader in committee.doge_traders %}
+
+      <div class="col-sm-6">
+        {% autoescape off %}
+            {{ trader.svg_source_chart }}
+        {% endautoescape %},
+
+
+      </div>
+        <div class="col-sm-6">
+
+             doge weight
+
+
+
+      </div>
+
+
+    {% endfor %}
+
+      </div>
+
+    {% endfor %}
+
+
+
+
+
+</div>
+{% endblock content %}
+
+{% load static %}
+{% block javascript %}
+  <script src="{% static '/javascript/allocation.js' %}"></script>
+{% endblock javascript %}
