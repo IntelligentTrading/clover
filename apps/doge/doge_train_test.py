@@ -12,7 +12,7 @@ from apps.genetic_algorithms.leaf_functions import RedisTAProvider
 from apps.TA import PERIODS_1HR
 from settings import DOGE_RETRAINING_PERIOD_SECONDS, logger, SUPPORTED_DOGE_TICKERS, DOGE_LOAD_ROCKSTARS
 import time
-from apps.genetic_algorithms.chart_plotter import save_dot_graph
+from apps.genetic_algorithms.chart_plotter import save_dot_graph, get_dot_graph
 from apps.backtesting.utils import datetime_from_timestamp, time_performance
 
 METRIC_IDS = {
@@ -224,6 +224,15 @@ class DogeTrader:
         print(self.doge_str)
         return save_dot_graph(self.doge, out_filename, format)
 
+    def show_doge_chart(self):
+        chart = get_dot_graph(self.doge)
+        from apps.backtesting.utils import in_notebook
+        if in_notebook():
+            from IPython.display import display
+            display(chart)
+        return chart
+
+
 
 class DogeCommittee:
     """
@@ -337,6 +346,20 @@ class DogeCommittee:
             return loaded_timestamp
         except:
             return None
+
+    def show_all_traders(self):
+        for doge in self.doge_traders:
+            doge.show_doge_chart()
+
+    @property
+    def timestamp(self):
+        return self._committee_timestamp
+
+    @property
+    def time_str(self):
+        return datetime_from_timestamp(self.timestamp)
+
+
 
 
 class DogeTradingManager(TickListener):
