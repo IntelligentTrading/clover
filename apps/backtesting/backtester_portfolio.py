@@ -511,6 +511,19 @@ class PortfolioBacktester:
         self.get_rebalancing_vs_benchmark_dataframe()[
             ['total_value_usdt_rebalancing', 'total_value_usdt_benchmark']].plot(title=title)
 
+    def save_returns_plot(self, out_file_path, title=None):
+        if title is None:
+            title = self.summary_dict['allocations']
+        chart = self.get_rebalancing_vs_benchmark_dataframe()[
+            ['total_value_usdt_rebalancing', 'total_value_usdt_benchmark']].plot(title=title)
+        chart.set_xlabel('')
+        chart.set_ylabel('')
+        chart.legend(['total value usdt rebalancing', 'buy & hold'])
+        fig = chart.get_figure()
+        fig.savefig(out_file_path)
+        return fig
+
+
 
 class ComparativePortfolioEvaluation:
     def __init__(self, portion_dicts, start_time, end_time, rebalancing_periods, start_value_of_portfolio, counter_currency,
@@ -552,6 +565,17 @@ class ComparativePortfolioEvaluation:
             title = portfolio_backtest.summary_dict['allocations']
             portfolio_backtest.plot_returns(title=f'{portfolio_name} / {title} / rebalanced every {rebalancing_period /60/60:.0f} hours')
 
+    def save_return_figs(self, out_folder, img_format='svg'):
+        import os
+        if not os.path.exists(out_folder):
+            os.mkdir(out_folder)
+
+        for (portfolio_name, rebalancing_period), portfolio_backtest in self._portfolio_backtests.items():
+            title = portfolio_backtest.summary_dict['allocations']
+            hours = int(rebalancing_period /60/60)
+            chart_title = f'{portfolio_name} / {title} / rebalanced every {hours} {"hours" if hours != 1 else "hour"}'
+            out_path = os.path.join(out_folder, f'{portfolio_name}_{hours}.{img_format}')
+            portfolio_backtest.save_returns_plot(out_path, title=chart_title)
 
 
 class TickProviderDataframe(TickProvider):
