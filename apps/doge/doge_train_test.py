@@ -221,7 +221,6 @@ class DogeTrader:
         return float(result['values'][-1])
 
     def save_doge_img(self, out_filename, format='svg'):
-        print(self.doge_str)
         return save_dot_graph(self.doge, out_filename, format)
 
     def show_doge_chart(self):
@@ -231,6 +230,21 @@ class DogeTrader:
             from IPython.display import display
             display(chart)
         return chart
+
+    @property
+    def svg_source_chart(self):
+        self.save_doge_img('tmp', format='svg')
+        f = open('tmp.svg', 'r')
+        loading = False
+        lines = []
+        for line in f:
+            if not loading:
+                if line.startswith('<svg'):  # rewind to svg tag
+                    loading = True
+                else:
+                    continue
+            lines.append(line)
+        return '\n'.join(lines)
 
 
 
