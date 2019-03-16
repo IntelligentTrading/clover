@@ -333,3 +333,4 @@ class PostgresDatabaseConnection(Database):
         return data[-1][0]
 
 
+POSTGRES = PostgresDatabaseConnection()
