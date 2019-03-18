@@ -12,6 +12,8 @@ from apps.portfolio.services.signals import get_BTC_price
 from settings import ITF_TRADING_API_URL, ITF_TRADING_API_KEY, DEBUG
 from apps.backtesting.utils import datetime_from_timestamp
 
+class TradingAPIException(Exception):
+    pass
 
 def get_binance_portfolio_data(binance_account):
 
@@ -42,7 +44,7 @@ def get_binance_portfolio_data(binance_account):
     return (response.status_code, response.json())
 
 
-@start_new_thread
+#@start_new_thread
 def set_portfolio(portfolio, allocation):
     binance_account = portfolio.exchange_accounts.first()
     if not binance_account:
@@ -69,7 +71,7 @@ def set_portfolio(portfolio, allocation):
         del data_copy["binance"]["api_key"]
         del data_copy["binance"]["secret_key"]
         data_copy["binance"]["api_key"] = data_copy["binance"]["secret_key"] = "*****"
-        logging.debug(data_copy)
+        logging.debug(str(data_copy))
         del data_copy
 
     response = requests.put(api_url, headers=headers, json=data)
@@ -110,10 +112,15 @@ def set_portfolio(portfolio, allocation):
             BTC_value=float(response_data['binance']['value']),
             BTC_price=get_BTC_price()
         )
+        realized_allocation = response_data['binance']['allocations']
         print(f'>>>> Porfolio successfully rebalanced at {datetime_from_timestamp(int(time.time()))} '
-              f'(final target allocation = {allocation})')
+              f'(final target allocation = {allocation}, realized allocation = {realized_allocation}')
 
         portfolio.rebalanced_at = datetime.now()
         portfolio.save()
 
         return
+
+    else:
+        print(f'!!!!!!! Got response status code {response.status_code}')
+        raise TradingAPIException(f'Error calling trading API: {response.text}')

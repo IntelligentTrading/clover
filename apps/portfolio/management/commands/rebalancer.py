@@ -84,6 +84,9 @@ def balance_portfolios():
 
         except Exception as e:
             logging.error(str(e))
+            return str(e)
+
+
 
 
 
