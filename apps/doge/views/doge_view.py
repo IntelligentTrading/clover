@@ -19,12 +19,35 @@ class CommitteesView(View):
     def dispatch(self, request, *args, **kwargs):
 
         if CommitteesView.cached_committees is None:
-           CommitteesView.cached_committees = load_committees_in_period(ticker='BTC_USDT', exchange='binance', start_timestamp=time.time()-60*60*24,
+           CommitteesView.cached_committees = load_committees_in_period(ticker='BTC_USDT', exchange='binance', start_timestamp=time.time()-60*60*24*4,
                                                end_timestamp=time.time())
         print(f'Loaded {len(CommitteesView.cached_committees)} committees.')
 
 
         return super().dispatch(request, *args, **kwargs)
+
+
+    def _clean_svg(self, svg):
+        lines = []
+        for line in svg.split('\n'):
+            if 'viewBox' in line:  # remove viewBox
+                opening_quote_index = line.index('viewBox="') + len('viewBox="') - 1
+                closing_quote_index = line[opening_quote_index+1:].index('"') + opening_quote_index
+                line = line[:line.index('viewBox=')] + line[closing_quote_index+1:]
+                lines.append(line)
+                continue
+            elif line.strip().startswith('<polygon fill="white"'):   # remove white background
+                continue
+            else:
+                line = line.replace('fill="#333333"> yes',
+                                    'fill="white" > yes')
+
+                line = line.replace('fill="#333333"> &#160;&#160;&#160;no',
+                                    'fill="white"> &#160;&#160;&#160;no')
+
+                lines.append(line)
+        return '\n'.join(lines)
+
 
     def get(self, request):
 
@@ -34,9 +57,9 @@ class CommitteesView(View):
             traders = []
             for trader in committee.doge_traders:
                 trader_data = {}
-                trader_data['svg'] = trader.svg_source_chart
+                trader_data['svg'] = self._clean_svg(trader.svg_source_chart)
                 trader_data['weight_at_timestamp'] = trader.weight_at_timestamp(committee.timestamp)
-                traders.append(trader)
+                traders.append(trader_data)
             committee_data['traders'] = traders
             data.append(committee_data)
 

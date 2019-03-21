@@ -15,16 +15,16 @@
 
 
 
-    {% for committee in committees %}
+    {% for committee in data %}
 
       <div class="row">
             {{ committee.time_str }}
 
-            {% for trader in committee.doge_traders %}
+            {% for trader in committee.traders %}
 
       <div class="col-sm-6">
         {% autoescape off %}
-            {{ trader.svg_source_chart }}
+            {{ trader.svg }}
         {% endautoescape %},
 
 
