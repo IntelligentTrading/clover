@@ -29,7 +29,7 @@ def get_binance_portfolio_data(binance_account):
     }
 
     if DEBUG:
-        logging.debug(data)
+        logging.debug(str(data))
 
     response = requests.post(api_url, json=data, headers=headers)
     logging.debug(response.text)
