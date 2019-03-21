@@ -28,8 +28,8 @@
                   <div class="col-sm-6">
 
                       <!-- Trigger the modal with a button -->
-                      <button data-toggle="modal" data-target="#modal_{{forloop.counter}}">
-                          
+                      <button style="background-color:#252830;border: 1px solid gray;" data-toggle="modal" data-target="#modal_{{forloop.counter}}">
+
                           {% autoescape off %}
                           {{ trader.svg }}
                           {% endautoescape %}
@@ -44,7 +44,7 @@
                               <button type="button" class="close" data-dismiss="modal">&times;</button>
                               <h4 class="modal-title">Modal Header</h4>
                             </div>
-                            <div class="modal-body">
+                            <div class="modal-body" style="background-color:#252830;border: 1px solid gray;">
                               <p>This is a large modal.</p>
                                 {% autoescape off %}
                                 {{ trader.svg }}
