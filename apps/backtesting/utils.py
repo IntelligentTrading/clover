@@ -58,6 +58,6 @@ class LogDuplicateFilter(object):
         self.msgs = set()
 
     def filter(self, record):
-        rv = record.msg not in self.msgs
-        self.msgs.add(record.msg)
+        rv = str(record.msg) not in self.msgs
+        self.msgs.add(str(record.msg))
         return rv
