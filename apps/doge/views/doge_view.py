@@ -30,10 +30,23 @@ class CommitteesView(View):
     def _clean_svg(self, svg):
         lines = []
         for line in svg.split('\n'):
+            if line.strip().startswith('<svg'):
+                line = line.split()
+                elements = []
+                for x in line:
+                    if 'width' in x:
+                        elements.append('width="100%"')
+                    elif 'height' in x:
+                        elements.append('height="100%"')
+                    else:
+                        elements.append(x)
+                # line = " ".join([x for x in line if not 'width' in x and not 'height' in x])
+                lines.append(" ".join(elements))
+                continue
             if 'viewBox' in line:  # remove viewBox
-                opening_quote_index = line.index('viewBox="') + len('viewBox="') - 1
-                closing_quote_index = line[opening_quote_index+1:].index('"') + opening_quote_index
-                line = line[:line.index('viewBox=')] + line[closing_quote_index+1:]
+                # opening_quote_index = line.index('viewBox="') + len('viewBox="') - 1
+                # closing_quote_index = line[opening_quote_index+1:].index('"') + opening_quote_index
+                # line = line[:line.index('viewBox=')] + line[closing_quote_index+1:]
                 lines.append(line)
                 continue
             elif line.strip().startswith('<polygon fill="white"'):   # remove white background
@@ -53,7 +66,7 @@ class CommitteesView(View):
 
         data = []
         for committee in CommitteesView.cached_committees:
-            committee_data = {'timestamp': committee.timestamp}
+            committee_data = {'time_str': committee.time_str}
             traders = []
             for trader in committee.doge_traders:
                 trader_data = {}
