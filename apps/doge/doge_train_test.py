@@ -17,6 +17,7 @@ from apps.backtesting.utils import datetime_from_timestamp, time_performance
 
 METRIC_IDS = {
     'mean_profit': 0,
+    'fitness': 1
 }
 import os.path
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -26,13 +27,14 @@ GP_TRAINING_CONFIG = os.path.join(BASE, 'doge_config.json')
 
 class DogeRecord:
 
-    def __init__(self, train_end_timestamp, doge_str, metric_id, metric_value, rank, fitness_function):
+    def __init__(self, train_end_timestamp, doge_str, metric_id, metric_value, rank, fitness_function, fitness_value):
         self.train_end_timestamp = train_end_timestamp
         self.doge_str = doge_str
         self.metric_id = metric_id
         self.metric_value = metric_value
         self.rank = rank  # TODO remove rank information if not needed
         self.fitness_function = fitness_function
+        self.fitness_value = fitness_value
         self.value = f'{doge_str}:{fitness_function}'
 
     @property
@@ -52,7 +54,7 @@ class DogeRecord:
                                                        ticker='BTC_USDT',
                                                        exchange='binance',
                                                        timestamp=self.train_end_timestamp,
-                                                       value=self.metric_value)
+                                                       value=f'{self.metric_value}:{self.fitness_value}:{self.rank}')
         new_doge_performance_storage.save()
 
 
@@ -123,7 +125,7 @@ class DogeTrainer:
             redis_entries.append(
                 DogeRecord(train_end_timestamp=end_timestamp, doge_str=str(row.doge),
                            metric_id=METRIC_IDS['mean_profit'], metric_value=row.mean_profit, rank=i,
-                           fitness_function=row.fitness_function))
+                           fitness_function=row.fitness_function, fitness_value=row.fitness_value))
 
 
         # save individual doges
@@ -214,11 +216,26 @@ class DogeTrader:
         return self.strategy.process_ticker(ticker_data)
 
     def weight_at_timestamp(self, timestamp=None, metric_id=0):
+        result = self.performance_at_timestamp(timestamp, metric_id)
+        if result is None:
+            return None
+        return result['mean_profit']
+
+    def performance_at_timestamp(self, timestamp, metric_id=0):
         result = DogePerformance.query(key_suffix=f'{str(self.hash)}:{metric_id}',
                                        ticker='BTC_USDT',
                                        exchange='binance',
                                        timestamp=timestamp)
-        return float(result['values'][-1])
+        if result is None:
+            return None
+        data = result['values'][-1].split(':')
+
+        # value = f'{self.metric_value}:{self.fitness_value}:{self.rank}')
+        return {
+            'mean_profit': float(data[0]),
+            'fitness_value': float(data[1]) if len(data) > 1 else None,
+            'rank': int(data[2]) if len(data) > 2 else None
+        }
 
     def save_doge_img(self, out_filename, format='svg'):
         return save_dot_graph(self.doge, out_filename, format)

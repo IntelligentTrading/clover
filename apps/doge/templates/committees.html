@@ -10,6 +10,7 @@
 {#{% endblock content_title %}#}
 
 {% block content %}
+{% load humanize %}
 
 <div class="container">
 
@@ -65,7 +66,27 @@
 
                   <div class="col-sm-6">
 
-                      {{ trader.weight_at_timestamp }}
+                      <div class="container">
+                          <div class="row">
+                              Mean profit: {{ trader.performance_dict.mean_profit | floatformat:2}}
+
+                          </div>
+                          <div class="row">
+                              Doge string: <code> {{ trader.doge_str}} </code>
+
+                          </div>
+                          <div class="row">
+                              Doge rank: {{ trader.performance_dict.rank }}
+
+                          </div>
+
+                          <div class="row">
+                              Fitness value: {{ trader.performance_dict.fitness_value }}
+
+                          </div>
+
+                      </div>
+
 
                   </div>
 

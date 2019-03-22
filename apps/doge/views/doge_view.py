@@ -19,7 +19,7 @@ class CommitteesView(View):
     def dispatch(self, request, *args, **kwargs):
 
         if CommitteesView.cached_committees is None:
-           CommitteesView.cached_committees = load_committees_in_period(ticker='BTC_USDT', exchange='binance', start_timestamp=time.time()-60*60*24*4,
+           CommitteesView.cached_committees = load_committees_in_period(ticker='BTC_USDT', exchange='binance', start_timestamp=time.time()-60*60*24,
                                                end_timestamp=time.time())
         print(f'Loaded {len(CommitteesView.cached_committees)} committees.')
 
@@ -70,8 +70,10 @@ class CommitteesView(View):
             traders = []
             for trader in committee.doge_traders:
                 trader_data = {}
+                performance_dict = trader.performance_at_timestamp(committee.timestamp)
                 trader_data['svg'] = self._clean_svg(trader.svg_source_chart)
-                trader_data['weight_at_timestamp'] = trader.weight_at_timestamp(committee.timestamp)
+                trader_data['performance_dict'] = performance_dict
+                trader_data['doge_str'] = trader.doge_str
                 traders.append(trader_data)
             committee_data['traders'] = traders
             data.append(committee_data)
