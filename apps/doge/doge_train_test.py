@@ -5,7 +5,7 @@ from apps.backtesting.tick_listener import TickListener
 from apps.backtesting.tick_provider_heartbeat import TickProviderHeartbeat
 from apps.backtesting.tick_provider import TickerData
 from apps.doge.doge_TA_actors import DogeStorage, DogePerformance, CommitteeStorage, SignalSubscriber, \
-    CommitteeVoteStorage
+    CommitteeVoteStorage, BenchmarkPerformance
 from apps.genetic_algorithms.genetic_program import GeneticTickerStrategy
 from apps.genetic_algorithms.gp_artemis import ExperimentManager
 from apps.genetic_algorithms.leaf_functions import RedisTAProvider
@@ -131,6 +131,11 @@ class DogeTrainer:
         # save individual doges
         self._save_doges(redis_entries)
 
+        # save benchmark performance
+        new_benchmark_storage = BenchmarkPerformance(timestamp=end_timestamp, ticker=training_ticker, exchange='binance')
+        new_benchmark_storage.value = f'{start_timestamp}:{doge_df.iloc[0].benchmark_profits}'
+        new_benchmark_storage.save()
+
         # save current committee
         committee_str = ":".join(map(str, [redis_entry.hash for redis_entry in redis_entries]))
         new_committee_storage = CommitteeStorage(timestamp=end_timestamp, ticker=training_ticker, exchange='binance')
@@ -215,27 +220,18 @@ class DogeTrader:
         """
         return self.strategy.process_ticker(ticker_data)
 
-    def weight_at_timestamp(self, timestamp=None, metric_id=0):
-        result = self.performance_at_timestamp(timestamp, metric_id)
+    def weight_at_timestamp(self, timestamp=None, metric_id=0, ticker='BTC_USDT'):
+        result = self.performance_at_timestamp(timestamp, metric_id, ticker)
         if result is None:
             return None
         return result['mean_profit']
 
-    def performance_at_timestamp(self, timestamp, metric_id=0):
-        result = DogePerformance.query(key_suffix=f'{str(self.hash)}:{metric_id}',
-                                       ticker='BTC_USDT',
-                                       exchange='binance',
-                                       timestamp=timestamp)
-        if result is None:
-            return None
-        data = result['values'][-1].split(':')
-
-        # value = f'{self.metric_value}:{self.fitness_value}:{self.rank}')
-        return {
-            'mean_profit': float(data[0]),
-            'fitness_value': float(data[1]) if len(data) > 1 else None,
-            'rank': int(data[2]) if len(data) > 2 else None
-        }
+    def performance_at_timestamp(self, timestamp, metric_id=0, ticker='BTC_USDT'):
+        return DogePerformance.performance_at_timestamp(doge_id=str(self.hash),
+                                                        ticker=ticker,
+                                                        exchange='binance',
+                                                        timestamp=timestamp,
+                                                        metric_id=metric_id)
 
     def save_doge_img(self, out_filename, format='svg'):
         return save_dot_graph(self.doge, out_filename, format)
@@ -286,6 +282,7 @@ class DogeCommittee:
 
         doge_traders = self._load_doge_traders()
         self.doge_traders = doge_traders if len(doge_traders) <= max_doges else doge_traders[:max_doges]
+        self._benchmark_profit = self._get_benchmark_profit()
 
 
     def expired(self, at_timestamp):
@@ -369,6 +366,16 @@ class DogeCommittee:
         for i, doge in enumerate(self.doge_traders):
             doge.save_doge_img(out_filename=f'apps/doge/static/{i}')
 
+    def _get_benchmark_profit(self):
+        try:
+            result = BenchmarkPerformance.query(ticker=self._training_ticker, exchange='binance', timestamp=self._committee_timestamp)
+            result = result.split(':')
+            if self._committee_timestamp - int(result[0]) != DOGE_RETRAINING_PERIOD_SECONDS:
+                return None
+            return float(result[1])
+        except:
+            return None
+
     @staticmethod
     def latest_training_timestamp(ticker, exchange='binance'):
         try:
@@ -389,6 +396,10 @@ class DogeCommittee:
     @property
     def time_str(self):
         return datetime_from_timestamp(self.timestamp)
+
+    @property
+    def benchmark_profit(self):
+        return self._benchmark_profit
 
 
 
