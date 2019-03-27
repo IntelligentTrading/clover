@@ -44,6 +44,7 @@ class DogeStorage(KeyValueStorage):
         return doge_storage.get_value().decode('utf8')
 
 
+
 class DogePerformance(TickerStorage):
     """
         Defines the performance score for a doge obtained at the end of training period, unique per ticker
@@ -52,7 +53,7 @@ class DogePerformance(TickerStorage):
     # self.ticker = ticker
     # self.exchange = exchange
     # self.value = performance_score
-    # self.timestamp # end time of the training period
+    # self.timestamp   # end time of the training period
 
     @staticmethod
     def performance_at_timestamp(doge_id, ticker, exchange, timestamp, metric_id=0):
@@ -60,7 +61,38 @@ class DogePerformance(TickerStorage):
                                        ticker=ticker,
                                        exchange=exchange,
                                        timestamp=timestamp)
-        return float(result['values'][-1])
+        if result is None:
+            return None
+        data = result['values'][-1].split(':')
+
+        # value = f'{self.metric_value}:{self.fitness_value}:{self.rank}')
+        return DogePerformance._load_data(data)
+
+    @staticmethod
+    def _load_data( data):
+        try:
+            mean_profit = float(data[0])
+        except:
+            mean_profit = None
+        try:
+            fitness_value = float(data[1])
+        except:
+            fitness_value = None
+        try:
+            rank = int(data[2])
+        except:
+            rank = None
+
+        return {
+            'mean_profit': mean_profit,
+            'fitness_value': fitness_value,
+            'rank': rank
+        }
+
+
+
+class BenchmarkPerformance(TickerStorage):
+    pass
 
 
 class CommitteeStorage(TickerStorage):
@@ -87,20 +119,23 @@ class CommitteeStorage(TickerStorage):
         """
         committees = CommitteeStorage.query(ticker=ticker, exchange=exchange, timestamp=timestamp,
                                             timestamp_tolerance=DOGE_RETRAINING_PERIOD_SECONDS * num_previous_committees_to_search)
-        doge_ids = []
+        result_doge_ids = []
         weights = []
-        for committee_ids, score in zip(committees['values'], committees['scores']):
+        for doge_ids, score in zip(committees['values'], committees['scores']):
             timestamp = CommitteeStorage.timestamp_from_score(score)
-            committee_ids = committee_ids.split(':')
-            for doge_id in committee_ids:
+            doge_ids = doge_ids.split(':')
+            if len(doge_ids) > 0:
+                committee_id = doge_ids[-1]
+                doge_ids = doge_ids[:-1]
+            for doge_id in doge_ids:
                 try:
-                    weight = DogePerformance.performance_at_timestamp(doge_id, ticker, exchange, timestamp)
-                    doge_ids.append(doge_id)
+                    weight = DogePerformance.performance_at_timestamp(doge_id, ticker, exchange, timestamp)['mean_profit']
+                    result_doge_ids.append(doge_id)
                     weights.append(weight)
                 except Exception as e:
-                    logging.error(e)
-        doge_ids = [doge_id for _, doge_id in sorted(zip(weights, doge_ids))]
-        rockstar_ids = doge_ids[:max_num_rockstars]
+                    logging.error(f'Error loading rockstars: {e}')
+        result_doge_ids = [doge_id for _, doge_id in sorted(zip(weights, result_doge_ids))]
+        rockstar_ids = result_doge_ids[:max_num_rockstars]
         doge_strs = [DogeStorage.get_doge_str(doge_hash) for doge_hash in rockstar_ids]
         return doge_strs
 
@@ -115,7 +150,15 @@ class CommitteeStorage(TickerStorage):
         """
         committee = CommitteeStorage.query(ticker=ticker, exchange=exchange, timestamp=timestamp,
                                             timestamp_tolerance=0)
-        return committee['values'][-1].split(':')
+        return committee['values'][-1].split(':')[:-1]
+
+    @staticmethod
+    def committee_id(timestamp, ticker, doge_hashes):
+        committee_str = ':'.join(doge_hashes)
+        committee_str += str(timestamp)
+        return str(DogeStorage.hash(committee_str))
+
+
 
 
 

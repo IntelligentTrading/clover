@@ -1,15 +1,8 @@
-from copy import deepcopy
-
-from django.contrib import messages
-from django.shortcuts import render, redirect
+from django.shortcuts import render
 from django.views.generic import View
-
-from apps.portfolio.models.allocation import ITF_PACKS
-from apps.portfolio.services.binance import binance_coins
 
 from apps.doge.doge_utils import *
 import time
-
 
 
 class CommitteesView(View):
@@ -19,7 +12,7 @@ class CommitteesView(View):
     def dispatch(self, request, *args, **kwargs):
 
         if CommitteesView.cached_committees is None:
-           CommitteesView.cached_committees = load_committees_in_period(ticker='BTC_USDT', exchange='binance', start_timestamp=time.time()-60*60*24,
+           CommitteesView.cached_committees = load_committees_in_period(ticker='BTC_USDT', exchange='binance', start_timestamp=time.time()-60*60*24*1,
                                                end_timestamp=time.time())
         print(f'Loaded {len(CommitteesView.cached_committees)} committees.')
 
@@ -66,7 +59,10 @@ class CommitteesView(View):
 
         data = []
         for committee in CommitteesView.cached_committees:
-            committee_data = {'time_str': committee.time_str}
+            committee_data = {'time_str': committee.time_str,
+                              'timestamp': committee.timestamp,
+                              'benchmark_profit': committee.benchmark_profit}
+
             traders = []
             for trader in committee.doge_traders:
                 trader_data = {}

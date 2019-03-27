@@ -12,9 +12,9 @@
     "validation_data": [
      ],
 
-    "fitness_functions": ["ff_trades_percent"],
+    "fitness_functions": ["ff_benchmarkdiffabsv4"],
     "grammar_version": "gv6",
-    "num_generations": 50,
+    "num_generations": 5,
 
     "mating_probabilities": [
         0.9
@@ -25,7 +25,7 @@
     ],
 
     "population_sizes": [
-        500
+        50
     ],
 
     "premade_individuals": [
