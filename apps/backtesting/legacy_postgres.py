@@ -1,9 +1,11 @@
 import logging
 import pandas as pd
 import psycopg2
+import psycopg2.extras
 
 from enum import Enum
 from apps.backtesting.data_sources import Database, DB_INTERFACE, NoPriceDataException
+
 
 
 class CounterCurrency(Enum):

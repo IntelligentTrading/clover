@@ -57,14 +57,19 @@
 
       <div class="col-md-12 content" style="padding-top: 2.1rem;">
 
+
         <div class="dashhead">
+
+
 
           <div class="dashhead-titles">
             <h6 class="dashhead-subtitle">
               {% block content_subtitle %}Portfolio Management by Intelligent Trading Foundation{% endblock %}
             </h6>
+
             <h3 class="dashhead-title">
-              {% block content_title %}Lobularia Maritima{% endblock %}
+              <img width="50px" src="{% static '/img/clover.svg' %}"/> </span>
+              {% block content_title %}Trifolium{% endblock %}
             </h3>
           </div>
 
@@ -95,6 +100,13 @@
                       {% url 'portfolio:exchange_account' as url %}
                       <a class="nav-link {% if request.path == url %}active{% endif %}" href="{{ url }}">
                         Account
+                      </a>
+                    </li>
+
+                     <li class="nav-item">
+                      {% url 'doge:dashboard' as url %}
+                      <a class="nav-link {% if request.path == url %}active{% endif %}" href="{{ url }}">
+                        GP dashboard
                       </a>
                     </li>
                   </ul>

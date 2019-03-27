@@ -97,12 +97,13 @@ class DogeTrainer:
         if DOGE_LOAD_ROCKSTARS:
             rockstars = CommitteeStorage.load_rockstars(num_previous_committees_to_search=2, max_num_rockstars=5,
                                                         ticker=training_ticker, exchange='binance', timestamp=end_timestamp)
+            rockstars = [doge.split(':')[0] if len(doge.split(':')) > 0 else doge for doge in rockstars]  # remove fitness function info if any
             logging.info(f'Loaded {len(rockstars)} rockstars.')
 
 
         # create an experiment manager
         e = ExperimentManager(experiment_container=config_json, read_from_file=False, database=self.database,
-                              hof_size=10, rockstars=rockstars)  # we will have one central json with all the parameters
+                              hof_size=50, rockstars=rockstars, parallel_run=False)  # we will have one central json with all the parameters
 
         # run experiments
         e.run_experiments(keep_record=True)
@@ -137,9 +138,12 @@ class DogeTrainer:
         new_benchmark_storage.save()
 
         # save current committee
-        committee_str = ":".join(map(str, [redis_entry.hash for redis_entry in redis_entries]))
+        doge_hashes = list(map(str, [redis_entry.hash for redis_entry in redis_entries]))
+        committee_str = ":".join(doge_hashes)
         new_committee_storage = CommitteeStorage(timestamp=end_timestamp, ticker=training_ticker, exchange='binance')
-        new_committee_storage.value = committee_str
+        new_committee_storage.value = committee_str + ':' + CommitteeStorage.committee_id(timestamp=end_timestamp,
+                                                                                          ticker=training_ticker,
+                                                                                          doge_hashes=doge_hashes)
         new_committee_storage.save(publish=True)
         logging.info('>>>>>>> GPs saved to database.')
         return e
@@ -306,6 +310,8 @@ class DogeCommittee:
             raise Exception(f'No committee members found for timestamp {self._committee_timetstamp}!')
 
         doge_committee_ids = query_response['values'][-1].split(':')
+        self._committee_id = doge_committee_ids[-1]
+        doge_committee_ids = doge_committee_ids[:-1]
         for doge_id in doge_committee_ids:
             doge_storage = DogeStorage(key_suffix=doge_id)
             doge_str, fitness_function = doge_storage.get_value().decode('utf-8').split(':')
@@ -319,6 +325,12 @@ class DogeCommittee:
         logging.info(f'Loaded a committee of {len(doge_traders)} traders for {self._training_ticker} '
                      f'trained at {datetime_from_timestamp(self._committee_timestamp)}')
         return doge_traders
+
+
+    def _fill_id(self):
+        committee_str = ':'.join([doge.hash for doge in self.doge_traders])
+        committee_str += str(self.timestamp)
+        self._id = DogeStorage.hash(committee_str)
 
     def vote(self, transaction_currency, counter_currency, timestamp, source='binance', resample_period=5):
         """
@@ -369,10 +381,16 @@ class DogeCommittee:
     def _get_benchmark_profit(self):
         try:
             result = BenchmarkPerformance.query(ticker=self._training_ticker, exchange='binance', timestamp=self._committee_timestamp)
-            result = result.split(':')
-            if self._committee_timestamp - int(result[0]) != DOGE_RETRAINING_PERIOD_SECONDS:
+            if len(result['values']) == 0:
                 return None
-            return float(result[1])
+
+            value = result['values'][0].split(':')
+            if self._committee_timestamp - int(value[0]) != DOGE_RETRAINING_PERIOD_SECONDS:
+                logging.critical(f'Mismatch in committee timestamp and doge retraining period: '
+                                 f'committee timestamp is {self._committee_timestamp}, '
+                                 f'retraining period is {DOGE_RETRAINING_PERIOD_SECONDS}, '
+                                 f'and starting timestamp is {value[0]}')
+            return float(value[1])
         except:
             return None
 
@@ -400,6 +418,11 @@ class DogeCommittee:
     @property
     def benchmark_profit(self):
         return self._benchmark_profit
+
+    @property
+    def committee_id(self):
+        return self._committee_id
+
 
 
 
