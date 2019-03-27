@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.views.generic import View
 
 from apps.doge.doge_utils import *
+from collections import OrderedDict
 import time
 
 
@@ -55,13 +56,32 @@ class CommitteesView(View):
         return '\n'.join(lines)
 
 
+
+    def _get_allocation_info(self, allocation_id):
+        from apps.portfolio.models.allocation import Allocation
+        result = list(Allocation.objects.filter(id=allocation_id).values())
+        return result
+
+
+
+
     def get(self, request):
 
         data = []
         for committee in CommitteesView.cached_committees:
             committee_data = {'time_str': committee.time_str,
                               'timestamp': committee.timestamp,
-                              'benchmark_profit': committee.benchmark_profit}
+                              'benchmark_profit': committee.benchmark_profit,
+                              'committee_id': committee.committee_id}
+            allocations = committee.get_voted_for_allocations()
+            realized_allocations = OrderedDict()
+            for allocation_id in allocations:
+                # print(self._get_allocation_info(allocation_id))
+                # print(self._get_allocation_info(allocation_id)[0]['realized_allocation'])
+                # print(self._get_allocation_info(allocation_id)[0]['_timestamp'])
+                realized_allocations[self._get_allocation_info(allocation_id)[0]['_timestamp']] = \
+                    self._get_allocation_info(allocation_id)[0]['realized_allocation']
+            committee_data['realized_allocations'] = realized_allocations
 
             traders = []
             for trader in committee.doge_traders:

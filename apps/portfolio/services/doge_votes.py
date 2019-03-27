@@ -69,8 +69,12 @@ def get_allocations_from_doge(at_datetime=None):
 
     tickers_dict = fill_tickers_dict(SUPPORTED_DOGE_TICKERS, minimum_reserves)
 
+    committees_used = {}
+
     for ticker in tickers:
         for horizon in horizons:
+
+            committee_ids = []
             # find the latest vote
             query_result = CommitteeVoteStorage.query(
                 ticker=ticker, exchange=exchange, timestamp=now_datetime.timestamp(),
@@ -86,6 +90,12 @@ def get_allocations_from_doge(at_datetime=None):
                         (now_datetime - timestamp).total_seconds() / (
                         timedelta(hours=1) * horizon_periods[horizon] *
                         horizon_life_spans[horizon]).total_seconds())
+
+                split_weighted_vote = str(weighted_vote).split(':')
+                if len(split_weighted_vote) == 2:   # we have committee ids too
+                    weighted_vote = float(split_weighted_vote[0])
+                    committee_id = split_weighted_vote[1]
+                    committee_ids.append(committee_id)
 
                 # re-normalize weighted vote to interval [0, 1]
                 weighted_vote = (1.0 + float(weighted_vote)) / 2
@@ -105,6 +115,9 @@ def get_allocations_from_doge(at_datetime=None):
                     tickers_dict[counter_ticker]["vote"] += counter_vote
                 else:
                     tickers_dict[counter_ticker] = {"vote": counter_vote}
+            committees_used[ticker] = {
+                horizon: committee_ids
+            }
 
 
     # Remove tickers with negative votes
@@ -146,5 +159,5 @@ def get_allocations_from_doge(at_datetime=None):
 
 
 
-    return allocations_list
+    return allocations_list, committees_used
 
