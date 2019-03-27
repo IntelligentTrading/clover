@@ -424,6 +424,13 @@ class DogeCommittee:
         return self._committee_id
 
 
+    def get_voted_for_allocations(self):
+        from apps.portfolio.models.allocation_committee import AllocationCommittee
+        result = AllocationCommittee.objects.filter(committee_id=self.committee_id).values_list('allocation_id', flat=True)
+        return list(result)
+
+
+
 
 
 
@@ -530,7 +537,8 @@ class DogeSubscriber(SignalSubscriber):
             ticker_votes, weights = self.committees[self.ticker].vote(transaction_currency, counter_currency, self.timestamp)
             # weighted_vote = sum([ticker_votes[i] * weights[i] for i in range(len(ticker_votes))]) / sum(weights)
 
-            new_doge_storage.value = (sum(ticker_votes) / len(ticker_votes))  # normalize to +-1 scale
+            vote = (sum(ticker_votes) / len(ticker_votes))
+            new_doge_storage.value = f'{vote}:{self.committees[self.ticker].committee_id}'  # normalize to +-1 scale
             new_doge_storage.save(publish=True)
             logger.debug('Doge vote saved')
         except Exception as e:

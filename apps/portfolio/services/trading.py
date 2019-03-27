@@ -45,7 +45,7 @@ def get_binance_portfolio_data(binance_account):
 
 
 #@start_new_thread
-def set_portfolio(portfolio, allocation):
+def set_portfolio(portfolio, allocation, committees_used):
     binance_account = portfolio.exchange_accounts.first()
     if not binance_account:
         return
@@ -102,9 +102,9 @@ def set_portfolio(portfolio, allocation):
             return
 
         from apps.portfolio.models import Allocation
-        print(f'Storing allocation {portfolio.target_allocation}, BTC price is {get_BTC_price()}')
+        logging.info(f'Storing allocation {portfolio.target_allocation}, BTC price is {get_BTC_price()}')
 
-        Allocation.objects.create(
+        allocation_object = Allocation.objects.create(
             portfolio=portfolio,
             target_allocation=portfolio.target_allocation,
             realized_allocation=response_data['binance']['allocations'],
@@ -113,14 +113,26 @@ def set_portfolio(portfolio, allocation):
             BTC_price=get_BTC_price()
         )
         realized_allocation = response_data['binance']['allocations']
-        print(f'>>>> Porfolio successfully rebalanced at {datetime_from_timestamp(int(time.time()))} '
+        logging.info(f'>>>> Porfolio successfully rebalanced at {datetime_from_timestamp(int(time.time()))} '
               f'(final target allocation = {allocation}, realized allocation = {realized_allocation}')
 
         portfolio.rebalanced_at = datetime.now()
         portfolio.save()
 
-        return
+        from apps.portfolio.models.allocation_committee import AllocationCommittee
+
+        # save log of which committees contributed in the allocation
+        for ticker in committees_used:
+            for horizon in committees_used[ticker]:
+                for committee_id in committees_used[ticker][horizon]:
+                    committee_object = AllocationCommittee(
+                        allocation_id=allocation_object.id,
+                        ticker=ticker,
+                        committee_id=committee_id,
+                        horizon=horizon
+                    )
+                    committee_object.save()
 
     else:
-        print(f'!!!!!!! Got response status code {response.status_code}')
+        logging.critical(f'!!!!!!! Got response status code {response.status_code}')
         raise TradingAPIException(f'Error calling trading API: {response.text}')

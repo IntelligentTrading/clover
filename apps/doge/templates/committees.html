@@ -18,8 +18,16 @@
 
       <div class="row pb-md-4">
           <h3> Committee valid from: {{ committee.time_str }}</h3>
-            &nbsp; (benchmark performance: {{committee.benchmark_profit  | floatformat:2}}%)
+            &nbsp; (benchmark performance: {{committee.benchmark_profit  | floatformat:2}}%, id: {{committee.committee_id}})
+          {{ committee.realized_allocations }}
       </div>
+
+    {% for timestamp, allocations in committee.realized_allocations.items %}
+
+    {{ allocations }}
+
+
+    {% endfor %}
 
 
 

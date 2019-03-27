@@ -39,7 +39,7 @@ def balance_portfolios():
 
     ITF_PACK_HORIZONS = {ITF1HR: SHORT_HORIZON, ITF6HR: MEDIUM_HORIZON, ITF24HR: LONG_HORIZON}
 
-    ITF_doge_binance_allocations = get_allocations_from_doge(at_datetime=datetime.now())
+    ITF_doge_binance_allocations, committees_used = get_allocations_from_doge(at_datetime=datetime.now())
 
     ITF_binance_allocations = {
          itf_group: get_allocations_from_signals(horizon=horizon, at_datetime=datetime.now())
@@ -80,7 +80,7 @@ def balance_portfolios():
 
             final_target_allocation = clean_allocation(target_allocation)
 
-            set_portfolio(portfolio, final_target_allocation)  # multithreaded
+            set_portfolio(portfolio, final_target_allocation, committees_used)  # multithreaded
 
         except Exception as e:
             logging.error(str(e))

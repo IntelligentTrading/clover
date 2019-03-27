@@ -52,6 +52,7 @@ class Allocation(models.Model):
     def __str__(self):
         return f"allocation_{self.id}"
 
+
     class Meta:
         verbose_name_plural = 'allocations'
         ordering = ["-_timestamp"]
