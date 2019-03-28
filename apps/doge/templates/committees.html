@@ -28,22 +28,10 @@
 
 
 
+    <div class="row">
+
     {% for timestamp, allocations in committee.realized_allocations.items %}
 
-
-
-        {% for allocation in allocations %}
-        <tr>
-            {{ allocation.amount }} {{ allocation.coin }}
-
-        </tr>
-        {% endfor %}
-
-    <tr>
-        <td> {{ timestamp }} </td>
-        <!-- <td> {{ allocations }} </td> -->
-
-        <td>
 
             <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
             <script type="text/javascript">
@@ -101,14 +89,12 @@
               }
             </script>
 
-            <div id="piechart_{{committee.committee_id}}_{{forloop.counter}}"></div>
+            <div class="col-sm-4" id="piechart_{{committee.committee_id}}_{{forloop.counter}}"></div>
 
-        </td>
-    </tr>
 
     {% endfor %}
 
-    </table>
+    </div>
 
 
         {% for trader in committee.traders %}
