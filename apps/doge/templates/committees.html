@@ -25,10 +25,22 @@
           <h3> Committee valid from: {{ committee.time_str }}</h3>
             &nbsp; (benchmark performance: {{committee.benchmark_profit  | floatformat:2}}%, id: {{committee.committee_id}})
       </div>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+            <script>
+
+        $(document).ready(function(){
+          $("#button_{{committee.committee_id}}").click(function(){
+            $("#rebalancing_{{committee.committee_id}}").toggle(500);
+          });
+          $("#rebalancing_{{committee.committee_id}}").hide();
+        });
+        </script>
 
 
 
-    <div class="row">
+<button class="btn btn-primary mb-4" id="button_{{committee.committee_id}}">Show rebalances</button>
+
+    <div class="row" id="rebalancing_{{committee.committee_id}}">
 
     {% for timestamp, allocations in committee.realized_allocations.items %}
 
@@ -42,7 +54,7 @@
 
 
                 var data = google.visualization.arrayToDataTable([
-                  ['Task', 'Hours per Day'],
+                  ['Coin', 'Portion'],
                   {% for allocation in allocations %}
 
                   ['{{allocation.coin}}', {{allocation.portion}}],
@@ -88,6 +100,8 @@
                 chart.draw(data, options);
               }
             </script>
+
+
 
             <div class="col-sm-4" id="piechart_{{committee.committee_id}}_{{forloop.counter}}"></div>
 
