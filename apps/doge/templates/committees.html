@@ -12,6 +12,11 @@
 {% block content %}
 {% load humanize %}
 
+
+
+
+
+
 <div class="container">
 
     {% for committee in data %}
@@ -19,16 +24,91 @@
       <div class="row pb-md-4">
           <h3> Committee valid from: {{ committee.time_str }}</h3>
             &nbsp; (benchmark performance: {{committee.benchmark_profit  | floatformat:2}}%, id: {{committee.committee_id}})
-          {{ committee.realized_allocations }}
       </div>
+
+
 
     {% for timestamp, allocations in committee.realized_allocations.items %}
 
-    {{ allocations }}
 
+
+        {% for allocation in allocations %}
+        <tr>
+            {{ allocation.amount }} {{ allocation.coin }}
+
+        </tr>
+        {% endfor %}
+
+    <tr>
+        <td> {{ timestamp }} </td>
+        <!-- <td> {{ allocations }} </td> -->
+
+        <td>
+
+            <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+            <script type="text/javascript">
+              google.charts.load('current', {'packages':['corechart']});
+              google.charts.setOnLoadCallback(drawChart);
+
+              function drawChart() {
+
+
+                var data = google.visualization.arrayToDataTable([
+                  ['Task', 'Hours per Day'],
+                  {% for allocation in allocations %}
+
+                  ['{{allocation.coin}}', {{allocation.portion}}],
+
+                  {% endfor %}
+                ]);
+
+                var options = {
+                  title: '{{timestamp}}',
+                  'width':600,
+                  'height':300,
+                  'backgroundColor': 'transparent',
+                  'is3D':true,
+                  titleTextStyle: {
+                        color: 'white'
+                    },
+                    hAxis: {
+                        textStyle: {
+                            color: 'white'
+                        },
+                        titleTextStyle: {
+                            color: 'white'
+                        }
+                    },
+                    vAxis: {
+                        textStyle: {
+                            color: 'white'
+                        },
+                        titleTextStyle: {
+                            color: 'white'
+                        }
+                    },
+                    legend: {
+                        textStyle: {
+                            color: 'white'
+                        }
+                    }
+                };
+
+
+                var chart = new google.visualization.PieChart(document.getElementById('piechart_{{committee.committee_id}}_{{forloop.counter}}'));
+
+                chart.draw(data, options);
+              }
+            </script>
+
+            <div id="piechart_{{committee.committee_id}}_{{forloop.counter}}"></div>
+
+        </td>
+    </tr>
 
     {% endfor %}
 
+    </table>
 
 
         {% for trader in committee.traders %}
