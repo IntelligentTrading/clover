@@ -53,6 +53,7 @@ def set_portfolio(portfolio, allocation, committees_used):
         return
 
     allocation = translate_allocs_binance_coins(allocation)
+    target_allocation = allocation
 
     api_url = ITF_TRADING_API_URL + "portfolio/"
     headers = {'Content-Type': 'application/json'}
@@ -106,7 +107,7 @@ def set_portfolio(portfolio, allocation, committees_used):
 
         allocation_object = Allocation.objects.create(
             portfolio=portfolio,
-            target_allocation=portfolio.target_allocation,
+            target_allocation=target_allocation,
             realized_allocation=response_data['binance']['allocations'],
             is_realized=True,
             BTC_value=float(response_data['binance']['value']),
