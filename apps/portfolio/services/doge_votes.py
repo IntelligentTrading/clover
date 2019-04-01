@@ -37,6 +37,13 @@ def fill_tickers_dict(supported_tickers, minimum_reserves):
 
 
 def get_allocations_from_doge(at_datetime=None):
+    """
+    Queries CommitteeVoteStorage for all supported tickers, collects committee votes and then distributes the
+    allocations accordingly.
+    :param at_datetime: datetime for which to query the CommitteeVoteStorage (if set to None, the latest available
+    vote in the storage will be used)
+    :return: a dictionary of allocations
+    """
     now_datetime = at_datetime or datetime.now()
 
     horizon_periods = {

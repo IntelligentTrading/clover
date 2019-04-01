@@ -46,6 +46,9 @@ class Allocation:
 
 
 class PortfolioSnapshot:
+    '''
+    A snapshot of a multi-asset portfolio at timestamp. Contains a list of assets with corresponding allocations.
+    '''
 
     def __init__(self, timestamp, allocations_data, db_interface=POSTGRES, load_from_json=True):
         self._timestamp = timestamp
@@ -103,6 +106,11 @@ class PortfolioSnapshot:
             logging.info(f'       {allocation.amount} {allocation.asset} worth {allocation.value} BTC, {allocation.portion*100:2}% total')
 
     def update_to_timestamp(self, timestamp):
+        '''
+        Returns a new PortfolioSnapshot with prices and values of individual assets updated to target timestamp.
+        :param timestamp: timestamp to which to update the portfolio
+        :return: a new instance of PortfolioSnapshot with updated asset values
+        '''
         updated_allocations = []
         for allocation in self._allocations:
             new_price = PRICE_PROVIDER.get_price(allocation.asset, timestamp)
