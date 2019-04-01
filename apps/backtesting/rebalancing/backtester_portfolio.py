@@ -15,7 +15,7 @@ PRICE_PROVIDER = PriceProvider()
 
 class Allocation:
     
-    def __init__(self, amount, asset, portion, unit_price, value, timestamp, counter_currency='BTC'):
+    def __init__(self, amount, asset, portion, unit_price, value, timestamp, counter_currency):
         self.amount = amount
         self.asset = asset
         self.portion = portion
@@ -50,24 +50,25 @@ class PortfolioSnapshot:
     A snapshot of a multi-asset portfolio at timestamp. Contains a list of assets with corresponding allocations.
     '''
 
-    def __init__(self, timestamp, allocations_data, db_interface=POSTGRES, load_from_json=True):
+    def __init__(self, timestamp, allocations_data, db_interface=POSTGRES, load_from_json=True, counter_currency='BTC'):
         self._timestamp = timestamp
         self._allocations_by_asset = {}
         self.db_interface = db_interface
         if load_from_json:
-            self._parse_json_allocations(allocations_data)
+            self._parse_json_allocations(allocations_data, counter_currency)
         else:
             self._allocations = allocations_data
         self._fill_internals()
 
-    def _parse_json_allocations(self, allocations_data):
+    def _parse_json_allocations(self, allocations_data, counter_currency):
         self._allocations = []
         allocations_dict = json.loads(allocations_data)
         for item in allocations_dict:
             # figure out the value of this particular item
             unit_price = PRICE_PROVIDER.get_price(item['asset'], self._timestamp)
             value = unit_price * item['amount']
-            allocation = Allocation(**item, unit_price=unit_price, value=value, timestamp=self._timestamp)
+            allocation = Allocation(**item, unit_price=unit_price, value=value, timestamp=self._timestamp,
+                                    counter_currency=counter_currency)
             self._allocations.append(allocation)
 
     def _fill_internals(self):
@@ -113,13 +114,14 @@ class PortfolioSnapshot:
         '''
         updated_allocations = []
         for allocation in self._allocations:
-            new_price = PRICE_PROVIDER.get_price(allocation.asset, timestamp)
+            new_price = PRICE_PROVIDER.get_price(allocation.asset, timestamp, counter_currency=allocation.counter_currency)
             new_allocation = Allocation(amount=allocation.amount,
                                         asset=allocation.asset,
                                         portion=allocation.portion,
                                         unit_price=new_price,
                                         value=new_price*allocation.amount,
-                                        timestamp=timestamp)
+                                        timestamp=timestamp,
+                                        counter_currency=allocation.counter_currency)
             updated_allocations.append(new_allocation)
 
         return PortfolioSnapshot(timestamp, updated_allocations, load_from_json=False)
@@ -130,8 +132,7 @@ class PortfolioSnapshot:
 
 class PortfolioBacktester:
 
-    def __init__(self, start_time, end_time, step_seconds, portions_dict,
-                 start_value_of_portfolio, counter_currency, verbose=False, trading_cost_percent=0):
+    def __init__(self, start_time, end_time, step_seconds, counter_currency, verbose=False, trading_cost_percent=0):
         if isinstance(start_time, str):
             start_time = int(datetime_to_timestamp(start_time))
         if isinstance(end_time, str):
@@ -139,58 +140,26 @@ class PortfolioBacktester:
         self._start_time = start_time
         self._end_time = end_time
         self._step_seconds = step_seconds
-        self._portions_dict = portions_dict
-        self._start_value_of_portfolio = start_value_of_portfolio
-        if counter_currency == 'BTC':
-            self._start_value_of_portfolio_usdt = start_value_of_portfolio * PRICE_PROVIDER.get_price('BTC', start_time, counter_currency='USDT')
-        else:
-            self._start_value_of_portfolio_usdt = self._start_value_of_portfolio
         self._counter_currency = counter_currency
         self._verbose = verbose
         self._trading_cost_percent = trading_cost_percent
+        self._build_portfolio_snapshots()
+        self._start_value_of_portfolio = list(self._portfolio_snapshots.items())[0][1].total_value(counter_currency)
+
+        if counter_currency == 'BTC':
+            self._start_value_of_portfolio_usdt = self._start_value_of_portfolio * PRICE_PROVIDER.get_price('BTC',
+                                                                                                            start_time,
+                                                                                                            counter_currency='USDT')
+        else:
+            self._start_value_of_portfolio_usdt = self._start_value_of_portfolio
+
         self._simulate()
         self._build_benchmark_baselines()
         self._fill_benchmark_dataframe()
 
-    def _build_portfolio(self, timestamp, total_value):
-        allocations = []
-        # calculate the held amount for each asset
-        for asset in self._portions_dict:
-            portion = self._portions_dict[asset]
-            unit_price = PRICE_PROVIDER.get_price(asset, timestamp)
-            value = (portion * total_value) * (1 - self._trading_cost_percent/100)
-            amount = value / unit_price
-            allocation = Allocation(asset=asset, portion=portion, unit_price=unit_price, value=value, amount=amount, timestamp=timestamp)
-            allocations.append(allocation)
-        return PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations, load_from_json=False)
 
-
-    def _build_portfolio_with_trading_fee(self, timestamp, total_value, previous_portfolio):
-        if previous_portfolio is None:
-            return self._build_portfolio(timestamp, total_value)
-        allocations = []
-        trading_fee = self._trading_cost_percent / 100
-        # calculate the held amount for each asset
-        for asset in self._portions_dict:
-            previous = previous_portfolio.get_allocation(asset)
-            new_unit_price = PRICE_PROVIDER.get_price(asset, timestamp)
-            portion = self._portions_dict[asset]
-            delta_value = abs(total_value*portion - previous.amount*new_unit_price)
-            fee = delta_value * trading_fee
-            obtained_amount = (delta_value - fee) / new_unit_price
-            new_amount = previous.amount + (obtained_amount if total_value*portion > previous.amount*new_unit_price else -obtained_amount)
-            new_value = new_amount * new_unit_price
-            portion = new_value / total_value
-            # amount = value / unit_price
-            allocation = Allocation(asset=asset, portion=portion, unit_price=new_unit_price, value=new_value, amount=new_amount, timestamp=timestamp)
-            allocations.append(allocation)
-        total_value = sum([allocation.value for allocation in allocations])
-        for allocation in allocations:
-            allocation.portion = allocation.value / total_value
-
-        p = PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations, load_from_json=False)
-        return p
-
+    def _build_portfolio_snapshots(self):
+        pass
 
     def _build_benchmark_baselines(self):
         self._benchmarks = {}
@@ -219,9 +188,7 @@ class PortfolioBacktester:
                                                                           source=2, tick_provider=tick_provider_usdt,
                                                                           database=POSTGRES)
 
-
     def _simulate(self):
-        self._portfolio_snapshots = OrderedDict()
         self._dataframes = {}
         value_df_dicts = []
         current_snapshot = None
@@ -261,16 +228,11 @@ class PortfolioBacktester:
 
         # self._value_dataframe.index = pd.to_datetime(self._value_dataframe.index, unit='s')
 
-
     def _get_next_snapshot(self, current_snapshot, timestamp, previous_snapshot):
-        if current_snapshot is None:
-            current_snapshot = self._build_portfolio_with_trading_fee(self._start_time, self._start_value_of_portfolio,
-                                                                      previous_portfolio=None)
+        if timestamp in self._portfolio_snapshots:
+            return self._portfolio_snapshots[timestamp]    # we have a rebalancing checkpoint here
         else:
-            current_snapshot = self._build_portfolio_with_trading_fee(
-                timestamp, current_snapshot.update_to_timestamp(timestamp).total_value(self._counter_currency),
-                previous_portfolio=previous_snapshot)
-        return current_snapshot
+            return current_snapshot.update_to_timestamp(timestamp)   # just recalculate value and return
 
 
     def _fill_relative_returns(self, df, total_value_column_name='total_value', relative_returns_column_name='return_relative_to_past_tick'):
@@ -449,11 +411,8 @@ class PortfolioBacktester:
 
 class RebalancingStrategyBacktester(PortfolioBacktester):
 
-    def __init__(self, portfolio_snapshots, *args, **kwargs):
-        self._cached_portfolio_snapshots = portfolio_snapshots
-        self._current_snapshot_index = 0
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
 
     def _get_next_snapshot(self, current_snapshot, timestamp, previous_snapshot):
         if self._current_snapshot_index >= len(self._cached_portfolio_snapshots):
@@ -461,6 +420,88 @@ class RebalancingStrategyBacktester(PortfolioBacktester):
         snapshot = self._cached_portfolio_snapshots[self._current_snapshot_index]
         self._current_snapshot_index += 1
         return snapshot
+
+
+
+class FixedRatiosPortfolioBacktester(PortfolioBacktester):
+    def __init__(self, rebalancing_period_seconds, portions_dict,
+                 start_value_of_portfolio, *args, **kwargs):
+        self._rebalancing_period_seconds = rebalancing_period_seconds
+        self._portions_dict = portions_dict
+        self._start_value_of_portfolio = start_value_of_portfolio
+        super().__init__(*args, **kwargs)
+
+
+    def _build_portfolio_snapshots(self):
+        self._portfolio_snapshots = OrderedDict()
+        current_snapshot = None
+        for timestamp in range(self._start_time, self._end_time + 1, self._rebalancing_period_seconds):
+            try:
+                previous_snapshot = current_snapshot
+                current_snapshot = self._get_next_snapshot(current_snapshot, timestamp, previous_snapshot)
+                self._portfolio_snapshots[timestamp] = current_snapshot
+            except NoPriceDataException:
+                logging.error(f'Unable to load price data at {timestamp}, skipping snapshot...')
+
+
+    def _get_next_snapshot(self, current_snapshot, timestamp, previous_snapshot):
+        if current_snapshot is None:
+            current_snapshot = self._build_portfolio_with_trading_fee(self._start_time, self._start_value_of_portfolio,
+                                                                      previous_portfolio=None)
+        else:
+            current_snapshot = self._build_portfolio_with_trading_fee(
+                timestamp, current_snapshot.update_to_timestamp(timestamp).total_value(self._counter_currency),
+                previous_portfolio=previous_snapshot)
+        return current_snapshot
+
+    def _build_portfolio(self, timestamp, total_value):
+        allocations = []
+        # calculate the held amount for each asset
+        for asset in self._portions_dict:
+            portion = self._portions_dict[asset]
+            unit_price = PRICE_PROVIDER.get_price(asset, timestamp)
+            value = (portion * total_value) * (1 - self._trading_cost_percent/100)
+            amount = value / unit_price
+            allocation = Allocation(asset=asset, portion=portion, unit_price=unit_price, value=value,
+                                    amount=amount, timestamp=timestamp, counter_currency=self._counter_currency)
+            allocations.append(allocation)
+        return PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations,
+                                 load_from_json=False, counter_currency=self._counter_currency)
+
+    def _build_portfolio_with_trading_fee(self, timestamp, total_value, previous_portfolio):
+        if previous_portfolio is None:
+            return self._build_portfolio(timestamp, total_value)
+        allocations = []
+        trading_fee = self._trading_cost_percent / 100
+        # calculate the held amount for each asset
+        for asset in self._portions_dict:
+            previous = previous_portfolio.get_allocation(asset)
+            new_unit_price = PRICE_PROVIDER.get_price(asset, timestamp)
+            portion = self._portions_dict[asset]
+            delta_value = abs(total_value*portion - previous.amount*new_unit_price)
+            fee = delta_value * trading_fee
+            obtained_amount = (delta_value - fee) / new_unit_price
+            new_amount = previous.amount + (obtained_amount if total_value*portion > previous.amount*new_unit_price else -obtained_amount)
+            new_value = new_amount * new_unit_price
+            portion = new_value / total_value
+            # amount = value / unit_price
+            allocation = Allocation(asset=asset, portion=portion, unit_price=new_unit_price,
+                                    value=new_value, amount=new_amount, timestamp=timestamp,
+                                    counter_currency=self._counter_currency)
+            allocations.append(allocation)
+        total_value = sum([allocation.value for allocation in allocations])
+        for allocation in allocations:
+            allocation.portion = allocation.value / total_value
+
+        p = PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations, load_from_json=False)
+        return p
+
+
+
+
+
+
+
 
 class ComparativePortfolioEvaluation:
     def __init__(self, portion_dicts, start_time, end_time, rebalancing_periods, start_value_of_portfolio, counter_currency,
@@ -538,16 +579,17 @@ class DummyDataProvider:
         # backtester.value_report()
         snapshot = PortfolioSnapshot(timestamp, DummyDataProvider.sample_allocations)
         portfolio_snapshots = [PortfolioSnapshot(timestamp, DummyDataProvider.sample_allocations)] * 5
-        backtester = RebalancingStrategyBacktester(start_time=int(datetime_to_timestamp('2018/10/01 00:00:00 UTC')),
+        backtester = FixedRatiosPortfolioBacktester(start_time=int(datetime_to_timestamp('2018/10/01 00:00:00 UTC')),
                             end_time=int(datetime_to_timestamp('2018/10/30 00:00:00 UTC')),
                             step_seconds=60*60,
+                            rebalancing_period_seconds=60*60,
                             portions_dict={
                                 'BTC': 0.5,
                                 'ETH': 0.5,
                             },
                             start_value_of_portfolio=1000,
-                            counter_currency='BTC',
-                            trading_cost_percent=0.1, portfolio_snapshots=portfolio_snapshots)
+                            counter_currency='USDT',
+                            trading_cost_percent=0.1) #, portfolio_snapshots=portfolio_snapshots)
         backtester.draw_returns_tear_sheet()
         backtester.get_benchmark_trading_dataframe_for_asset('ETH')
         backtester.get_benchmark_trading_df_for_all_assets()
