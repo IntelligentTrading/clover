@@ -41,10 +41,10 @@ def balance_portfolios():
 
     ITF_doge_binance_allocations, committees_used = get_allocations_from_doge(at_datetime=datetime.now())
 
-    ITF_binance_allocations = {
-         itf_group: get_allocations_from_signals(horizon=horizon, at_datetime=datetime.now())
-        for itf_group, horizon in ITF_PACK_HORIZONS.items()
-    }
+    # ITF_binance_allocations = {
+    #     itf_group: get_allocations_from_signals(horizon=horizon, at_datetime=datetime.now())
+    #    for itf_group, horizon in ITF_PACK_HORIZONS.items()
+    # }   # disable for now
 
     for portfolio in Portfolio.objects.all():
         # if portfolio.recently_rebalanced:  # we don't need this logic for Clover so far
@@ -58,6 +58,8 @@ def balance_portfolios():
             continue
 
         try:
+
+            '''
             target_allocation = deepcopy(portfolio.target_allocation)
             for alloc in portfolio.target_allocation:
                 if alloc['coin'] in ITF_PACKS:
@@ -79,8 +81,11 @@ def balance_portfolios():
                     )
 
             final_target_allocation = clean_allocation(target_allocation)
+            '''
 
-            set_portfolio(portfolio, final_target_allocation, committees_used)  # multithreaded
+
+            # for now, disable all other options for rebalancing and just use doge allocations
+            set_portfolio(portfolio, ITF_doge_binance_allocations, committees_used)  # multithreaded
 
         except Exception as e:
             logging.error(str(e))
