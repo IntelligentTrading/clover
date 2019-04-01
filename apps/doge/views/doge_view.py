@@ -75,13 +75,17 @@ class CommitteesView(View):
                               'committee_id': committee.committee_id}
             allocations = committee.get_voted_for_allocations()
             realized_allocations = OrderedDict()
+            target_allocations = OrderedDict()
             for allocation_id in allocations:
                 # print(self._get_allocation_info(allocation_id))
                 # print(self._get_allocation_info(allocation_id)[0]['realized_allocation'])
                 # print(self._get_allocation_info(allocation_id)[0]['_timestamp'])
                 realized_allocations[self._get_allocation_info(allocation_id)[0]['_timestamp']] = \
                     self._get_allocation_info(allocation_id)[0]['realized_allocation']
+                target_allocations[self._get_allocation_info(allocation_id)[0]['_timestamp']] = \
+                    self._get_allocation_info(allocation_id)[0]['target_allocation']
             committee_data['realized_allocations'] = realized_allocations
+            committee_data['target_allocations'] = target_allocations
 
             traders = []
             for trader in committee.doge_traders:

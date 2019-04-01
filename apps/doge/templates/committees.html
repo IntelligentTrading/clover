@@ -52,15 +52,21 @@
 
               function drawChart() {
 
+                data = new google.visualization.DataTable();
+                  data.addColumn('string', 'Coin');
+                  data.addColumn('number', 'Portion');
+                  data.addColumn({type: 'number', role: 'tooltip'});
+                  data.addRows([
+                    {% for allocation in allocations %}
 
-                var data = google.visualization.arrayToDataTable([
-                  ['Coin', 'Portion'],
-                  {% for allocation in allocations %}
-
-                  ['{{allocation.coin}}', {{allocation.portion}}],
+                  ['{{allocation.coin}}', {{allocation.portion}}, {{allocation.amount}}],
 
                   {% endfor %}
-                ]);
+
+
+  ]);
+
+
 
                 var options = {
                   title: '{{timestamp}}',

@@ -92,6 +92,10 @@ class DogePerformance(TickerStorage):
 
 
 class BenchmarkPerformance(TickerStorage):
+    """
+    Stores benchmark performance of a ticker over a time interval.
+    (value format: start_time:performance:score) where score denotes the end of the interval.
+    """
     pass
 
 

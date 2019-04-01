@@ -268,7 +268,7 @@ class DogeTrader:
 class DogeCommittee:
     """
     A class that encapsulates trading using a committee of GPs.
-    The committee is built out of the latest GPs in the database.
+    If no timestamp is set, the committee is built out of the latest GPs in the database.
     """
 
     def __init__(self, committee_timestamp=None, max_doges=100,
@@ -428,8 +428,6 @@ class DogeCommittee:
         from apps.portfolio.models.allocation_committee import AllocationCommittee
         result = AllocationCommittee.objects.filter(committee_id=self.committee_id).values_list('allocation_id', flat=True)
         return list(result)
-
-
 
 
 
