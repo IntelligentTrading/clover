@@ -67,7 +67,7 @@ class PortfolioSnapshot:
             # figure out the value of this particular item
             unit_price = PRICE_PROVIDER.get_price(item['asset'], self._timestamp)
             value = unit_price * item['amount']
-            allocation = Allocation(**item, unit_price=unit_price, value=value)
+            allocation = Allocation(**item, unit_price=unit_price, value=value, timestamp=self._timestamp)
             self._allocations.append(allocation)
 
     def _fill_internals(self):
@@ -225,14 +225,12 @@ class PortfolioBacktester:
         self._dataframes = {}
         value_df_dicts = []
         current_snapshot = None
+        previous_snapshot = None
         for timestamp in range(self._start_time, self._end_time+1, self._step_seconds):
             try:
-                if current_snapshot is None:
-                    current_snapshot = self._build_portfolio_with_trading_fee(self._start_time, self._start_value_of_portfolio, previous_portfolio=None)
-                else:
-                    current_snapshot = self._build_portfolio_with_trading_fee(
-                        timestamp, current_snapshot.update_to_timestamp(timestamp).total_value(self._counter_currency),
-                        previous_portfolio=previous_snapshot)
+                current_snapshot = self._get_next_snapshot(current_snapshot, timestamp, previous_snapshot)
+                if current_snapshot is None:   # ran out of data
+                    break
                 if self._verbose:
                     current_snapshot.report()
                 logging.info(current_snapshot.to_dict())
@@ -262,6 +260,18 @@ class PortfolioBacktester:
                                                             relative_returns_column_name='return_relative_to_past_tick_usdt')
 
         # self._value_dataframe.index = pd.to_datetime(self._value_dataframe.index, unit='s')
+
+
+    def _get_next_snapshot(self, current_snapshot, timestamp, previous_snapshot):
+        if current_snapshot is None:
+            current_snapshot = self._build_portfolio_with_trading_fee(self._start_time, self._start_value_of_portfolio,
+                                                                      previous_portfolio=None)
+        else:
+            current_snapshot = self._build_portfolio_with_trading_fee(
+                timestamp, current_snapshot.update_to_timestamp(timestamp).total_value(self._counter_currency),
+                previous_portfolio=previous_snapshot)
+        return current_snapshot
+
 
     def _fill_relative_returns(self, df, total_value_column_name='total_value', relative_returns_column_name='return_relative_to_past_tick'):
         df['return_relative_to_past_tick'] = df[total_value_column_name].diff() / df[total_value_column_name].shift(1)
@@ -437,6 +447,21 @@ class PortfolioBacktester:
 
 
 
+class RebalancingStrategyBacktester(PortfolioBacktester):
+
+    def __init__(self, portfolio_snapshots, *args, **kwargs):
+        self._cached_portfolio_snapshots = portfolio_snapshots
+        self._current_snapshot_index = 0
+        super().__init__(*args, **kwargs)
+
+
+    def _get_next_snapshot(self, current_snapshot, timestamp, previous_snapshot):
+        if self._current_snapshot_index >= len(self._cached_portfolio_snapshots):
+            return None
+        snapshot = self._cached_portfolio_snapshots[self._current_snapshot_index]
+        self._current_snapshot_index += 1
+        return snapshot
+
 class ComparativePortfolioEvaluation:
     def __init__(self, portion_dicts, start_time, end_time, rebalancing_periods, start_value_of_portfolio, counter_currency,
                  trading_cost_percent=0):
@@ -495,27 +520,11 @@ class DummyDataProvider:
     [{
         "amount": 0.00695246,
         "asset": "BTC",
-        "portion": 0.3954
+        "portion": 0.5
     },{
         "amount": 0.05294586,
         "asset": "ETH",
-        "portion": 0.0995
-    },{
-        "amount": 0.04120943,
-        "asset": "BNB",
-        "portion": 0.0034
-    },{
-        "amount": 0.005,
-        "asset": "OMG",
-        "portion": 0.0246
-    },{
-        "amount": 17.19363945,
-        "asset": "USDT",
-        "portion": 0.1511
-    },{
-        "amount": 1,
-        "asset": "TRX",
-        "portion": 0.0002
+        "portion": 0.5
     }]
 
     """
@@ -523,27 +532,27 @@ class DummyDataProvider:
     def run(self):
         from apps.backtesting.utils import datetime_to_timestamp
         # backtester = PortfolioBacktester()
-        # timestamp = datetime_to_timestamp('2018/06/01 00:00:00 UTC')
+        timestamp = datetime_to_timestamp('2019/02/01 00:00:00 UTC')
         # for i in range(10):
         #     backtester.process_allocations(timestamp+i*60*60*24, self.sample_allocations)
         # backtester.value_report()
-        backtester = PortfolioBacktester(start_time=int(datetime_to_timestamp('2018/10/01 00:00:00 UTC')),
+        snapshot = PortfolioSnapshot(timestamp, DummyDataProvider.sample_allocations)
+        portfolio_snapshots = [PortfolioSnapshot(timestamp, DummyDataProvider.sample_allocations)] * 5
+        backtester = RebalancingStrategyBacktester(start_time=int(datetime_to_timestamp('2018/10/01 00:00:00 UTC')),
                             end_time=int(datetime_to_timestamp('2018/10/30 00:00:00 UTC')),
                             step_seconds=60*60,
                             portions_dict={
-                                'BTC': 0.25,
-                                'ETH': 0.25,
-                                'XRP': 0.25,
-                                'EOS': 0.25,
+                                'BTC': 0.5,
+                                'ETH': 0.5,
                             },
                             start_value_of_portfolio=1000,
                             counter_currency='BTC',
-                            trading_cost_percent=0.1)
+                            trading_cost_percent=0.1, portfolio_snapshots=portfolio_snapshots)
         backtester.draw_returns_tear_sheet()
         backtester.get_benchmark_trading_dataframe_for_asset('ETH')
         backtester.get_benchmark_trading_df_for_all_assets()
         backtester.get_rebalancing_vs_benchmark_dataframe()
 
-
-
-
+if __name__ == '__main__':
+    d = DummyDataProvider()
+    d.run()
