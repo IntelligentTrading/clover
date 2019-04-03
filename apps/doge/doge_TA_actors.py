@@ -174,7 +174,8 @@ class CommitteeVoteStorage(IndicatorStorage):
     requisite_TA_storages = ["rsi", "sma"]  # example
 
     def produce_signal(self):
-        if self.vote_trend and abs(self.vote) >= 25:
+        value = float(self.value.split(':')[0])
+        if self.vote_trend and value >= 0.5:
             self.send_signal(trend=self.vote_trend)
 
 
@@ -182,10 +183,11 @@ class CommitteeVoteStorage(IndicatorStorage):
     def vote_trend(self):
         if not self.value:
             return None
+        value = float(self.value.split(':')[0])
 
-        if self.value > 0:
+        if value > 0:
             return BULLISH
-        elif self.value < 0:
+        elif value < 0:
             return BEARISH
         else:
             return OTHER
@@ -194,11 +196,13 @@ class CommitteeVoteStorage(IndicatorStorage):
     def vote(self):
         return self.value
 
-    def has_saved_value(self):
-        return len(self.query(
+    def has_saved_value(self, committee_id):
+        values = self.query(
             ticker=self.ticker, exchange=self.exchange,
             timestamp=self.unix_timestamp,
-            periods_key=self.periods, key_suffix=self.key_suffix
-        )['values']) > 0
+            periods_key=self.periods, key_suffix=self.key_suffix,
+            timestamp_tolerance=0
+        )['values']
+        return len(values) > 0 and values[0].split(':')[1] == committee_id
 
 

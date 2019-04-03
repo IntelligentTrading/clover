@@ -386,10 +386,10 @@ class DogeCommittee:
 
             value = result['values'][0].split(':')
             if self._committee_timestamp - int(value[0]) != DOGE_RETRAINING_PERIOD_SECONDS:
-                logging.critical(f'Mismatch in committee timestamp and doge retraining period: '
-                                 f'committee timestamp is {self._committee_timestamp}, '
+                logging.warning(f'Mismatch in committee timestamp and doge retraining period: '
+                                 f'committee timestamp is {datetime_from_timestamp(self._committee_timestamp)}, '
                                  f'retraining period is {DOGE_RETRAINING_PERIOD_SECONDS}, '
-                                 f'and starting timestamp is {value[0]}')
+                                 f'and starting timestamp is {datetime_from_timestamp(int(value[0]))}')
             return float(value[1])
         except:
             return None
@@ -483,7 +483,7 @@ class DogeSubscriber(SignalSubscriber):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         logger.info("                                                      (😎 IT IS THE LAST ONE 😎)")
-        self._rewrite_history = kwargs.get('rewrite_history', True)
+        self._rewrite_history = kwargs.get('rewrite_history', False)
         self._init_committees()
 
 
@@ -502,6 +502,10 @@ class DogeSubscriber(SignalSubscriber):
         return self.committees[ticker].expired(at_timestamp=self.timestamp)
 
     def handle(self, channel, data, *args, **kwargs):
+        # we want to invoke this only for one of the Rsi channels, temporary fix
+        if not data['key'].endswith(':4032'):
+            return
+
         # check if we received data for a ticker we support
         if self.ticker not in SUPPORTED_DOGE_TICKERS:  # @tomcounsell please check if this is OK or I should register
                                                        # for tickers of interest in some other way
@@ -524,7 +528,7 @@ class DogeSubscriber(SignalSubscriber):
                                                 periods=self.committees[self.ticker].periods)
 
         if not self._rewrite_history:
-            if new_doge_storage.has_saved_value():
+            if new_doge_storage.has_saved_value(self.committees[self.ticker].committee_id):
                 logging.warning(f'Found existing committee vote for {self.ticker} '
                                 f'at {datetime_from_timestamp(self.timestamp)}, skipping computation.')
                 logging.warning('To rewrite history, set rewrite_history=True when invoking DogeSubscriber.')
