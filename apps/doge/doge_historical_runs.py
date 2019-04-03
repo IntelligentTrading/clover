@@ -144,6 +144,6 @@ class DogeHistorySimulator:
             try:
                 subscriber(data_event=data_event)
             except Exception as e:
-                pass
+                logging.error(str(e))
         logging.info('Doges ingested all prices.')
 
