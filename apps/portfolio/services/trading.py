@@ -46,6 +46,7 @@ def get_binance_portfolio_data(binance_account):
 
 #@start_new_thread
 def set_portfolio(portfolio, allocation, committees_used):
+    logging.critical(f'set_portfolio called with allocation {str(allocation)}, committees used:  {str(committees_used)}')
     binance_account = portfolio.exchange_accounts.first()
     if not binance_account:
         return

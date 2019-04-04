@@ -24,6 +24,9 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 
 GP_TRAINING_CONFIG = os.path.join(BASE, 'doge_config.json')
 
+class NoNewCommitteeException(Exception):
+    pass
+
 
 class DogeRecord:
 
@@ -429,6 +432,9 @@ class DogeCommittee:
         result = AllocationCommittee.objects.filter(committee_id=self.committee_id).values_list('allocation_id', flat=True)
         return list(result)
 
+    def __str__(self):
+        return(f'committee at {self.time_str}, id {self.committee_id}')
+
 
 
 
@@ -496,7 +502,17 @@ class DogeSubscriber(SignalSubscriber):
 
     def _reload_committee(self, ticker):
         logging.info(f'Reloading committee for {ticker}...')
-        self.committees[ticker] = DogeCommittee(training_ticker=ticker)
+
+        if ticker in self.committees:
+            old_committee = self.committees[ticker]
+            self.committees[ticker] = DogeCommittee(training_ticker=ticker)
+            if self.committees[ticker].committee_id == old_committee.committee_id:
+                raise NoNewCommitteeException(f'Unable to load an updated committee at {datetime_from_timestamp(self.timestamp)}: '
+                                              f'the loaded committee is {str(self.committees[ticker])}, '
+                                              f'and has the same id as the previous committee (is committee training running?) ')
+        else:
+            self.committees[ticker] = DogeCommittee(training_ticker=ticker)
+
 
     def _check_committee_expired(self, ticker):
         return self.committees[ticker].expired(at_timestamp=self.timestamp)

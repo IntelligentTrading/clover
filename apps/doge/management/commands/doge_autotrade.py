@@ -13,6 +13,26 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
 
         while(True):
+            # check if retrain is needed, run retraining
+            try:
+                for ticker in SUPPORTED_DOGE_TICKERS:
+                    latest_training_timestamp = DogeCommittee.latest_training_timestamp(ticker)
+
+                    if latest_training_timestamp is None or (time.time() - latest_training_timestamp > DOGE_RETRAINING_PERIOD_SECONDS):
+                        end_timestamp = int(time.time())  # UTC timestamp
+                        start_timestamp = end_timestamp - DOGE_TRAINING_PERIOD_DURATION_SECONDS
+
+                        logging.info(f'AUTOTRADING: >>> Starting to retrain committee for {ticker} '
+                                     f'at {datetime_from_timestamp(time.time())}...')
+                        logging.info(f'AUTOTRADING: >>> (the latest committee was '
+                                     f'trained with end time {datetime_from_timestamp(latest_training_timestamp)})')
+                        DogeTrainer.run_training(start_timestamp, end_timestamp, ticker)
+                        logging.info(
+                            f'AUTOTRADING: >>> Retraining for {ticker} completed at {datetime_from_timestamp(time.time())}...')
+            except Exception as e:
+                logging.critical(f'Error during retraining committees: {str(e)}')
+
+
             # run rebalancer
             try:
                 logging.info(f'AUTOTRADING: >>> Starting rebalancer at {datetime_from_timestamp(time.time())}...')
@@ -20,22 +40,8 @@ class Command(BaseCommand):
                 logging.info(f'AUTOTRADING: >>> Rebalancing completed at {datetime_from_timestamp(time.time())}...')
             except Exception as e:
                 logging.critical(f'Error during rebalancing: {str(e)}')
+                logging.info(f'AUTOTRADING: >>> Rebalancing failed.')
 
             # sleep for rebalance duration
             time.sleep(DOGE_REBALANCING_PERIOD_SECONDS)
 
-            # check if retrain is needed, run retraining
-            try:
-                for ticker in SUPPORTED_DOGE_TICKERS:
-                    latest_trading_timestamp = DogeCommittee.latest_training_timestamp(ticker)
-
-                    if latest_trading_timestamp is None or (time.time() - latest_trading_timestamp > DOGE_RETRAINING_PERIOD_SECONDS):
-                        end_timestamp = int(time.time())  # UTC timestamp
-                        start_timestamp = end_timestamp - DOGE_TRAINING_PERIOD_DURATION_SECONDS
-
-                        logging.info(f'AUTOTRADING: >>> Starting to retrain committee for {ticker} at {datetime_from_timestamp(time.time())}...')
-                        DogeTrainer.run_training(start_timestamp, end_timestamp, ticker)
-                        logging.info(
-                            f'AUTOTRADING: >>> Retraining for {ticker} completed at {datetime_from_timestamp(time.time())}...')
-            except Exception as e:
-                logging.critical(f'Error during retraining committees: {str(e)}')

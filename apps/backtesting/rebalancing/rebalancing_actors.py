@@ -7,12 +7,23 @@ from apps.backtesting.rebalancing.price_providers import PriceProvider
 
 class Allocation:
 
-    def __init__(self, amount, asset, portion, unit_price, value, timestamp, counter_currency):
+    def __init__(self, amount, asset, portion, timestamp, counter_currency, unit_price=None, value=None):
         self.amount = amount
         self.asset = asset
         self.portion = portion
-        self.unit_price = unit_price
-        self.value = value
+
+        if unit_price is not None:
+            self.unit_price = unit_price
+        else:
+            self.unit_price = PRICE_PROVIDER.get_price(asset, timestamp, counter_currency=counter_currency)
+
+        if value is not None:
+            self.value = value
+        else:
+            self.value = amount * self.unit_price
+
+        assert self.value == self.unit_price * self.amount
+
         self.timestamp = timestamp
         self.counter_currency = counter_currency
 
@@ -57,9 +68,7 @@ class PortfolioSnapshot:
         allocations_dict = json.loads(allocations_data)
         for item in allocations_dict:
             # figure out the value of this particular item
-            unit_price = PRICE_PROVIDER.get_price(item['asset'], self._timestamp)
-            value = unit_price * item['amount']
-            allocation = Allocation(**item, unit_price=unit_price, value=value, timestamp=self._timestamp,
+            allocation = Allocation(**item, unit_price=None, value=None, timestamp=self._timestamp,
                                     counter_currency=counter_currency)
             self._allocations.append(allocation)
 
@@ -107,13 +116,9 @@ class PortfolioSnapshot:
         updated_allocations = []
         for allocation in self._allocations:
             new_price = PRICE_PROVIDER.get_price(allocation.asset, timestamp, counter_currency=allocation.counter_currency)
-            new_allocation = Allocation(amount=allocation.amount,
-                                        asset=allocation.asset,
-                                        portion=allocation.portion,
-                                        unit_price=new_price,
-                                        value=new_price*allocation.amount,
-                                        timestamp=timestamp,
-                                        counter_currency=allocation.counter_currency)
+            new_allocation = Allocation(amount=allocation.amount, asset=allocation.asset, portion=allocation.portion,
+                                        timestamp=timestamp, counter_currency=allocation.counter_currency,
+                                        unit_price=new_price, value=new_price * allocation.amount)
             updated_allocations.append(new_allocation)
 
         return PortfolioSnapshot(timestamp, updated_allocations, load_from_json=False)

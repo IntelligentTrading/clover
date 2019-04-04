@@ -9,6 +9,9 @@ from apps.backtesting.utils import datetime_from_timestamp
 (SHORT_HORIZON, MEDIUM_HORIZON, LONG_HORIZON) = list(range(3))
 (POLONIEX, BITTREX, BINANCE, BITFINEX, KUCOIN, GDAX, HITBTC) = list(range(7))
 
+class NoCommitteeVotesFoundException(Exception):
+    pass
+
 
 def fill_tickers_dict(supported_tickers, minimum_reserves):
     tickers_dict = {}
@@ -89,9 +92,15 @@ def get_allocations_from_doge(at_datetime=None):
                 periods_key=PERIODS_1HR*horizon_periods[horizon]
             )
 
+            if len(query_result['scores']) == 0:   # no recent committees found
+                raise NoCommitteeVotesFoundException(f'No recent committee votes found for ticker '
+                                                     f'{ticker}, horizon {horizon} and time {now_datetime} '
+                                                     f'(are you running TA_worker?)')
+
+
             for score, weighted_vote in zip(query_result['scores'], query_result['values']):
                 timestamp = CommitteeVoteStorage.datetime_from_score(score)
-                logging.info(f'           Loaded committee votes for {timestamp}')
+                logging.info(f'           Loaded committee votes for {ticker} with horizon {horizon} at {timestamp}')
 
                 time_weight = float(1) - (
                         (now_datetime - timestamp).total_seconds() / (

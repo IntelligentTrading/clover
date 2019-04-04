@@ -374,8 +374,8 @@ class FixedRatiosPortfolioBacktester(PortfolioBacktester):
             unit_price = PRICE_PROVIDER.get_price(asset, timestamp)
             value = (portion * total_value) * (1 - self._trading_cost_percent/100)
             amount = value / unit_price
-            allocation = Allocation(asset=asset, portion=portion, unit_price=unit_price, value=value,
-                                    amount=amount, timestamp=timestamp, counter_currency=self._counter_currency)
+            allocation = Allocation(amount=amount, asset=asset, portion=portion, timestamp=timestamp,
+                                    counter_currency=self._counter_currency, unit_price=unit_price, value=value)
             allocations.append(allocation)
         return PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations,
                                  load_from_json=False, counter_currency=self._counter_currency)
@@ -397,9 +397,8 @@ class FixedRatiosPortfolioBacktester(PortfolioBacktester):
             new_value = new_amount * new_unit_price
             portion = new_value / total_value
             # amount = value / unit_price
-            allocation = Allocation(asset=asset, portion=portion, unit_price=new_unit_price,
-                                    value=new_value, amount=new_amount, timestamp=timestamp,
-                                    counter_currency=self._counter_currency)
+            allocation = Allocation(amount=new_amount, asset=asset, portion=portion, timestamp=timestamp,
+                                    counter_currency=self._counter_currency, unit_price=new_unit_price, value=new_value)
             allocations.append(allocation)
         total_value = sum([allocation.value for allocation in allocations])
         for allocation in allocations:
@@ -407,6 +406,47 @@ class FixedRatiosPortfolioBacktester(PortfolioBacktester):
 
         p = PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations, load_from_json=False)
         return p
+
+
+
+from apps.portfolio.services.doge_votes import get_allocations_from_doge
+
+class DogeRebalancingBacktester(PortfolioBacktester):
+    '''
+    Enables backtesting committee-based rebalancing
+    '''
+
+    def __init__(self, rebalancing_period_seconds, *args, **kwargs):
+        self._rebalancing_period_seconds = rebalancing_period_seconds
+        super().__init__(*args, **kwargs)
+
+    def _build_portfolio_snapshots(self):
+        from apps.backtesting.utils import datetime_from_timestamp
+        import datetime
+
+        self._portfolio_snapshots = OrderedDict()
+        for timestamp in range(self._start_time, self._end_time + 1, self._rebalancing_period_seconds):
+            try:
+                doge_allocations, _ = get_allocations_from_doge(at_datetime=datetime.datetime.utcfromtimestamp(timestamp))
+                allocation_objects = self._doge_allocations_to_objects(doge_allocations, timestamp)
+                snapshot = PortfolioSnapshot(timestamp=timestamp, allocations_data=allocation_objects, load_from_json=False)
+                self._portfolio_snapshots[timestamp] = snapshot
+            except NoPriceDataException:
+                logging.error(f'Unable to load price data at {timestamp}, skipping snapshot...')
+
+    def _doge_allocations_to_objects(self, doge_allocations, timestamp):
+        allocation_objects = []
+        for doge_allocation in doge_allocations:
+            allocation_object = Allocation(
+                amount=doge_allocation['amount'],
+                asset=doge_allocation['coin'],
+                portion=doge_allocation['portion'],
+                timestamp=timestamp,
+                counter_currency=self._counter_currency
+            )
+            allocation_objects.append(allocation_object)
+        return allocation_objects
+
 
 
 class DummyDataProvider:
@@ -424,7 +464,7 @@ class DummyDataProvider:
     """
 
     def run(self):
-        from apps.backtesting.utils import datetime_to_timestamp
+        from apps.backtesting.utils import datetime_to_timestamp, datetime_from_timestamp
         # backtester = PortfolioBacktester()
         timestamp = datetime_to_timestamp('2019/02/01 00:00:00 UTC')
         # for i in range(10):
@@ -432,6 +472,19 @@ class DummyDataProvider:
         # backtester.value_report()
         snapshot = PortfolioSnapshot(timestamp, DummyDataProvider.sample_allocations)
         portfolio_snapshots = [PortfolioSnapshot(timestamp, DummyDataProvider.sample_allocations)] * 5
+
+        end_time = 1548250130  # time.time()
+        start_time = end_time - 60 * 60 * 24 * 7
+
+        backtester = DogeRebalancingBacktester(start_time=datetime_from_timestamp(start_time),
+                                               end_time=datetime_from_timestamp(end_time),
+                                               step_seconds=60 * 60,
+                                               rebalancing_period_seconds=60 * 60,
+                                               counter_currency='USDT')
+
+        exit(0)
+
+
         backtester = FixedRatiosPortfolioBacktester(start_time=int(datetime_to_timestamp('2018/10/01 00:00:00 UTC')),
                             end_time=int(datetime_to_timestamp('2018/10/30 00:00:00 UTC')),
                             step_seconds=60*60,
