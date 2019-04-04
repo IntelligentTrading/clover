@@ -66,9 +66,20 @@ class CommitteesView(View):
 
 
     def get(self, request):
+        ticker = 'BTC_USDT'
+
+        if not request.path.endswith('/dashboard'):
+            ticker = request.path.split('/')[-1]
+
+        committees = load_committees_in_period(ticker=ticker, exchange='binance',
+                                               start_timestamp=time.time() - 60*60*24*1,
+                                               end_timestamp=time.time())
+
+        # reorder from newest to oldest
+        committees.reverse()
 
         data = []
-        for committee in CommitteesView.cached_committees:
+        for committee in committees:
             committee_data = {'time_str': committee.time_str,
                               'timestamp': committee.timestamp,
                               'benchmark_profit': committee.benchmark_profit,
@@ -99,9 +110,8 @@ class CommitteesView(View):
             data.append(committee_data)
 
 
-
         context = {
-            "committees": CommitteesView.cached_committees,
+            "committees": committees,
             "data": data
         }
 

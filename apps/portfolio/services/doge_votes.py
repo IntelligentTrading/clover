@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from apps.TA import HORIZONS, PERIODS_1HR
 from apps.doge.doge_TA_actors import CommitteeVoteStorage
 from settings import SUPPORTED_DOGE_TICKERS
+from collections import namedtuple
 from apps.backtesting.utils import datetime_from_timestamp
 
 (SHORT_HORIZON, MEDIUM_HORIZON, LONG_HORIZON) = list(range(3))
@@ -11,6 +12,8 @@ from apps.backtesting.utils import datetime_from_timestamp
 
 class NoCommitteeVotesFoundException(Exception):
     pass
+
+CommitteeVote = namedtuple("CommitteeVote", "timestamp, vote, committee_id")
 
 
 def fill_tickers_dict(supported_tickers, minimum_reserves):
@@ -84,7 +87,7 @@ def get_allocations_from_doge(at_datetime=None):
     for ticker in tickers:
         for horizon in horizons:
 
-            committee_ids = []
+            committee_votes = []
             # find the latest vote
             query_result = CommitteeVoteStorage.query(
                 ticker=ticker, exchange=exchange, timestamp=now_datetime.timestamp(),
@@ -107,15 +110,17 @@ def get_allocations_from_doge(at_datetime=None):
                         timedelta(hours=1) * horizon_periods[horizon] *
                         horizon_life_spans[horizon]).total_seconds())
 
+                committee_id = None
                 split_weighted_vote = str(weighted_vote).split(':')
                 if len(split_weighted_vote) == 2:   # we have committee ids too
                     weighted_vote = float(split_weighted_vote[0])
                     committee_id = split_weighted_vote[1]
-                    committee_ids.append(committee_id)
+
 
                 # re-normalize weighted vote to interval [0, 1]
                 weighted_vote = (1.0 + float(weighted_vote)) / 2
                 vote = float(weighted_vote) * horizon_weights[horizon] * time_weight
+                committee_votes.append(CommitteeVote(committee_id=committee_id, timestamp=timestamp, vote=vote))
 
                 if ticker in tickers_dict:
                     tickers_dict[ticker]["vote"] += vote
@@ -132,7 +137,7 @@ def get_allocations_from_doge(at_datetime=None):
                 else:
                     tickers_dict[counter_ticker] = {"vote": counter_vote}
             committees_used[ticker] = {
-                horizon: committee_ids
+                horizon: committee_votes
             }
 
 
