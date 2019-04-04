@@ -70,7 +70,7 @@ class IndicatorCache:
         :param horizon: horizon
         :return: indicator value if cached, None if not
         """
-        key = (indicator_name, ticker, timestamp, exchange, horizon)
+        key = (timestamp, indicator_name, ticker, exchange, horizon)
         if key in self.cache:
             return self.cache[key]
         else:
@@ -88,9 +88,9 @@ class IndicatorCache:
         :param horizon: horizon
         :return:
         """
-        key = (indicator_name, ticker, timestamp, exchange, horizon)
+        key = (timestamp, indicator_name, ticker, exchange, horizon)
         if len(self.cache.keys()) > self.max_size:
-            del self.cache[self.cache.keys()[0]]
+            del self.cache[list(self.cache.keys())[0]]  # because this is an OrderedDict, this will delete the oldest element
         self.cache[key] = value
 
 

@@ -1,4 +1,6 @@
 import logging
+import json
+import time
 
 from apps.backtesting.data_sources import DB_INTERFACE
 from apps.backtesting.tick_listener import TickListener
@@ -11,7 +13,6 @@ from apps.genetic_algorithms.gp_artemis import ExperimentManager
 from apps.genetic_algorithms.leaf_functions import RedisTAProvider
 from apps.TA import PERIODS_1HR
 from settings import DOGE_RETRAINING_PERIOD_SECONDS, logger, SUPPORTED_DOGE_TICKERS, DOGE_LOAD_ROCKSTARS
-import time
 from apps.genetic_algorithms.chart_plotter import save_dot_graph, get_dot_graph
 from apps.backtesting.utils import datetime_from_timestamp, time_performance
 
@@ -25,6 +26,9 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 GP_TRAINING_CONFIG = os.path.join(BASE, 'doge_config.json')
 
 class NoNewCommitteeException(Exception):
+    pass
+
+class NoGoodDogesException(Exception):
     pass
 
 
@@ -115,9 +119,16 @@ class DogeTrainer:
 
         # retrieve best performing doges
         logging.info('>>>>>>> Ranking doges by performance...')
+        min_fitness = json.loads(config_json)['min_fitness']
         doge_df = e.get_best_performing_across_variants_and_datasets(datasets=e.training_data,
-                                                                     sort_by=['mean_profit'], min_fitness=0)
+                                                                     sort_by=['mean_profit'], min_fitness=min_fitness)
         logging.info('>>>>>>> Ranking completed.')
+
+        if len(doge_df) == 0:
+            raise NoGoodDogesException(f'Failed to train any doges with minimum fitness {min_fitness}. '
+                                       f'Consider retraining, lowering the minimum required fitness or '
+                                       f'using a different fitness function')
+
 
         # write these doges to database
         logging.info('>>>>>>> Saving GPs to database...')
@@ -518,8 +529,9 @@ class DogeSubscriber(SignalSubscriber):
         return self.committees[ticker].expired(at_timestamp=self.timestamp)
 
     def handle(self, channel, data, *args, **kwargs):
+        logger.debug(f'Received data {data} for ticker {self.ticker}')
         # we want to invoke this only for one of the Rsi channels, temporary fix
-        if not data['key'].endswith(':4032'):
+        if not data['key'].endswith(':672'):
             return
 
         # check if we received data for a ticker we support

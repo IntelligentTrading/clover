@@ -3,6 +3,7 @@ from apps.doge.doge_train_test import DogeTrainer, DogeCommittee
 from settings import SUPPORTED_DOGE_TICKERS, DOGE_TRAINING_PERIOD_DURATION_SECONDS, \
     DOGE_RETRAINING_PERIOD_SECONDS, DOGE_REBALANCING_PERIOD_SECONDS
 from apps.portfolio.management.commands.rebalancer import balance_portfolios
+from apps.doge.doge_train_test import NoGoodDogesException
 import logging
 import time
 from apps.backtesting.utils import datetime_from_timestamp
@@ -26,7 +27,12 @@ class Command(BaseCommand):
                                      f'at {datetime_from_timestamp(time.time())}...')
                         logging.info(f'AUTOTRADING: >>> (the latest committee was '
                                      f'trained with end time {datetime_from_timestamp(latest_training_timestamp)})')
-                        DogeTrainer.run_training(start_timestamp, end_timestamp, ticker)
+                        try:
+                            DogeTrainer.run_training(start_timestamp, end_timestamp, ticker)
+                        except NoGoodDogesException as bad_doge:
+                            logging.critical('!!!!!! Unable to train adequate doges! !!!!!!')
+                            logging.critical(str(bad_doge))
+
                         logging.info(
                             f'AUTOTRADING: >>> Retraining for {ticker} completed at {datetime_from_timestamp(time.time())}...')
             except Exception as e:

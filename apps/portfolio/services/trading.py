@@ -126,12 +126,14 @@ def set_portfolio(portfolio, allocation, committees_used):
         # save log of which committees contributed in the allocation
         for ticker in committees_used:
             for horizon in committees_used[ticker]:
-                for committee_id in committees_used[ticker][horizon]:
+                for committee_vote in committees_used[ticker][horizon]:
                     committee_object = AllocationCommittee(
                         allocation_id=allocation_object.id,
                         ticker=ticker,
-                        committee_id=committee_id,
-                        horizon=horizon
+                        committee_id=committee_vote.committee_id,
+                        voted_at=committee_vote.timestamp,
+                        vote=committee_vote.vote,
+                        horizon=horizon,
                     )
                     committee_object.save()
 
