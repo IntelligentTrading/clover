@@ -11,7 +11,7 @@ from django.core.management.base import BaseCommand
 from apps.portfolio.models import Portfolio
 from apps.portfolio.models.allocation import ITF1HR, ITF6HR, ITF24HR, ITFPRIV, MOONDOGE, ITF_PACKS
 from apps.portfolio.services.signals import get_allocations_from_signals, SHORT_HORIZON, MEDIUM_HORIZON, LONG_HORIZON
-from apps.portfolio.services.doge_votes import get_allocations_from_doge
+from apps.portfolio.services.doge_votes import get_allocations_from_doge, NoCommitteeVotesFoundException
 from apps.portfolio.services.trading import set_portfolio
 from apps.backtesting.utils import datetime_from_timestamp
 
@@ -39,7 +39,11 @@ def balance_portfolios():
 
     ITF_PACK_HORIZONS = {ITF1HR: SHORT_HORIZON, ITF6HR: MEDIUM_HORIZON, ITF24HR: LONG_HORIZON}
 
-    ITF_doge_binance_allocations, committees_used = get_allocations_from_doge(at_datetime=datetime.now())
+
+
+    ITF_doge_binance_allocations, committees_used = \
+        get_allocations_from_doge(at_datetime=datetime.now())    # will raise an exception if no votes are found
+
 
     # ITF_binance_allocations = {
     #     itf_group: get_allocations_from_signals(horizon=horizon, at_datetime=datetime.now())
