@@ -110,11 +110,19 @@ class DataCache:
             self.index = (self.index + 1) % self.max_objects
         else:
             self.cached_data_objects.append(data)
-            self.index += 1
+
+    def find_object(self, start_time, end_time, ticker, horizon, exchange):
+        for data in self.cached_data_objects:
+            if data.start_time == start_time and data.end_time == end_time and \
+                    data.ticker == ticker and data.horizon == horizon and data.exchange == exchange:
+                return data
+        return None
 
     @property
     def objects(self):
         return self.cached_data_objects
+
+
 
 
 class Database(ABC):
@@ -422,7 +430,16 @@ class RedisDB(Database):
         :param exchange: exchange
         :return: a Data object
         """
-        logging.info(f' >>>>>>>> Building a data object for {ticker}...')
+
+        # maybe we have this data object already cached?
+        cached = self.data_cache.find_object(start_time=start_time, end_time=end_time,
+                                             ticker=ticker, horizon=horizon, exchange=exchange)
+        if cached:
+            logging.info(f' >>>>>>>> Found cached data for {ticker}, start_time={start_time}, end_time={end_time}, returning...')
+            return cached
+
+        # no cache, we must rebuild
+        logging.info(f' >>>>>>>> Building a data object for {ticker}, start_time={start_time}, end_time={end_time}...')
         data = Data(start_time, end_time, ticker, horizon, start_cash, start_crypto, exchange)
         data.btc_usdt_price_df = self.get_resampled_prices_in_range(data.start_time, data.end_time, 'BTC', 'USDT',
                                                                     horizon, exchange)
