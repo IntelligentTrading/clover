@@ -277,6 +277,14 @@ class DogeTrader:
             lines.append(line)
         return '\n'.join(lines)
 
+    def evaluation_object(self, start_time, end_time, ticker, horizon=PERIODS_1HR,
+                          start_cash=ExperimentManager.START_CASH, start_crypto=ExperimentManager.START_CRYPTO, exchange='binance'):
+        data = DB_INTERFACE.build_data_object(start_time=start_time, end_time=end_time,
+                                              start_cash=start_cash, start_crypto=start_crypto,
+                                              ticker=ticker, horizon=horizon, exchange=exchange)
+
+        return self.gp.build_evaluation_object(self.doge, data, tick_based=True)
+
 
 
 class DogeCommittee:
@@ -300,7 +308,7 @@ class DogeCommittee:
 
         doge_traders = self._load_doge_traders()
         self.doge_traders = doge_traders if len(doge_traders) <= max_doges else doge_traders[:max_doges]
-        self._benchmark_profit = self._get_benchmark_profit()
+        self._set_benchmark_profit()
 
 
     def expired(self, at_timestamp):
@@ -392,11 +400,12 @@ class DogeCommittee:
         for i, doge in enumerate(self.doge_traders):
             doge.save_doge_img(out_filename=f'apps/doge/static/{i}')
 
-    def _get_benchmark_profit(self):
+    def _set_benchmark_profit(self):
+        self._benchmark_profit = None
         try:
             result = BenchmarkPerformance.query(ticker=self._training_ticker, exchange='binance', timestamp=self._committee_timestamp)
             if len(result['values']) == 0:
-                return None
+                return
 
             value = result['values'][0].split(':')
             if self._committee_timestamp - int(value[0]) != DOGE_RETRAINING_PERIOD_SECONDS:
@@ -404,9 +413,10 @@ class DogeCommittee:
                                  f'committee timestamp is {datetime_from_timestamp(self._committee_timestamp)}, '
                                  f'retraining period is {DOGE_RETRAINING_PERIOD_SECONDS}, '
                                  f'and starting timestamp is {datetime_from_timestamp(int(value[0]))}')
-            return float(value[1])
+            self._benchmark_profit = float(value[1])
+            self._start_training_time = int(value[0])
         except:
-            return None
+            logging.warning(f'Unable to set benchmark profit for committee {self.committee_id}')
 
     @staticmethod
     def latest_training_timestamp(ticker, exchange='binance'):
@@ -445,6 +455,14 @@ class DogeCommittee:
 
     def __str__(self):
         return(f'committee at {self.time_str}, id {self.committee_id}')
+
+    @property
+    def end_training_timestamp(self):
+        return self._committee_timestamp
+
+    @property
+    def start_training_timestamp(self):
+        return self._start_training_time
 
 
 
@@ -529,7 +547,7 @@ class DogeSubscriber(SignalSubscriber):
         return self.committees[ticker].expired(at_timestamp=self.timestamp)
 
     def handle(self, channel, data, *args, **kwargs):
-        logger.debug(f'Received data {data} for ticker {self.ticker}')
+        # logger.debug(f'Received data {data} for ticker {self.ticker}')
         # we want to invoke this only for one of the Rsi channels, temporary fix
         if not data['key'].endswith(':672'):
             return

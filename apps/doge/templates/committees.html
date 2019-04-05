@@ -145,6 +145,24 @@
                                 {% autoescape off %}
                                 {{ trader.svg }}
                                 {% endautoescape %}
+                            </div><div class="modal-body" style="background-color:#252830;border: 1px solid gray;">
+                              <h5>Training period trading report</h5>
+                              <pre>
+                             <code style="color:#538b01;">
+                                 {{ trader.evaluation_report }}
+
+                             </code>
+                              </pre>
+                            </div>
+
+                            <div class="modal-body" style="background-color:#252830;border: 1px solid gray;">
+                              <h5>Buy&hold trading report</h5>
+                              <pre>
+                             <code style="color:#538b01;">
+                                 {{ trader.buy_and_hold_report }}
+
+                             </code>
+                              </pre>
                             </div>
                             <div class="modal-footer">
                               <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>

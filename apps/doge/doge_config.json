@@ -15,18 +15,18 @@
     "fitness_functions": ["ff_benchmarkdiffabsv4"],
     "min_fitness": 0.000000001,
     "grammar_version": "gv6",
-    "num_generations": 2,
+    "num_generations": 20,
 
     "mating_probabilities": [
         0.9
     ],
 
     "mutation_probabilities": [
-        0.8
+        0.8, 1.0
     ],
 
     "population_sizes": [
-        50
+        500
     ],
 
     "premade_individuals": [
