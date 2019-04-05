@@ -33,7 +33,7 @@ logging.getLogger().addFilter(dup_filter)
 
 class ExperimentManager:
 
-    START_CASH = 1000
+    START_CASH = 1000*1E6
     START_CRYPTO = 0
 
     @experiment_root

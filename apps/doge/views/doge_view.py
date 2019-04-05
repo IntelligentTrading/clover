@@ -100,11 +100,18 @@ class CommitteesView(View):
 
             traders = []
             for trader in committee.doge_traders:
+                print('Building evaluation object...')
+                evaluation = trader.evaluation_object(start_time=committee.start_training_timestamp,
+                                         end_time=committee.end_training_timestamp, ticker=ticker)
+                # print(evaluation.get_report())
+                print('Finished building.')
                 trader_data = {}
                 performance_dict = trader.performance_at_timestamp(committee.timestamp)
                 trader_data['svg'] = self._clean_svg(trader.svg_source_chart)
                 trader_data['performance_dict'] = performance_dict
                 trader_data['doge_str'] = trader.doge_str
+                trader_data['evaluation_report'] = evaluation.get_report().replace('     ', ' ')
+                trader_data['buy_and_hold_report'] = evaluation.benchmark_backtest.get_report().replace('     ', ' ')
                 traders.append(trader_data)
             committee_data['traders'] = traders
             data.append(committee_data)
