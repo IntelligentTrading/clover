@@ -18,7 +18,7 @@ certifi==2018.10.15
 chardet==3.0.4
 cloudpickle==0.6.1
 deap==1.2.2
-empyrical==0.5.0
+#empyrical==0.5.0
 decorator==4.3.0
 dj-database-url==0.5.0
 Django==2.1.2
@@ -49,14 +49,14 @@ numpy==1.15.4
 oauthlib==2.1.0
 pandas==0.23.4
 parso==0.3.1
-pathos
+#pathos
 pexpect==4.6.0
 pickleshare==0.7.5
 prompt-toolkit==2.0.6
 psycopg2-binary==2.7.6.1
 ptyprocess==0.6.0
 pycares==2.3.0
-pyfolio==0.9.0
+#pyfolio==0.9.0
 Pygments==2.2.0
 python-binary-memcached==0.28.0
 python-dateutil==2.7.4
@@ -72,7 +72,7 @@ simplejson==3.16.0
 six==1.11.0
 sqlparse==0.2.4
 static3==0.7.0
-TA-Lib==0.4.17
+#TA-Lib==0.4.17
 toolz==0.9.0
 tqdm==4.28.1
 traitlets==4.3.2
