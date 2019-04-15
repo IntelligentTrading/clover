@@ -9,7 +9,10 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         end_time = 1548250130 # time.time()
         start_time = end_time - 60*60*24*7
-        simulator = DogeHistorySimulator(start_time=start_time, end_time=end_time, ticker='BTC_USDT',
-                                         exchange='binance', horizon=PERIODS_1HR, training_period_length=60*60*24,
-                                         time_to_retrain_seconds=60*60*12)
-        simulator.fill_history()
+        tickers = ['BTC_USDT', 'ETH_USDT']
+
+        for ticker in tickers:
+            simulator = DogeHistorySimulator(start_time=start_time, end_time=end_time, ticker=ticker,
+                                             exchange='binance', horizon=PERIODS_1HR, training_period_length=60*60*24,
+                                             time_to_retrain_seconds=60*60*12)
+            simulator.fill_history()

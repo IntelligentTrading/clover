@@ -42,7 +42,7 @@
 
     <div class="row" id="rebalancing_{{committee.committee_id}}">
 
-    {% for timestamp, allocations in committee.realized_allocations.items %}
+    {% for timestamp, allocations in committee.target_allocations.items %}
 
 
             <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
@@ -55,11 +55,11 @@
                 data = new google.visualization.DataTable();
                   data.addColumn('string', 'Coin');
                   data.addColumn('number', 'Portion');
-                  data.addColumn({type: 'number', role: 'tooltip'});
+<!--           data.addColumn({type: 'number', role: 'tooltip'}); -->
                   data.addRows([
                     {% for allocation in allocations %}
 
-                  ['{{allocation.coin}}', {{allocation.portion}}, {{allocation.amount}}],
+                  ['{{allocation.coin}}', {{allocation.portion}}],   <!-- , {{allocation.amount}} -->
 
                   {% endfor %}
 

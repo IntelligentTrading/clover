@@ -20,9 +20,9 @@ class Allocation:
         if value is not None:
             self.value = value
         else:
-            self.value = amount * self.unit_price
+            self.value = amount * self.unit_price if self.unit_price is not None else None
 
-        assert self.value == self.unit_price * self.amount
+        assert self.value == self.unit_price * self.amount or self.value == None
 
         self.timestamp = timestamp
         self.counter_currency = counter_currency
@@ -32,7 +32,7 @@ class Allocation:
         else:
             self.unit_price_usdt = unit_price
 
-        self.value_usdt = self.amount * self.unit_price_usdt
+        self.value_usdt = self.amount * self.unit_price_usdt if self.unit_price_usdt is not None else None
 
 
     def to_dict(self, prefix=''):
@@ -62,6 +62,7 @@ class PortfolioSnapshot:
         else:
             self._allocations = allocations_data
         self._fill_internals()
+        self._counter_currency = counter_currency
 
     def _parse_json_allocations(self, allocations_data, counter_currency):
         self._allocations = []
@@ -85,7 +86,9 @@ class PortfolioSnapshot:
             self._allocations_by_asset[allocation.asset] = allocation
 
     def get_allocation(self, asset):
-        return self._allocations_by_asset.get(asset, None)
+        return self._allocations_by_asset.get(asset, Allocation(amount=0, asset=asset, portion=0,
+                                                                timestamp=self._timestamp,
+                                                                counter_currency=self._counter_currency))
 
     def total_value(self, counter_currency):
         if counter_currency == 'BTC':

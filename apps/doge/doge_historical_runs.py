@@ -17,6 +17,9 @@ class DummyDogeSubscriber(DogeSubscriber):
     def _check_committee_expired(self, ticker):
         return False
 
+    def _should_process_event(self, channel, data, *args, **kwargs):
+        return True
+
 
 class DogeHistorySimulator:
 
