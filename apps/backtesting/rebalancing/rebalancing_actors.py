@@ -7,7 +7,7 @@ from apps.backtesting.rebalancing.price_providers import PriceProvider
 
 class Allocation:
 
-    def __init__(self, amount, asset, portion, timestamp, counter_currency, unit_price=None, value=None):
+    def __init__(self, amount, asset, portion, timestamp, counter_currency, db_interface, unit_price=None, value=None):
         self.amount = amount
         self.asset = asset
         self.portion = portion
@@ -15,20 +15,28 @@ class Allocation:
         if unit_price is not None:
             self.unit_price = unit_price
         else:
-            self.unit_price = PRICE_PROVIDER.get_price(asset, timestamp, counter_currency=counter_currency)
+            self.unit_price = PRICE_PROVIDER.get_price(asset, timestamp,
+                                                       counter_currency=counter_currency,
+                                                       db_interface=db_interface)
 
         if value is not None:
             self.value = value
         else:
             self.value = amount * self.unit_price if self.unit_price is not None else None
 
-        assert self.value == self.unit_price * self.amount or self.value == None
+        try:
+            assert self.value == self.unit_price * self.amount or self.value == None
+        except:
+            logging.warning(f'Numerical error in allocation, allocation value  is {self.value}, '
+                            f'and unit_price*amount is {self.unit_price}*self.amount')
 
         self.timestamp = timestamp
         self.counter_currency = counter_currency
 
         if counter_currency != 'USDT':
-            self.unit_price_usdt = PRICE_PROVIDER.get_price(asset, timestamp, counter_currency='USDT')
+            self.unit_price_usdt = PRICE_PROVIDER.get_price(asset, timestamp,
+                                                            counter_currency='USDT',
+                                                            db_interface=db_interface)
         else:
             self.unit_price_usdt = unit_price
 
@@ -53,7 +61,7 @@ class PortfolioSnapshot:
     A snapshot of a multi-asset portfolio at timestamp. Contains a list of assets with corresponding allocations.
     '''
 
-    def __init__(self, timestamp, allocations_data, db_interface=POSTGRES, load_from_json=True, counter_currency='BTC'):
+    def __init__(self, timestamp, allocations_data, db_interface, counter_currency, load_from_json=True):
         self._timestamp = timestamp
         self._allocations_by_asset = {}
         self.db_interface = db_interface
@@ -70,7 +78,7 @@ class PortfolioSnapshot:
         for item in allocations_dict:
             # figure out the value of this particular item
             allocation = Allocation(**item, unit_price=None, value=None, timestamp=self._timestamp,
-                                    counter_currency=counter_currency)
+                                    counter_currency=counter_currency, db_interface=self.db_interface)
             self._allocations.append(allocation)
 
     def _fill_internals(self):
@@ -88,7 +96,8 @@ class PortfolioSnapshot:
     def get_allocation(self, asset):
         return self._allocations_by_asset.get(asset, Allocation(amount=0, asset=asset, portion=0,
                                                                 timestamp=self._timestamp,
-                                                                counter_currency=self._counter_currency))
+                                                                counter_currency=self._counter_currency,
+                                                                db_interface=self.db_interface))
 
     def total_value(self, counter_currency):
         if counter_currency == 'BTC':
@@ -118,13 +127,16 @@ class PortfolioSnapshot:
         '''
         updated_allocations = []
         for allocation in self._allocations:
-            new_price = PRICE_PROVIDER.get_price(allocation.asset, timestamp, counter_currency=allocation.counter_currency)
+            new_price = PRICE_PROVIDER.get_price(allocation.asset, timestamp,
+                                                 counter_currency=allocation.counter_currency,
+                                                 db_interface=self.db_interface)
             new_allocation = Allocation(amount=allocation.amount, asset=allocation.asset, portion=allocation.portion,
                                         timestamp=timestamp, counter_currency=allocation.counter_currency,
-                                        unit_price=new_price, value=new_price * allocation.amount)
+                                        unit_price=new_price, value=new_price * allocation.amount, db_interface=self.db_interface)
             updated_allocations.append(new_allocation)
 
-        return PortfolioSnapshot(timestamp, updated_allocations, load_from_json=False)
+        return PortfolioSnapshot(timestamp, updated_allocations, load_from_json=False, db_interface=self.db_interface,
+                                 counter_currency=self._counter_currency)
 
     def to_dict(self):
         return {asset: self.get_allocation(asset).to_dict() for asset in self.held_assets}

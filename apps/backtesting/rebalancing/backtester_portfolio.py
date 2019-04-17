@@ -18,7 +18,8 @@ class PortfolioBacktester(ABC):
     method _build_portfolio_snapshots in derived classes.
     '''
 
-    def __init__(self, start_time, end_time, step_seconds, counter_currency, verbose=False, trading_cost_percent=0, baseline_portions=None):
+    def __init__(self, start_time, end_time, step_seconds, counter_currency, verbose=False, trading_cost_percent=0, baseline_portions=None,
+                 db_interface=POSTGRES):
         '''
         Constructs the portfolio backtester.
         :param start_time: starting time of the simulation
@@ -39,6 +40,7 @@ class PortfolioBacktester(ABC):
         self._counter_currency = counter_currency
         self._verbose = verbose
         self._trading_cost_percent = trading_cost_percent
+        self._db_interface = db_interface
         self._build_portfolio_snapshots()
         self._start_value_of_portfolio = list(self._portfolio_snapshots.items())[0][1].total_value(counter_currency)
         self._start_value_of_portfolio_usdt = list(self._portfolio_snapshots.items())[0][1].total_value('USDT')
@@ -69,11 +71,17 @@ class PortfolioBacktester(ABC):
                                                   source='binance',
                                                   dataframe=asset_df,
                                                   close_price_column_name='unit_price')
+
+            from apps.backtesting.data_sources import RedisDB
+            if isinstance(self._db_interface, RedisDB):
+                source = 'binance'
+            else:
+                source = 2   # dirty hack, TODO fix
             self._benchmarks[asset] = TickDrivenBacktester.build_benchmark(asset, 'BTC',
                                                                           self._start_value_of_portfolio*baseline_portions[asset],
                                                                           0, self._start_time, self._end_time,
-                                                                          source=2, tick_provider=tick_provider,
-                                                                          database=POSTGRES)
+                                                                          source=source, tick_provider=tick_provider,
+                                                                          database=self._db_interface)
             tick_provider_usdt = TickProviderDataframe(transaction_currency=asset,
                                                        counter_currency='USDT',
                                                        source='binance',
@@ -82,8 +90,8 @@ class PortfolioBacktester(ABC):
             self._usdt_benchmarks[asset] = TickDrivenBacktester.build_benchmark(asset, 'USDT',
                                                                           self._start_value_of_portfolio_usdt*baseline_portions[asset],
                                                                           0, self._start_time, self._end_time,
-                                                                          source=2, tick_provider=tick_provider_usdt,
-                                                                          database=POSTGRES)
+                                                                          source=source, tick_provider=tick_provider_usdt,
+                                                                          database=self._db_interface)
 
     def _simulate(self):
         self._dataframes = {}
@@ -139,7 +147,9 @@ class PortfolioBacktester(ABC):
         return df
 
     def process_allocations(self, timestamp, allocations_data):
-        self._portfolio_snapshots[timestamp] = PortfolioSnapshot(timestamp, allocations_data)
+        self._portfolio_snapshots[timestamp] = PortfolioSnapshot(timestamp, allocations_data,
+                                                                 counter_currency=self._counter_currency,
+                                                                 db_interface=self._db_interface)
 
     def value_report(self):
         for timestamp, snapshot in self._portfolio_snapshots.items():
@@ -205,14 +215,16 @@ class PortfolioBacktester(ABC):
         # calculate the held amount for each asset
         for asset in target_portions:
             portion = target_portions[asset]
-            unit_price = PRICE_PROVIDER.get_price(asset, timestamp)
+            unit_price = PRICE_PROVIDER.get_price(asset, timestamp,
+                                                  db_interface=self._db_interface, counter_currency=self._counter_currency)
             value = (portion * total_value) * (1 - self._trading_cost_percent / 100)
             amount = value / unit_price
             allocation = Allocation(amount=amount, asset=asset, portion=portion, timestamp=timestamp,
-                                    counter_currency=self._counter_currency, unit_price=unit_price, value=value)
+                                    counter_currency=self._counter_currency, unit_price=unit_price, value=value,
+                                    db_interface=self._db_interface)
             allocations.append(allocation)
         return PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations,
-                                 load_from_json=False, counter_currency=self._counter_currency)
+                                 load_from_json=False, counter_currency=self._counter_currency, db_interface=self._db_interface)
 
     def _build_portfolio_with_trading_fee(self, timestamp, total_value, previous_portfolio, target_portions):
         if previous_portfolio is None:
@@ -222,7 +234,8 @@ class PortfolioBacktester(ABC):
         # calculate the held amount for each asset
         for asset in target_portions:
             previous = previous_portfolio.get_allocation(asset)
-            new_unit_price = PRICE_PROVIDER.get_price(asset, timestamp)
+            new_unit_price = PRICE_PROVIDER.get_price(asset, timestamp,  db_interface=self._db_interface,
+                                                      counter_currency=self._counter_currency)
             portion = target_portions[asset]
             delta_value = abs(total_value * portion - previous.amount * new_unit_price)
             fee = delta_value * trading_fee
@@ -233,13 +246,15 @@ class PortfolioBacktester(ABC):
             portion = new_value / total_value
             # amount = value / unit_price
             allocation = Allocation(amount=new_amount, asset=asset, portion=portion, timestamp=timestamp,
-                                    counter_currency=self._counter_currency, unit_price=new_unit_price, value=new_value)
+                                    counter_currency=self._counter_currency, unit_price=new_unit_price, value=new_value,
+                                    db_interface=self._db_interface)
             allocations.append(allocation)
         total_value = sum([allocation.value for allocation in allocations])
         for allocation in allocations:
             allocation.portion = allocation.value / total_value
 
-        p = PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations, load_from_json=False)
+        p = PortfolioSnapshot(timestamp=timestamp, allocations_data=allocations, load_from_json=False,
+                              counter_currency=self._counter_currency, db_interface=self._db_interface)
         return p
 
     def get_benchmark_trading_df_for_all_assets(self):
@@ -402,8 +417,8 @@ class FixedRatiosPortfolioBacktester(PortfolioBacktester):
                 previous_snapshot = current_snapshot
                 current_snapshot = self._get_next_snapshot(current_snapshot, timestamp, previous_snapshot)
                 self._portfolio_snapshots[timestamp] = current_snapshot
-            except NoPriceDataException:
-                logging.error(f'Unable to load price data at {timestamp}, skipping snapshot...')
+            except NoPriceDataException as e:
+                logging.error(f'Unable to load price data at {timestamp}, skipping snapshot: {str(e)}...')
 
 
     def _get_next_snapshot(self, current_snapshot, timestamp, previous_snapshot):
@@ -456,8 +471,8 @@ class DogeRebalancingBacktester(PortfolioBacktester):
                                                                       target_portions=target_portons)
                 self._portfolio_snapshots[timestamp] = snapshot
 
-            except NoPriceDataException:
-                logging.error(f'Unable to load price data at {timestamp}, skipping snapshot...')
+            except NoPriceDataException as e:
+                logging.error(f'Unable to load price data at {timestamp}, skipping snapshot: {str(e)}...')
             except NoCommitteeVotesFoundException as e:
                 logging.error(f'{str(e)}, skipping snapshot...')
 
@@ -501,11 +516,14 @@ class DummyDataProvider:
         # for i in range(10):
         #     backtester.process_allocations(timestamp+i*60*60*24, self.sample_allocations)
         # backtester.value_report()
-        snapshot = PortfolioSnapshot(timestamp, DummyDataProvider.sample_allocations)
-        portfolio_snapshots = [PortfolioSnapshot(timestamp, DummyDataProvider.sample_allocations)] * 5
 
         end_time = 1548250130  # time.time()
         start_time = end_time - 60 * 60 * 24 * 7
+
+        import time
+        end_time = 1555311600
+        start_time = end_time - 60 * 60 * 24*3
+
         from apps.backtesting.data_sources import DB_INTERFACE
 
         start_time = DB_INTERFACE.get_nearest_db_timestamp(start_time, 'BTC_USDT')
@@ -517,7 +535,9 @@ class DummyDataProvider:
                                                step_seconds=60 * 60,
                                                rebalancing_period_seconds=60 * 60,
                                                counter_currency='USDT',
-                                               start_value_of_portfolio=100000000)
+                                               start_value_of_portfolio=100000000,
+                                               db_interface=DB_INTERFACE)
+        df = backtester.value_dataframe
 
         exit(0)
 
