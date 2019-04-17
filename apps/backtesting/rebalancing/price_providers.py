@@ -25,38 +25,49 @@ class CryptoPriceProvider(PriceProvider):
     def __init__(self):
         pass
 
-    def get_price(self, coin, timestamp, db_interface=POSTGRES, counter_currency='BTC'):
+    def get_price(self, coin, timestamp, db_interface, counter_currency='BTC'):
+
+        if coin == counter_currency:
+            return 1
+
+        if db_interface == POSTGRES:
+            kwargs = {'source': 2, 'normalize': True}
+        else:
+            kwargs = {'exchange': 'binance'}
+
         price = None
         if coin == counter_currency:
             return 1
         elif coin == 'USDT' and counter_currency == 'BTC':
             # get BTC_USDT price and invert
-            btc_usdt_price, _ = db_interface.get_price_nearest_to_timestamp(currency='BTC',
+            btc_usdt_price, _ = db_interface.get_price_nearest_to_timestamp(transaction_currency='BTC',
                                                                             timestamp=timestamp,
-                                                                            source=2,  # Binance
                                                                             counter_currency='USDT',
-                                                                            normalize=True)
+                                                                            return_timestamp=True,
+                                                                            **kwargs)
             return 1.0 / btc_usdt_price
 
         try:
-            price, retrieved_timestamp = db_interface.get_price_nearest_to_timestamp(currency=coin,
+            price, retrieved_timestamp = db_interface.get_price_nearest_to_timestamp(transaction_currency=coin,
                                                                                      timestamp=timestamp,
-                                                                                     source=2,  # Binance
                                                                                      counter_currency=counter_currency,
-                                                                                     normalize=True)
-            return price
+                                                                                     return_timestamp=True,
+                                                                                     **kwargs)
+
         except NoPriceDataException:
             if counter_currency == 'USDT':
-                btc_price, retrieved_timestamp = db_interface.get_price_nearest_to_timestamp(currency=coin,
+                btc_price, retrieved_timestamp = db_interface.get_price_nearest_to_timestamp(transaction_currency=coin,
                                                                                              timestamp=timestamp,
-                                                                                             source=2,  # Binance
                                                                                              counter_currency='BTC',
-                                                                                             normalize=True)
-                return POSTGRES.convert_value_to_USDT(value=1, timestamp=retrieved_timestamp, transaction_currency=coin,
-                                                      source=2)
+                                                                                             return_timestamp=True,
+                                                                                             **kwargs)
+                price = db_interface.convert_value_to_USDT(value=1, timestamp=retrieved_timestamp, transaction_currency=coin,
+                                                      **kwargs)
 
         if price is None:
-            raise NoPriceDataException
+            raise NoPriceDataException(f'error retrieving price for {coin}_{counter_currency} at {timestamp}')
+        else:
+            return price
 
     def can_handle(self, asset_name):
         return False

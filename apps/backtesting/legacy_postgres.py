@@ -216,26 +216,26 @@ class PostgresDatabaseConnection(Database):
                                         AND timestamp <= %s ORDER BY timestamp DESC"""
 
 
-    def get_price_nearest_to_timestamp(self, currency, timestamp, source, counter_currency, max_delta_seconds_past=60*60,
-                                       max_delta_seconds_future=60*5, normalize=False):
+    def get_price_nearest_to_timestamp(self, transaction_currency, timestamp, source, counter_currency, max_delta_seconds_past=60 * 60,
+                                       max_delta_seconds_future=60*5, normalize=False, return_timestamp = True):
 
         counter_currency_id = CounterCurrency[counter_currency].value
-        cursor = self.execute(self.price_in_range_query_desc, params=(currency, counter_currency_id, source,
-                                                     timestamp - max_delta_seconds_past, timestamp))
+        cursor = self.execute(self.price_in_range_query_desc, params=(transaction_currency, counter_currency_id, source,
+                                                                      timestamp - max_delta_seconds_past, timestamp))
         history = cursor.fetchall()
-        cursor = self.execute(self.price_in_range_query_asc, params=(currency, counter_currency_id, source,
-                                                              timestamp, timestamp + max_delta_seconds_future))
+        cursor = self.execute(self.price_in_range_query_asc, params=(transaction_currency, counter_currency_id, source,
+                                                                     timestamp, timestamp + max_delta_seconds_future))
         future = cursor.fetchall()
 
         if len(history) == 0:
 
-            self.log_price_error(f"No historical price data for {currency}-{counter_currency} in "
-                            f"{max_delta_seconds_past/60} minutes before timestamp {timestamp}...",
-                            counter_currency)
+            self.log_price_error(f"No historical price data for {transaction_currency}-{counter_currency} in "
+                                 f"{max_delta_seconds_past/60} minutes before timestamp {timestamp}...",
+                                 counter_currency)
 
             if len(future) == 0:
                 self.log_price_error("No future data found.", counter_currency)
-                raise NoPriceDataException()
+                raise NoPriceDataException(f'Postgres: unable to retrieve price data for {transaction_currency}_{counter_currency} at {timestamp}')
             else:
                 logging.warning("Returning future price...")
 
@@ -247,7 +247,12 @@ class PostgresDatabaseConnection(Database):
             price = history[0][0]
             retrieved_timestamp = history[0][1]
 
-        return (price / 1E8, retrieved_timestamp) if normalize else (price, retrieved_timestamp)
+        if normalize:
+            price = price / 1E8
+        if return_timestamp:
+            return price, retrieved_timestamp
+        else:
+            return price
 
     def get_prices_in_range(self, start_time, end_time, transaction_currency, counter_currency, source):
         counter_currency_id = CounterCurrency[counter_currency].value
