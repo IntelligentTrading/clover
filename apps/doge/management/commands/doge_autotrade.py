@@ -6,35 +6,42 @@ from apps.portfolio.management.commands.rebalancer import balance_portfolios
 from apps.doge.doge_train_test import NoGoodDogesException
 import logging
 import time
-from apps.backtesting.utils import datetime_from_timestamp
-
+from apps.backtesting.utils import datetime_from_timestamp, parallel_run_thread_pool, time_performance
+from functools import partial
 
 class Command(BaseCommand):
+
+    @staticmethod
+    @time_performance
+    def run_training_in_parallel(arguments, num_processes):
+        parallel_run_thread_pool(DogeTrainer.run_training_zipped_args, arguments, pool_size=num_processes)
+
 
     def handle(self, *args, **options):
 
         while(True):
             # check if retrain is needed, run retraining
             try:
+                arguments = []
                 for ticker in SUPPORTED_DOGE_TICKERS:
                     latest_training_timestamp = DogeCommittee.latest_training_timestamp(ticker)
 
-                    if latest_training_timestamp is None or (time.time() - latest_training_timestamp > DOGE_RETRAINING_PERIOD_SECONDS):
+                    if latest_training_timestamp is None or True: #(time.time() - latest_training_timestamp > DOGE_RETRAINING_PERIOD_SECONDS):
                         end_timestamp = int(time.time())  # UTC timestamp
                         start_timestamp = end_timestamp - DOGE_TRAINING_PERIOD_DURATION_SECONDS
 
-                        logging.info(f'AUTOTRADING: >>> Starting to retrain committee for {ticker} '
-                                     f'at {datetime_from_timestamp(time.time())}...')
-                        logging.info(f'AUTOTRADING: >>> (the latest committee was '
-                                     f'trained with end time {datetime_from_timestamp(latest_training_timestamp)})')
-                        try:
-                            DogeTrainer.run_training(start_timestamp, end_timestamp, ticker)
-                        except NoGoodDogesException as bad_doge:
-                            logging.critical('!!!!!! Unable to train adequate doges! !!!!!!')
-                            logging.critical(str(bad_doge))
+                        # logging.info(f'AUTOTRADING: >>> Starting to retrain committee for {ticker} '
+                        #             f'at {datetime_from_timestamp(time.time())}...')
+                        # logging.info(f'AUTOTRADING: >>> (the latest committee was '
+                        #             f'trained with end time {datetime_from_timestamp(latest_training_timestamp)})')
+                        arguments.append((start_timestamp, end_timestamp, ticker))
 
-                        logging.info(
-                            f'AUTOTRADING: >>> Retraining for {ticker} completed at {datetime_from_timestamp(time.time())}...')
+                # DogeTrainer.run_training(start_timestamp, end_timestamp, ticker)
+                if len(arguments) > 0:
+                    self.run_training_in_parallel(arguments, num_processes=2)
+                    logging.info(
+                        f'AUTOTRADING: >>> Retraining for {ticker} completed at {datetime_from_timestamp(time.time())}...')
+
             except Exception as e:
                 logging.critical(f'Error during retraining committees: {str(e)}')
 
