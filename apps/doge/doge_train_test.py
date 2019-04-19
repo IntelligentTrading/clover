@@ -85,7 +85,7 @@ class DogeTrainer:
         self.database = database
         # self.function_provider = function_provider or RedisTAProvider(db_interface=database)
 
-    def retrain_doges(self, start_timestamp, end_timestamp, max_doges_to_save=10, training_ticker='BTC_USDT'):
+    def retrain_doges(self, start_timestamp, end_timestamp, max_doges_to_save=50, training_ticker='BTC_USDT'):
         """
         Reruns doge training and saves results to the database.
         :param start_timestamp: starting time to use for training (tickers are specified in GP_TRAINING_CONFIG json)
@@ -110,7 +110,7 @@ class DogeTrainer:
 
         # create an experiment manager
         e = ExperimentManager(experiment_container=config_json, read_from_file=False, database=self.database,
-                              hof_size=50, rockstars=rockstars, parallel_run=False)  # we will have one central json with all the parameters
+                              hof_size=50, rockstars=rockstars, parallel_run=True)  # we will have one central json with all the parameters
 
         # run experiments
         e.run_experiments(keep_record=True)
@@ -182,7 +182,9 @@ class DogeTrainer:
             ticker=ticker
         )
 
+
     @staticmethod
+    @time_performance
     def run_training(start_timestamp, end_timestamp, ticker, exchange="binance", horizon=12):
         """
         Instantiates a DogeTrainer and reruns training.
@@ -207,6 +209,16 @@ class DogeTrainer:
 
         return trainer.retrain_doges(start_timestamp=start_time, end_timestamp=end_time, max_doges_to_save=10,
                               training_ticker=ticker)
+
+    @staticmethod
+    def run_training_zipped_args(arguments):
+        start_timestamp, end_timestamp, ticker = arguments
+        try:
+            DogeTrainer.run_training(start_timestamp, end_timestamp, ticker)
+        except NoGoodDogesException as bad_doge:
+            logging.critical(f'!!!!!! Unable to train adequate doges for ticker {ticker}! !!!!!!')
+            logging.critical(str(bad_doge))
+
 
 
 class DogeTrader:
