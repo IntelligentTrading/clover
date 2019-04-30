@@ -164,8 +164,6 @@ class CommitteeStorage(TickerStorage):
 
 
 
-
-
 class CommitteeVoteStorage(IndicatorStorage):
     """
         Stores the combined vote of a doge committee at timestamp for a ticker at exchange.
