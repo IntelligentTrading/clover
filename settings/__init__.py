@@ -222,4 +222,7 @@ DOGE_LOAD_ROCKSTARS = True
 DOGE_MAX_ROCKSTARS = 20
 DOGE_REBALANCING_PERIOD_SECONDS = 20*60             # how often to run the rebalancer when autotrading
 
-logging.basicConfig(filename='doge.log', filemode='a', format='%(name)s - %(levelname)s - %(message)s')
+for handler in logging.root.handlers[:]:
+    logging.root.removeHandler(handler)
+logger = logging.getLogger(__name__)
+logging.basicConfig(filename='doge.log', filemode='a', format='[%(asctime)s]:%(name)s:%(levelname)s %(message)s')
