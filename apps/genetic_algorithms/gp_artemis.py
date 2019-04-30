@@ -94,6 +94,7 @@ class ExperimentManager:
         # generate and register variants
         self._fill_experiment_db()
         self._register_variants()
+        self._fill_variants()
 
 
 
@@ -121,7 +122,7 @@ class ExperimentManager:
             )
 
     def _register_variants(self, rebuild_grammar=True):
-        clear_all_experiments()
+        # clear_all_experiments()  # new safeguards in place, so maybe we don't need this
 
         if rebuild_grammar:
             for experiment_name, experiment in self.experiment_db.get_all():
@@ -133,10 +134,22 @@ class ExperimentManager:
 
         for experiment_name, experiment in self.experiment_db.get_all():
             self.run_evolution.add_variant(variant_name=experiment_name, hof_size=self.hof_size, **experiment)
-        self.variants = self.run_evolution.get_variants()
 
-    def get_variants(self):
-        return self.run_evolution.get_variants()
+    @property
+    def variants(self):
+        return self._variants
+
+    def _fill_variants(self):
+        variants = []
+
+        for variant in self.run_evolution.get_variants():
+            try:
+                self.get_db_record(variant)   # will raise an exception if no record exists
+                variants.append(variant)
+            except KeyError as e:
+                logging.warning(f'Variant {variant.name} not in current experiment (key {str(e)} not found), skipping...')
+        self._variants = variants
+
 
     @staticmethod
     def run_variant(variant, keep_record, display_results, rerun_existing, saved_figure_ext):
@@ -179,7 +192,7 @@ class ExperimentManager:
             data = self.validation_data
         else:
             data = self.training_data
-        #   variants = run_evolution.get_variants()
+
         for variant in self.variants:
             # for variant_name in variant_names:
             #   variant = run_evolution.get_variant(variant_name)
@@ -254,7 +267,7 @@ class ExperimentManager:
                                    "mean_profit", "std_profit", "max_profit", "min_profit", "all_profits",
                                    "benchmark_profits", "differences", "variant",
                                    "evaluations", "individual"])
-        for variant in self.get_variants():
+        for variant in self.variants:
             best_individuals = self.get_best_performing_individuals_and_dataset_performance(variant, datasets)
 
             if best_individuals is None:
@@ -428,7 +441,7 @@ class ExperimentManager:
     def get_performance_df_for_dataset_and_variant(self, variant, data):
         """
         Produces a performance dataframe for the given training set and experiment variant.
-        :param variant: experiment variant (get a list of all by invoking get_variants() on this object)
+        :param variant: experiment variant (get a list of all by invoking the property variants of this object)
         :param data: a Data object, part of the training_data collection
         :return: a dataframe showing performance
         """
@@ -782,6 +795,7 @@ class ExperimentDB:
 
     def __getitem__(self, key):
         return self._experiments[key]
+
 
 
 

@@ -26,14 +26,14 @@ class Command(BaseCommand):
                 for ticker in SUPPORTED_DOGE_TICKERS:
                     latest_training_timestamp = DogeCommittee.latest_training_timestamp(ticker)
 
-                    if latest_training_timestamp is None or True: #(time.time() - latest_training_timestamp > DOGE_RETRAINING_PERIOD_SECONDS):
+                    if latest_training_timestamp is None or (time.time() - latest_training_timestamp > DOGE_RETRAINING_PERIOD_SECONDS):
                         end_timestamp = int(time.time())  # UTC timestamp
                         start_timestamp = end_timestamp - DOGE_TRAINING_PERIOD_DURATION_SECONDS
 
-                        # logging.info(f'AUTOTRADING: >>> Starting to retrain committee for {ticker} '
-                        #             f'at {datetime_from_timestamp(time.time())}...')
-                        # logging.info(f'AUTOTRADING: >>> (the latest committee was '
-                        #             f'trained with end time {datetime_from_timestamp(latest_training_timestamp)})')
+                        logging.info(f'AUTOTRADING: >>> Starting to retrain committee for {ticker} '
+                                     f'at {datetime_from_timestamp(time.time())}...')
+                        logging.info(f'AUTOTRADING: >>> (the latest committee was '
+                                     f'trained with end time {datetime_from_timestamp(latest_training_timestamp)})')
                         arguments.append((start_timestamp, end_timestamp, ticker))
 
                 # DogeTrainer.run_training(start_timestamp, end_timestamp, ticker)
