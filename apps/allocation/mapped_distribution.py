@@ -21,24 +21,24 @@ def votes_on(ticker="BTC_USDT"):
     # return VoteFraction(transaction_currency_vote_fraction, counter_currency_vote_fraction)
 
     results = {
-                  "BTC_USDT": VoteFraction(0.4,0.6),
+                  "BTC_USDT": VoteFraction(0.4, 0.6),
                   "ETH_USDT": VoteFraction(0.3, 0.7),
                   "ETH_BTC": VoteFraction(0.75, 0.25),
-                  "ALTS_BTC": VoteFraction(0.9, 0.1)
+                  "ALTS_BTC": VoteFraction(0.5, 0.5)
     }
 
-    # results = {
-    #               "BTC_USDT": VoteFraction(0.5,0.5),
-    #               "ETH_USDT": VoteFraction(0.5, 0.5),
-    #               "ETH_BTC": VoteFraction(0.5, 0.5),
-    #               "ALTS_BTC": VoteFraction(0.5, 0.5)
-    # }
+    results = {
+                  "BTC_USDT": VoteFraction(0.5, 0.5),
+                  "ETH_USDT": VoteFraction(0.5, 0.5),
+                  "ETH_BTC": VoteFraction(0.5, 0.5),
+                  "ALTS_BTC": VoteFraction(0.5, 0.5)
+    }
 
     results = {
-                  "BTC_USDT": VoteFraction(0.01, 0.99),
-                  "ETH_USDT": VoteFraction(0.01, 0.99),
-                  "ETH_BTC": VoteFraction(0.5, 0.5),
-                  "ALTS_BTC": VoteFraction(0.01, 0.99)
+                  "BTC_USDT": VoteFraction(0.2, 0.8),
+                  "ETH_USDT": VoteFraction(0.5, 0.5),
+                  "ETH_BTC": VoteFraction(0.8, 0.2),
+                  "ALTS_BTC": VoteFraction(0.80, 0.2)
     }
 
 
@@ -68,53 +68,39 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
         votes_on_tickers = {ticker: votes_on(ticker) for ticker in self.tickers}
 
         allocations["USDT"] = [
-                votes_on_tickers["BTC_USDT"].counter_currency_vote_fraction * votes_on_tickers["ETH_USDT"].counter_currency_vote_fraction
-                ,
-                votes_on_tickers["ETH_USDT"].counter_currency_vote_fraction * votes_on_tickers["BTC_USDT"].counter_currency_vote_fraction
-                ,
-                votes_on_tickers["ETH_BTC"].counter_currency_vote_fraction * votes_on_tickers["BTC_USDT"].counter_currency_vote_fraction +
-                votes_on_tickers["ETH_BTC"].transaction_currency_vote_fraction * votes_on_tickers["ETH_USDT"].counter_currency_vote_fraction
-                ,
-                votes_on_tickers["ALTS_BTC"].counter_currency_vote_fraction * votes_on_tickers["BTC_USDT"].counter_currency_vote_fraction +
-                votes_on_tickers["ALTS_BTC"].transaction_currency_vote_fraction * 0  # bc 💩 stays as 💩 💯% FTW
+                votes_on_tickers["BTC_USDT"].counter_currency_vote_fraction,
+                votes_on_tickers["ETH_USDT"].counter_currency_vote_fraction,
+                2
         ]
 
         # like what you see? here's more... 🤮🤮🤮
 
         allocations["BTC"] = [
-                votes_on_tickers["BTC_USDT"].transaction_currency_vote_fraction * votes_on_tickers["ETH_BTC"].counter_currency_vote_fraction +
-                votes_on_tickers["BTC_USDT"].transaction_currency_vote_fraction * votes_on_tickers["ALTS_BTC"].counter_currency_vote_fraction
-                ,
-                votes_on_tickers["ETH_BTC"].counter_currency_vote_fraction * votes_on_tickers["BTC_USDT"].transaction_currency_vote_fraction +
-                votes_on_tickers["ETH_BTC"].counter_currency_vote_fraction * votes_on_tickers["ALTS_BTC"].counter_currency_vote_fraction
-                ,
-                votes_on_tickers["ETH_USDT"].counter_currency_vote_fraction * votes_on_tickers["BTC_USDT"].transaction_currency_vote_fraction +
-                votes_on_tickers["ETH_USDT"].transaction_currency_vote_fraction * votes_on_tickers["ETH_BTC"].counter_currency_vote_fraction
-                ,
-                votes_on_tickers["ALTS_BTC"].counter_currency_vote_fraction +
-                votes_on_tickers["ALTS_BTC"].transaction_currency_vote_fraction * 0  # bc 💩 stays as 💩 💯% FTW
+                votes_on_tickers["BTC_USDT"].transaction_currency_vote_fraction,
+                votes_on_tickers["ETH_BTC"].counter_currency_vote_fraction,
+                votes_on_tickers["ALTS_BTC"].counter_currency_vote_fraction,
+                4
         ]
 
         allocations["ETH"] = [
-                votes_on_tickers["ETH_USDT"].transaction_currency_vote_fraction * votes_on_tickers["ETH_BTC"].transaction_currency_vote_fraction
-                ,
-                votes_on_tickers["ETH_BTC"].transaction_currency_vote_fraction * votes_on_tickers["ETH_USDT"].transaction_currency_vote_fraction
-                ,
-                votes_on_tickers["BTC_USDT"].transaction_currency_vote_fraction * votes_on_tickers["ETH_BTC"].transaction_currency_vote_fraction
-                ,
-                votes_on_tickers["BTC_USDT"].counter_currency_vote_fraction * votes_on_tickers["ETH_USDT"].transaction_currency_vote_fraction
-                ,
-                votes_on_tickers["ALTS_BTC"].counter_currency_vote_fraction * votes_on_tickers["ETH_BTC"].transaction_currency_vote_fraction +
-                votes_on_tickers["ALTS_BTC"].transaction_currency_vote_fraction * 0  # bc 💩 stays as 💩 💯% FTW
+                votes_on_tickers["ETH_USDT"].transaction_currency_vote_fraction,
+                votes_on_tickers["ETH_BTC"].transaction_currency_vote_fraction,
+                2
         ]
 
         allocations["ALTS"] = [
-                votes_on_tickers["ALTS_BTC"].transaction_currency_vote_fraction
+                votes_on_tickers["ALTS_BTC"].transaction_currency_vote_fraction,
+                len("Willr")/5
         ]
 
         print(allocations)
+        from functools import reduce
+        alloc_sum = sum([reduce(lambda x, y: x*y, value) for key, value in allocations.items()])
+
+
         for key, value in allocations.items():
-            print(f"{key}: {sum(value)}\n\n")
+            alloc = (reduce(lambda x, y: x*y, value)/float(alloc_sum))*100
+            print(f"{key}: {reduce(lambda x, y: x*y, value):.2f}      Norm: {alloc:.2f}%\n")
 
 
         return allocations
