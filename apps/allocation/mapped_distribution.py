@@ -63,7 +63,7 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
 
 
     def get_allocations(self):
-        allocations = {}
+        allocations = normalized_allocations = {}
 
         votes_on_tickers = {ticker: votes_on(ticker) for ticker in self.tickers}
 
@@ -93,17 +93,17 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
                 len("Willr")/5
         ]
 
-        print(allocations)
+
         from functools import reduce
         alloc_sum = sum([reduce(lambda x, y: x*y, value) for key, value in allocations.items()])
 
 
-        for key, value in allocations.items():
-            alloc = (reduce(lambda x, y: x*y, value)/float(alloc_sum))*100
-            print(f"{key}: {reduce(lambda x, y: x*y, value):.2f}      Norm: {alloc:.2f}%\n")
+        for ticker, vote_fraction_list in allocations.items():
+            alloc = (reduce(lambda x, y: x*y, vote_fraction_list)/float(alloc_sum))
+            # print(f"{ticker}: {reduce(lambda x, y: x*y, vote_fraction_list):.2f}  Norm: {alloc:.2f}\n")
+            normalized_allocations[ticker] = alloc
 
-
-        return allocations
+        return normalized_allocations
 
 
 
@@ -111,4 +111,4 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
 
 from apps.allocation.mapped_distribution import MappedDistribution as MP
 mp  = MP()
-mp.get_allocations()
+print(mp.get_allocations())
