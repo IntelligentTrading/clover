@@ -67,6 +67,13 @@ def votes_on(ticker, when_datetime=None):
     if ticker == 'ALTS_BTC' or ticker =='ETH_BTC':
         return VoteFraction(0.5, 0.5), []   # TODO we don't have data coming in for alts_btc or eth_btc yet, fix
 
+    if ticker == 'NEO_BTC':
+        return VoteFraction(0.7, 0.3), []
+
+    if ticker == 'OMG_BTC':
+        return VoteFraction(0.4, 0.6), []
+
+
     when_datetime = when_datetime or datetime.now()
     exchange = 'binance'
     query_result = CommitteeVoteStorage.query(
@@ -128,7 +135,7 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
 
         self.assets = ["USDT", "BTC", "ETH", "ALTS",]
         self.tickers = ["BTC_USDT", "ETH_USDT", "ETH_BTC", "ALTS_BTC",]
-        SHITCOINS_TRADED = ['OMG_BTC', 'NEO_BTC']
+        self.shitcoins = ['OMG_BTC', 'NEO_BTC']
 
 
     def _reinforce_minimum_reserves(self, normalized_allocations):
@@ -158,17 +165,26 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
 
         return normalized_allocations
 
-    def _untangle_shitcoins(self, normalized_allocations, when_datetime):
-        shitcoin_allocation = normalized_allocations['ALTS_BTC']
-        SHITCOINS_TRADED = ['OMG_BTC', 'NEO_BTC']
+    def get_alt_allocation(self, votes_on_tickers):
+        total_alts = 0
+        for ticker in self.shitcoins:
+            total_alts += votes_on_tickers[ticker].transaction_currency_vote_fraction
+        return total_alts
 
-        for ticker in SHITCOINS_TRADED:
-            votes = votes_on(ticker, when_datetime)
+    def _untangle_shitcoins(self, allocations, votes_on_tickers):
+        total_shitcoin_allocation = self.get_alt_allocation(votes_on_tickers)
+        for shitcoin in self.shitcoins:
+            transaction_vote = votes_on_tickers[shitcoin].transaction_currency_vote_fraction / total_shitcoin_allocation
+            counter_vote = 1-transaction_vote
+            allocations[shitcoin] = [transaction_vote,
+                                     counter_vote,
+                                     1]
+        return allocations
 
     def get_allocations(self, when_datetime=None):
         allocations = normalized_allocations = {}
 
-        votes_and_committee_info = {ticker: votes_on(ticker=ticker, when_datetime=when_datetime) for ticker in self.tickers}
+        votes_and_committee_info = {ticker: votes_on(ticker=ticker, when_datetime=when_datetime) for ticker in self.tickers + self.shitcoins}
         votes_on_tickers = {ticker: info[0] for ticker, info in votes_and_committee_info.items()}
         committees_used = {ticker: votes_and_committee_info[ticker][1] for ticker in votes_and_committee_info}
 
@@ -193,10 +209,12 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
                 2
         ]
 
-        allocations["ALTS"] = [
-                votes_on_tickers["ALTS_BTC"].transaction_currency_vote_fraction,
-                len("Willr")/5
-        ]
+        allocations = self._untangle_shitcoins(allocations, votes_on_tickers)
+
+        # allocations["ALTS"] = [
+        #        votes_on_tickers["ALTS_BTC"].transaction_currency_vote_fraction,
+        #        len("Willr")/5
+        # ]
 
 
         from functools import reduce
