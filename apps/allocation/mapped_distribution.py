@@ -134,32 +134,31 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
             'BNB': 0.03  # .1%
         }
         reassigned_portion_amount = 0
-        reassigned_tickers = []
         for ticker, portion in minimum_reserves.items():
-            if ticker not in normalized_allocations or normalized_allocations[ticker] < portion:
-                normalized_allocations[ticker] = portion
-                reassigned_portion_amount += portion
-                reassigned_tickers.append(ticker)
+            allocation = max(portion, normalized_allocations[ticker]) if ticker in normalized_allocations else portion
+            reassigned_portion_amount += allocation
+            normalized_allocations[ticker] = allocation
 
         total_non_reassigned = 0
         # now scale all non-reassigned tickers to accomodate new portions
-        for ticker, allocation in normalized_allocations.items():
-            if ticker not in reassigned_tickers:  # we need to scale
+        for coin, allocation in normalized_allocations.items():
+            if coin not in minimum_reserves:  # we need to scale
                 total_non_reassigned += allocation
 
-        for ticker in normalized_allocations:
-            if ticker not in reassigned_tickers:
-                normalized_allocations[ticker] = normalized_allocations[ticker] / total_non_reassigned * (
+        for coin in normalized_allocations:
+            if coin not in minimum_reserves:
+                normalized_allocations[coin] = normalized_allocations[coin] / total_non_reassigned * (
                             1 - reassigned_portion_amount)
 
+        print(sum([allocation for _, allocation in normalized_allocations.items()]))
         assert 0.99 < sum([allocation for _, allocation in normalized_allocations.items()]) <= 1
 
         return normalized_allocations
 
-    def get_allocations(self):
+    def get_allocations(self, when_datetime):
         allocations = normalized_allocations = {}
 
-        votes_on_tickers = {ticker: votes_on(ticker)[0] for ticker in self.tickers}
+        votes_on_tickers = {ticker: votes_on(ticker=ticker, when_datetime=when_datetime)[0] for ticker in self.tickers}
 
         allocations["USDT"] = [
                 votes_on_tickers["BTC_USDT"].counter_currency_vote_fraction,
@@ -213,9 +212,9 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
 mp  = MappedDistribution()
 print(mp.get_allocations())
 test_allocations = {
-    'BTC': 0.03,
-    'USDT': 0.94,
-    'ETH': 0.04
+    'BTC': 0.04,
+    'USDT': 0.98,
+    'BNB': 0.02
 }
 print('With reinforced minimum reserves:')
 print(mp._reinforce_minimum_reserves(test_allocations))
