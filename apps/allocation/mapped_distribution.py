@@ -68,10 +68,10 @@ def votes_on(ticker, when_datetime=None):
         return VoteFraction(0.5, 0.5), []   # TODO we don't have data coming in for alts_btc or eth_btc yet, fix
 
     if ticker == 'NEO_BTC':
-        return VoteFraction(0.7, 0.3), []
+        return VoteFraction(0.1, 0.9), []
 
     if ticker == 'OMG_BTC':
-        return VoteFraction(0.4, 0.6), []
+        return VoteFraction(0.1, 0.9), []
 
 
     when_datetime = when_datetime or datetime.now()
@@ -134,17 +134,18 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
     def __init__(self):
 
         self.assets = ["USDT", "BTC", "ETH", "ALTS",]
-        self.tickers = ["BTC_USDT", "ETH_USDT", "ETH_BTC", "ALTS_BTC",]
+        self.tickers = ["BTC_USDT", "ETH_USDT", "ETH_BTC"] #, "ALTS_BTC",]
         self.shitcoins = ['OMG_BTC', 'NEO_BTC']
+        self.minimum_reserves = {
+            'BTC': 0.01,  # 1%
+            'BNB': 0.001  # .1%
+        }
 
 
     def _reinforce_minimum_reserves(self, normalized_allocations):
-        minimum_reserves = {
-            'BTC': 0.03,  # 1%
-            'BNB': 0.03  # .1%
-        }
+
         reassigned_portion_amount = 0
-        for ticker, portion in minimum_reserves.items():
+        for ticker, portion in self.minimum_reserves.items():
             allocation = max(portion, normalized_allocations[ticker]) if ticker in normalized_allocations else portion
             reassigned_portion_amount += allocation
             normalized_allocations[ticker] = allocation
@@ -152,29 +153,32 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
         total_non_reassigned = 0
         # now scale all non-reassigned tickers to accomodate new portions
         for coin, allocation in normalized_allocations.items():
-            if coin not in minimum_reserves:  # we need to scale
+            if coin not in self.minimum_reserves:  # we need to scale
                 total_non_reassigned += allocation
 
         for coin in normalized_allocations:
-            if coin not in minimum_reserves:
+            if coin not in self.minimum_reserves:
                 normalized_allocations[coin] = normalized_allocations[coin] / total_non_reassigned * (
                             1 - reassigned_portion_amount)
 
         print(sum([allocation for _, allocation in normalized_allocations.items()]))
-        assert 0.99 < sum([allocation for _, allocation in normalized_allocations.items()]) <= 1
+        assert 0.99 < sum([allocation for _, allocation in normalized_allocations.items()]) <= 1.01
 
         return normalized_allocations
 
-    def get_alt_allocation(self, votes_on_tickers):
-        total_alts = 0
-        for ticker in self.shitcoins:
-            total_alts += votes_on_tickers[ticker].transaction_currency_vote_fraction
-        return total_alts
+
+    def mean_shitcoin_vote_fraction(self, votes_on_tickers):
+        transaction_currency_vote_fraction = sum(
+            [votes_on_tickers[shitcoin_ticker].transaction_currency_vote_fraction
+             for shitcoin_ticker in self.shitcoins]) / len(self.shitcoins)
+        counter_currency_vote_fraction = 1 - transaction_currency_vote_fraction
+        return VoteFraction(transaction_currency_vote_fraction, counter_currency_vote_fraction)
+
 
     def _untangle_shitcoins(self, allocations, votes_on_tickers):
-        total_shitcoin_allocation = self.get_alt_allocation(votes_on_tickers)
-        for shitcoin in self.shitcoins:
-            transaction_vote = votes_on_tickers[shitcoin].transaction_currency_vote_fraction / total_shitcoin_allocation
+        for shitcoin_ticker in self.shitcoins:
+            shitcoin = shitcoin_ticker.split('_')[0]
+            transaction_vote = votes_on_tickers[shitcoin_ticker].transaction_currency_vote_fraction / len(self.shitcoins)
             counter_vote = 1-transaction_vote
             allocations[shitcoin] = [transaction_vote,
                                      counter_vote,
@@ -186,6 +190,7 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
 
         votes_and_committee_info = {ticker: votes_on(ticker=ticker, when_datetime=when_datetime) for ticker in self.tickers + self.shitcoins}
         votes_on_tickers = {ticker: info[0] for ticker, info in votes_and_committee_info.items()}
+        votes_on_tickers['ALTS_BTC'] = self.mean_shitcoin_vote_fraction(votes_on_tickers)
         committees_used = {ticker: votes_and_committee_info[ticker][1] for ticker in votes_and_committee_info}
 
         allocations["USDT"] = [
