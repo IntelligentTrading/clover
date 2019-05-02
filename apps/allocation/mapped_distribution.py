@@ -125,8 +125,11 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
     # self.timestamp = timestamp
 
     def __init__(self):
+
         self.assets = ["USDT", "BTC", "ETH", "ALTS",]
         self.tickers = ["BTC_USDT", "ETH_USDT", "ETH_BTC", "ALTS_BTC",]
+        SHITCOINS_TRADED = ['OMG_BTC', 'NEO_BTC']
+
 
     def _reinforce_minimum_reserves(self, normalized_allocations):
         minimum_reserves = {
@@ -155,10 +158,19 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
 
         return normalized_allocations
 
-    def get_allocations(self, when_datetime):
+    def _untangle_shitcoins(self, normalized_allocations, when_datetime):
+        shitcoin_allocation = normalized_allocations['ALTS_BTC']
+        SHITCOINS_TRADED = ['OMG_BTC', 'NEO_BTC']
+
+        for ticker in SHITCOINS_TRADED:
+            votes = votes_on(ticker, when_datetime)
+
+    def get_allocations(self, when_datetime=None):
         allocations = normalized_allocations = {}
 
-        votes_on_tickers = {ticker: votes_on(ticker=ticker, when_datetime=when_datetime)[0] for ticker in self.tickers}
+        votes_and_committee_info = {ticker: votes_on(ticker=ticker, when_datetime=when_datetime) for ticker in self.tickers}
+        votes_on_tickers = {ticker: info[0] for ticker, info in votes_and_committee_info.items()}
+        committees_used = {ticker: votes_and_committee_info[ticker][1] for ticker in votes_and_committee_info}
 
         allocations["USDT"] = [
                 votes_on_tickers["BTC_USDT"].counter_currency_vote_fraction,
@@ -196,14 +208,15 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
             # print(f"{ticker}: {reduce(lambda x, y: x*y, vote_fraction_list):.2f}  Norm: {alloc:.2f}\n")
             normalized_allocations[ticker] = alloc
 
-        # need to check minimum reserves for BTC and BNB
+        # need to check minimum reserves
+        normalized_allocations = self._reinforce_minimum_reserves(normalized_allocations)
 
 
 
         # reformat normalized allocations as expected
         allocations_list = [{"coin": coin, "portion": (portion // 0.0001 / 10000)} for coin, portion in
                             normalized_allocations.items()]
-        return normalized_allocations
+        return allocations_list, committees_used
 
 
 
