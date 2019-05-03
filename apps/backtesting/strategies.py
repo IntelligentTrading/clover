@@ -1,6 +1,5 @@
 import random
 
-from apps.backtesting.legacy_postgres import Horizon
 from apps.backtesting.orders import *
 from apps.backtesting.data_sources import *
 from apps.backtesting.signals import *
@@ -422,40 +421,40 @@ class TickerWrapperStrategy(TickerStrategy):
         return self._strategy.get_short_summary()
 
 
-class RandomTradingStrategy(SimpleTrendBasedStrategy):
-
-    def __init__(self, max_num_signals, start_time, end_time, transaction_currency, counter_currency, source=0):
-        self.start_time = start_time
-        self.end_time = end_time
-        self.transaction_currency = transaction_currency
-        self.counter_currency = counter_currency
-        self.max_num_signals = max_num_signals
-        self.source = source
-        self.signal_type = "Generic"
-        self.signals = self.build_signals()
-
-    def get_orders(self, signals, start_cash, start_crypto, source, time_delay=0, slippage=0):
-        return SignalStrategy.get_orders(self, self.signals, start_cash, start_crypto, source, time_delay, slippage)
-
-    def build_signals(self):
-        num_signals = random.randint(1, self.max_num_signals)
-        prices = DB_INTERFACE.get_prices_in_range(self.start_time, self.end_time, self.transaction_currency, self.counter_currency,
-                                                  self.source)
-        selected_prices = prices.sample(num_signals)
-        selected_prices = selected_prices.sort_index()
-        signals = []
-
-        for timestamp, row in selected_prices.iterrows():
-            price = row["price"]
-            buy = random.random() < 0.5
-            signal = Signal(self.signal_type, 1 if buy else -1, Horizon.any, 3, 3, # "RSI" is just a placeholder
-                 price/1E8, 0, timestamp, None, self.transaction_currency, self.counter_currency, self.source, None)
-            signals.append(signal)
-        return signals
-
-    def belongs_to_this_strategy(self, signal):
-        return True
-
-    def get_short_summary(self):
-        return "Random trading strategy, max number of signals: {}".format(self.max_num_signals)
+# class RandomTradingStrategy(SimpleTrendBasedStrategy):
+#
+#     def __init__(self, max_num_signals, start_time, end_time, transaction_currency, counter_currency, source=0):
+#         self.start_time = start_time
+#         self.end_time = end_time
+#         self.transaction_currency = transaction_currency
+#         self.counter_currency = counter_currency
+#         self.max_num_signals = max_num_signals
+#         self.source = source
+#         self.signal_type = "Generic"
+#         self.signals = self.build_signals()
+#
+#     def get_orders(self, signals, start_cash, start_crypto, source, time_delay=0, slippage=0):
+#         return SignalStrategy.get_orders(self, self.signals, start_cash, start_crypto, source, time_delay, slippage)
+#
+#     def build_signals(self):
+#         num_signals = random.randint(1, self.max_num_signals)
+#         prices = DB_INTERFACE.get_prices_in_range(self.start_time, self.end_time, self.transaction_currency, self.counter_currency,
+#                                                   self.source)
+#         selected_prices = prices.sample(num_signals)
+#         selected_prices = selected_prices.sort_index()
+#         signals = []
+#
+#         for timestamp, row in selected_prices.iterrows():
+#             price = row["price"]
+#             buy = random.random() < 0.5
+#             signal = Signal(self.signal_type, 1 if buy else -1, Horizon.any, 3, 3, # "RSI" is just a placeholder
+#                  price/1E8, 0, timestamp, None, self.transaction_currency, self.counter_currency, self.source, None)
+#             signals.append(signal)
+#         return signals
+#
+#     def belongs_to_this_strategy(self, signal):
+#         return True
+#
+#     def get_short_summary(self):
+#         return "Random trading strategy, max number of signals: {}".format(self.max_num_signals)
 

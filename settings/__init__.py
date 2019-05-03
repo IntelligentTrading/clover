@@ -34,7 +34,7 @@ LOCAL = 'LOCAL' in DEPLOYMENT_TYPE
 
 
 # for Heroku deployment wierdness
-LOAD_TALIB = True
+LOAD_TALIB = False
 
 # Set up logger
 if LOCAL:
@@ -206,7 +206,7 @@ HORIZONS_TIME2NAMES = {
 #EXCHANGE_MARKETS = ('poloniex', 'binance', 'bittrex', 'bitfinex', 'kucoin')
 EXCHANGE_MARKETS = ('poloniex', 'binance', 'bittrex')
 
-LOAD_TALIB = True
+LOAD_TALIB = False
 
 # list of tickers for which doges will vote
 SUPPORTED_DOGE_TICKERS = ['BTC_USDT', 'ETH_USDT', ]

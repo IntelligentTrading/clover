@@ -2,7 +2,6 @@ aiodns==1.1.1
 aiohttp==3.4.4
 amqp==2.3.2
 appnope==0.1.0
-artemis==0.1.4
 async-timeout==3.0.1
 attrs==18.2.0
 backcall==0.1.0
@@ -10,7 +9,6 @@ billiard==3.5.0.4
 boto==2.49.0
 boto3==1.9.33
 botocore==1.12.33
-cchardet==2.1.1
 ccxt==1.17.427
 celery==4.2.1
 celery-redbeat==0.11.1
@@ -72,7 +70,6 @@ simplejson==3.16.0
 six==1.11.0
 sqlparse==0.2.4
 static3==0.7.0
-TA-Lib==0.4.17
 toolz==0.9.0
 tqdm==4.28.1
 traitlets==4.3.2
@@ -83,4 +80,5 @@ vine==1.1.4
 waitress==1.1.0
 whitenoise==4.1
 wcwidth==0.1.7
+xlsxwriter==1.1.7
 yarl==1.2.6
