@@ -1,5 +1,5 @@
 from apps.backtesting.comparative_evaluation import *
-from apps.backtesting.strategies import RandomTradingStrategy, ANNAnomalyStrategy
+from apps.backtesting.strategies import ANNAnomalyStrategy
 import numpy as np
 import datetime
 from apps.backtesting.utils import time_performance
