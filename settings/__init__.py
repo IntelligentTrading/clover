@@ -209,7 +209,7 @@ EXCHANGE_MARKETS = ('poloniex', 'binance', 'bittrex')
 LOAD_TALIB = True
 
 # list of tickers for which doges will vote
-SUPPORTED_DOGE_TICKERS = ['BTC_USDT', 'ETH_USDT', ]
+SUPPORTED_DOGE_TICKERS = ['BTC_USDT', 'ETH_USDT'] # , 'ETH_BTC',] # TODO add ETH_BTC when ready
 
 ONE_WEEK = 60*60*24*7
 ONE_DAY = 60*60*24
@@ -226,3 +226,4 @@ for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename='doge.log', filemode='a', format='[%(asctime)s]:%(name)s:%(levelname)s %(message)s')
+logging.getLogger().addHandler(logging.StreamHandler())
