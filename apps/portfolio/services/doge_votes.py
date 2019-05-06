@@ -15,9 +15,6 @@ class NoCommitteeVotesFoundException(Exception):
 
 CommitteeVote = namedtuple("CommitteeVote", "timestamp, vote, committee_id")
 
-mytuple = CommitteeVote()
-
-mytuple = [datetime(2018,2,1), 4, ]
 
 def fill_tickers_dict(supported_tickers, minimum_reserves):
     tickers_dict = {}
@@ -57,6 +54,11 @@ def get_allocations_from_doge(at_datetime=None):
     """
     now_datetime = at_datetime or datetime.now()
 
+    from apps.allocation.mapped_distribution import MappedDistribution
+    mp = MappedDistribution()
+    return mp.get_allocations(when_datetime=now_datetime) # UNCOMMENT ONCE READY
+
+
     tickers = SUPPORTED_DOGE_TICKERS
     exchange = 'binance'
 
@@ -83,7 +85,7 @@ def get_allocations_from_doge(at_datetime=None):
         # find the latest vote
         query_result = CommitteeVoteStorage.query(
             ticker=ticker, exchange=exchange, timestamp=now_datetime.timestamp(),
-            periods_range=PERIODS_1HR*4,
+            periods_range=PERIODS_1HR,
             periods_key=PERIODS_1HR
         )
 
