@@ -68,10 +68,10 @@ def votes_on(ticker, when_datetime=None):
         return VoteFraction(0.5, 0.5), []   # TODO we don't have data coming in for alts_btc or eth_btc yet, fix
 
     if ticker == 'NEO_BTC':
-        return VoteFraction(0.1, 0.9), []
+        return VoteFraction(0.0, 1.0), []
 
     if ticker == 'OMG_BTC':
-        return VoteFraction(0.1, 0.9), []
+        return VoteFraction(0.0, 1.0), []
 
 
     when_datetime = when_datetime or datetime.now()
