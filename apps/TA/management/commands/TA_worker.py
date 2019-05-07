@@ -8,7 +8,7 @@ from settings.redis_db import database
 logger = logging.getLogger(__name__)
 
 try:
-    earliest_price_score = int(float(database.zrangebyscore("BTC_USDT:bittrex:PriceStorage:close_price", 0, "inf", 0, 1)[0].decode("utf-8").split(":")[0]))
+    earliest_price_score = int(float(database.zrangebyscore("BTC_USDT:binance:PriceStorage:close_price", 0, "inf", 0, 1)[0].decode("utf-8").split(":")[0]))
 except:
     from apps.TA.storages.abstract.timeseries_storage import TimeseriesStorage
     earliest_price_score = TimeseriesStorage.score_from_timestamp(int(time.time()))
