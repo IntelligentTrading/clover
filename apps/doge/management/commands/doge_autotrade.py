@@ -26,19 +26,20 @@ class Command(BaseCommand):
                 for ticker in SUPPORTED_DOGE_TICKERS:
                     latest_training_timestamp = DogeCommittee.latest_training_timestamp(ticker)
 
-                    if latest_training_timestamp is None or (time.time() - latest_training_timestamp > DOGE_RETRAINING_PERIOD_SECONDS):
+                    if latest_training_timestamp is None or True: # (time.time() - latest_training_timestamp > DOGE_RETRAINING_PERIOD_SECONDS):
                         end_timestamp = int(time.time())  # UTC timestamp
                         start_timestamp = end_timestamp - DOGE_TRAINING_PERIOD_DURATION_SECONDS
 
                         logging.info(f'AUTOTRADING: >>> Starting to retrain committee for {ticker} '
                                      f'at {datetime_from_timestamp(time.time())}...')
+                        end_time_str = datetime_from_timestamp(latest_training_timestamp) if latest_training_timestamp else "N/A"
                         logging.info(f'AUTOTRADING: >>> (the latest committee was '
-                                     f'trained with end time {datetime_from_timestamp(latest_training_timestamp)})')
+                                     f'trained with end time {end_time_str}')
                         arguments.append((start_timestamp, end_timestamp, ticker))
 
                 # DogeTrainer.run_training(start_timestamp, end_timestamp, ticker)
                 if len(arguments) > 0:
-                    self.run_training_in_parallel(arguments, num_processes=2)
+                    self.run_training_in_parallel(arguments, num_processes=2)   # should run for BTC_USDT, ETH_USDT, ETH_BTC
                     logging.info(
                         f'AUTOTRADING: >>> Retraining for {ticker} completed at {datetime_from_timestamp(time.time())}...')
 
