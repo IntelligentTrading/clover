@@ -21,7 +21,7 @@ from collections import namedtuple
 
 VoteFraction = namedtuple("VoteFraction", "transaction_currency_vote_fraction, counter_currency_vote_fraction")
 
-SHITCOIN_DAMPENING_FACTOR = 0.25    # TODO: fix and experiment with this
+SHITCOIN_DAMPENING_FACTOR = 1.0   # TODO: fix and experiment with this
                                     # almost corresponds to max total proportion of shitcoins in the portfolio, but not quite :D
 
 
@@ -74,7 +74,7 @@ def votes_on(ticker, when_datetime=None):
         return VoteFraction(1.0, 0.0), []
 
     if ticker == 'OMG_BTC':
-        return VoteFraction(0.5, 0.5), []
+        return VoteFraction(0.3, 0.7), []
 
 
     when_datetime = when_datetime or datetime.now()
@@ -185,11 +185,15 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
 
 
     def _untangle_shitcoins(self, allocations, votes_on_tickers):
-        total_shitcoin_mass = self.total_shitcoin_transaction_votes(votes_on_tickers)
+        shitcoin_transaction_votes = []
+        for shitcoin_ticker in self.shitcoins:
+            shitcoin_transaction_votes.append(votes_on_tickers[shitcoin_ticker].transaction_currency_vote_fraction)
+        total_shitcoin_mass = sum([x**2 for x in shitcoin_transaction_votes])
+
         for shitcoin_ticker in self.shitcoins:
             shitcoin = shitcoin_ticker.split('_')[0]
             # transaction_vote = votes_on_tickers[shitcoin_ticker].transaction_currency_vote_fraction / len(self.shitcoins)
-            transaction_vote = votes_on_tickers[shitcoin_ticker].transaction_currency_vote_fraction / total_shitcoin_mass if total_shitcoin_mass != 0 else 0
+            transaction_vote = votes_on_tickers[shitcoin_ticker].transaction_currency_vote_fraction ** 2 / total_shitcoin_mass if total_shitcoin_mass != 0 else 0
             counter_vote = 1-transaction_vote
             allocations[shitcoin] = [transaction_vote,
                                      self.mean_shitcoin_vote_fraction(votes_on_tickers).transaction_currency_vote_fraction,
