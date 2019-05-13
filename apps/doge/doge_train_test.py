@@ -124,31 +124,60 @@ class DogeTrainer:
                                                                      sort_by=['mean_profit'], min_fitness=min_fitness)
         logging.info('>>>>>>> Ranking completed.')
 
-        if len(doge_df) == 0:
-            raise NoGoodDogesException(f'Failed to train any doges with minimum fitness {min_fitness}. '
-                                       f'Consider retraining, lowering the minimum required fitness or '
-                                       f'using a different fitness function')
-
-
         # write these doges to database
         logging.info('>>>>>>> Saving GPs to database...')
 
-        redis_entries = []
-        for i, row in enumerate(doge_df.itertuples()):
-            if i > max_doges_to_save:
-                break
-            redis_entries.append(
-                DogeRecord(train_end_timestamp=end_timestamp, doge_str=str(row.doge),
-                           metric_id=METRIC_IDS['mean_profit'], metric_value=row.mean_profit, rank=i,
-                           fitness_function=row.fitness_function, fitness_value=row.fitness_value))
 
+        redis_entries = []
+        if len(doge_df) == 0:
+
+            logging.critical(f'Failed to train any doges with minimum fitness {min_fitness}. '
+                             f'Consider retraining, lowering the minimum required fitness or '
+                             f'using a different fitness function')
+
+            FALLBACK_IF_UNABLE_TO_TRAIN = True
+            FALLBACK_BUY_SELL_THRESHOLD_PERCENT = 0.5
+
+            if FALLBACK_IF_UNABLE_TO_TRAIN:
+
+                evaluation = e._build_evaluation_object("ignore", e.variants[0], e.training_data[0])
+                benchmark_profits = evaluation.benchmark_backtest.profit_percent
+                if benchmark_profits > FALLBACK_BUY_SELL_THRESHOLD_PERCENT:
+                    fallback_doge = "buy"
+                elif benchmark_profits < -FALLBACK_BUY_SELL_THRESHOLD_PERCENT:
+                    fallback_doge = "sell"
+                else:
+                    fallback_doge = "ignore"
+                logging.critical(f'Falling back to predefined trader: {fallback_doge} '
+                                 f'(benchmark profit is {benchmark_profits} and threshold is {FALLBACK_BUY_SELL_THRESHOLD_PERCENT})')
+
+                redis_entries.append(
+                    DogeRecord(train_end_timestamp=end_timestamp, doge_str=str(fallback_doge),
+                               metric_id=METRIC_IDS['mean_profit'], metric_value=evaluation.profit_percent, rank=0,
+                               fitness_function=e.experiment_json['fitness_functions'][0], fitness_value=0))   # TODO not ideal that we have [0]
+
+            # raise NoGoodDogesException(f'Failed to train any doges with minimum fitness {min_fitness}. '
+            #                           f'Consider retraining, lowering the minimum required fitness or '
+            #                           f'using a different fitness function')
+
+
+
+        else:
+            for i, row in enumerate(doge_df.itertuples()):
+                if i > max_doges_to_save:
+                    break
+                redis_entries.append(
+                    DogeRecord(train_end_timestamp=end_timestamp, doge_str=str(row.doge),
+                               metric_id=METRIC_IDS['mean_profit'], metric_value=row.mean_profit, rank=i,
+                               fitness_function=row.fitness_function, fitness_value=row.fitness_value))
+            benchmark_profits = doge_df.iloc[0].benchmark_profits
 
         # save individual doges
         self._save_doges(redis_entries)
 
         # save benchmark performance
         new_benchmark_storage = BenchmarkPerformance(timestamp=end_timestamp, ticker=training_ticker, exchange='binance')
-        new_benchmark_storage.value = f'{start_timestamp}:{doge_df.iloc[0].benchmark_profits}'
+        new_benchmark_storage.value = f'{start_timestamp}:{benchmark_profits}'
         new_benchmark_storage.save()
 
         # save current committee
