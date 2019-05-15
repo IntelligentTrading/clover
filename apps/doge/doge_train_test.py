@@ -363,6 +363,8 @@ class DogeCommittee:
         doge_traders = []
 
         query_response = CommitteeStorage.query(ticker=self._training_ticker, exchange='binance', timestamp=self._committee_timestamp)
+        if not len(query_response['scores']):
+            return doge_traders
         loaded_timestamp = CommitteeStorage.timestamp_from_score(query_response['scores'][-1])
         if self._committee_timestamp is not None and self._committee_timestamp != loaded_timestamp:
             logger.critical('Loaded committee timestamp differs from the requested timestamp')
