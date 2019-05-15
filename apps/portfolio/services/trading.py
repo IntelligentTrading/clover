@@ -125,17 +125,17 @@ def set_portfolio(portfolio, allocation, committees_used):
 
         # save log of which committees contributed in the allocation
         for ticker in committees_used:
-            for horizon in committees_used[ticker]:
-                for committee_vote in committees_used[ticker][horizon]:
-                    committee_object = AllocationCommittee(
-                        allocation_id=allocation_object.id,
-                        ticker=ticker,
-                        committee_id=committee_vote.committee_id,
-                        voted_at=committee_vote.timestamp,
-                        vote=committee_vote.vote,
-                        horizon=horizon,
-                    )
-                    committee_object.save()
+            # for horizon in committees_used[ticker]:  # legacy stuff, we don't distinguish horizons anymore
+            for committee_vote in committees_used[ticker]:
+                committee_object = AllocationCommittee(
+                    allocation_id=allocation_object.id,
+                    ticker=ticker,
+                    committee_id=committee_vote.committee_id,
+                    voted_at=committee_vote.timestamp,
+                    vote=committee_vote.vote,
+                    horizon=0 #horizon,
+                )
+                committee_object.save()
 
     else:
         logging.critical(f'!!!!!!! Got response status code {response.status_code}')

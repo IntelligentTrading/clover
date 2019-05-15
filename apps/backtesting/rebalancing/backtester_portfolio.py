@@ -480,7 +480,7 @@ class DogeRebalancingBacktester(PortfolioBacktester):
         return {doge_allocation['coin']: doge_allocation['portion'] for doge_allocation in doge_allocations}
 
     def _init_held_assets(self):
-        from settings import SUPPORTED_DOGE_TICKERS
+        from settings.doge import SUPPORTED_DOGE_TICKERS
         assets = set()
         for ticker in SUPPORTED_DOGE_TICKERS:
             ticker = ticker.split('_')

@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from apps.doge.doge_train_test import DogeTrainer, DogeCommittee
-from settings import SUPPORTED_DOGE_TICKERS, DOGE_TRAINING_PERIOD_DURATION_SECONDS, \
-    DOGE_RETRAINING_PERIOD_SECONDS, DOGE_REBALANCING_PERIOD_SECONDS
+from settings.doge import SUPPORTED_DOGE_TICKERS, DOGE_RETRAINING_PERIOD_SECONDS, DOGE_TRAINING_PERIOD_DURATION_SECONDS, \
+    DOGE_REBALANCING_PERIOD_SECONDS
 from apps.portfolio.management.commands.rebalancer import balance_portfolios
 from apps.doge.doge_train_test import NoGoodDogesException
 import logging
@@ -26,7 +26,7 @@ class Command(BaseCommand):
                 for ticker in SUPPORTED_DOGE_TICKERS:
                     latest_training_timestamp = DogeCommittee.latest_training_timestamp(ticker)
 
-                    if latest_training_timestamp is None or True: # (time.time() - latest_training_timestamp > DOGE_RETRAINING_PERIOD_SECONDS):
+                    if latest_training_timestamp is None or (time.time() - latest_training_timestamp > DOGE_RETRAINING_PERIOD_SECONDS):
                         end_timestamp = int(time.time())  # UTC timestamp
                         start_timestamp = end_timestamp - DOGE_TRAINING_PERIOD_DURATION_SECONDS
 
