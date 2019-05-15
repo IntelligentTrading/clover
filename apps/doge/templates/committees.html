@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block tab_title %}
+  Doge committees
+{% endblock tab_title %}
+
+{#{% block content_title %}#}
+{#  Portfolio#}
+{#{% endblock content_title %}#}
+
+{% block content %}
+{% load humanize %}
+
+
+
+
+
+
+<div class="container">
+
+    {% for committee in data %}
+
+      <div class="row pb-md-4">
+          <h3> Committee valid from: {{ committee.time_str }}</h3>
+            &nbsp; (benchmark performance: {{committee.benchmark_profit  | floatformat:2}}%, id: {{committee.committee_id}})
+      </div>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+            <script>
+
+        $(document).ready(function(){
+          $("#button_{{committee.committee_id}}").click(function(){
+            $("#rebalancing_{{committee.committee_id}}").toggle(500);
+          });
+          $("#rebalancing_{{committee.committee_id}}").hide();
+        });
+        </script>
+
+
+
+<button class="btn btn-primary mb-4" id="button_{{committee.committee_id}}">Show rebalances</button>
+
+    <div class="row" id="rebalancing_{{committee.committee_id}}">
+
+    {% for timestamp, allocations in committee.target_allocations.items %}
+
+
+            <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+            <script type="text/javascript">
+              google.charts.load('current', {'packages':['corechart']});
+              google.charts.setOnLoadCallback(drawChart);
+
+              function drawChart() {
+
+                data = new google.visualization.DataTable();
+                  data.addColumn('string', 'Coin');
+                  data.addColumn('number', 'Portion');
+<!--           data.addColumn({type: 'number', role: 'tooltip'}); -->
+                  data.addRows([
+                    {% for allocation in allocations %}
+
+                  ['{{allocation.coin}}', {{allocation.portion}}],   <!-- , {{allocation.amount}} -->
+
+                  {% endfor %}
+
+
+  ]);
+
+
+
+                var options = {
+                  title: '{{timestamp}}',
+                  'width':600,
+                  'height':300,
+                  'backgroundColor': 'transparent',
+                  'is3D':true,
+                  titleTextStyle: {
+                        color: 'white'
+                    },
+                    hAxis: {
+                        textStyle: {
+                            color: 'white'
+                        },
+                        titleTextStyle: {
+                            color: 'white'
+                        }
+                    },
+                    vAxis: {
+                        textStyle: {
+                            color: 'white'
+                        },
+                        titleTextStyle: {
+                            color: 'white'
+                        }
+                    },
+                    legend: {
+                        textStyle: {
+                            color: 'white'
+                        }
+                    }
+                };
+
+
+                var chart = new google.visualization.PieChart(document.getElementById('piechart_{{committee.committee_id}}_{{forloop.counter}}'));
+
+                chart.draw(data, options);
+              }
+            </script>
+
+
+
+            <div class="col-sm-4" id="piechart_{{committee.committee_id}}_{{forloop.counter}}"></div>
+
+
+    {% endfor %}
+
+    </div>
+
+
+        {% for trader in committee.traders %}
+
+            <div class="row pb-md-4">
+
+                  <div class="col-sm-6">
+
+                      <!-- Trigger the modal with a button -->
+                      <button style="background-color:#252830;border: 1px solid gray;" data-toggle="modal" data-target="#modal_{{committee.timestamp}}_{{forloop.counter}}">
+
+                          {% autoescape off %}
+                          {{ trader.svg }}
+                          {% endautoescape %}
+
+                      </button>
+
+                      <!-- Modal -->
+                      <div class="modal fade" id="modal_{{committee.timestamp}}_{{forloop.counter}}" role="dialog">
+                        <div class="modal-dialog modal-lg">
+                          <div class="modal-content">
+                            <div class="modal-header">
+                              <button type="button" class="close" data-dismiss="modal">&times;</button>
+                              <h4 class="modal-title">{{ committee.time_str }} committee member {{ trader.performance_dict.rank }}</h4>
+                            </div>
+                            <div class="modal-body" style="background-color:#252830;border: 1px solid gray;">
+                              <p> Mean profit: {{ trader.performance_dict.mean_profit | floatformat:2}}%, fitness value: {{ trader.performance_dict.fitness_value | floatformat:2}}.</p>
+                                {% autoescape off %}
+                                {{ trader.svg }}
+                                {% endautoescape %}
+                            </div><div class="modal-body" style="background-color:#252830;border: 1px solid gray;">
+                              <h5>Training period trading report</h5>
+                              <pre>
+                             <code style="color:#538b01;">
+                                 {{ trader.evaluation_report }}
+
+                             </code>
+                              </pre>
+                            </div>
+
+                            <div class="modal-body" style="background-color:#252830;border: 1px solid gray;">
+                              <h5>Buy&hold trading report</h5>
+                              <pre>
+                             <code style="color:#538b01;">
+                                 {{ trader.buy_and_hold_report }}
+
+                             </code>
+                              </pre>
+                            </div>
+                            <div class="modal-footer">
+                              <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+
+
+
+
+                  </div>
+
+                  <div class="col-sm-6">
+
+                      <div class="container">
+                          <div class="row">
+                              Mean profit: {{ trader.performance_dict.mean_profit | floatformat:2}}%
+
+                          </div>
+                          <div class="row">
+                              Doge string: <code> {{ trader.doge_str}} </code>
+
+                          </div>
+                          <div class="row">
+                              Doge rank: {{ trader.performance_dict.rank }}
+
+                          </div>
+
+                          <div class="row">
+                              Fitness value: {{ trader.performance_dict.fitness_value }}
+
+                          </div>
+
+                      </div>
+
+
+                  </div>
+
+            </div>
+
+        {% endfor %}
+
+    {% endfor %}
+
+</div>
+
+
+
+
+{% endblock content %}
+
+{% load static %}
+{% block javascript %}
+  <script src="{% static '/javascript/allocation.js' %}"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+{% endblock javascript %}

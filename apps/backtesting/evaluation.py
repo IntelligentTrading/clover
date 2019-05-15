@@ -4,18 +4,17 @@ import numpy as np
 import pandas as pd
 import copy
 
-from apps.backtesting.data_sources import NoPriceDataException, Horizon
 from apps.backtesting.orders import OrderType
 from apps.backtesting.utils import get_distinct_signal_types, datetime_from_timestamp
-from apps.backtesting.config import transaction_cost_percents
+from apps.backtesting.config import TRANSACTION_COST_PERCENTS
 from abc import ABC, abstractmethod
 from apps.backtesting.charting import BacktestingChart
 
 from apps.backtesting.order_generator import OrderGenerator
 from apps.backtesting.config import INF_CRYPTO, INF_CASH
-from apps.backtesting.data_sources import db_interface
+from apps.backtesting.data_sources import DB_INTERFACE, NoPriceDataException
 
-logging.getLogger().setLevel(logging.INFO)
+# logging.getLogger().setLevel(logging.INFO)
 pd.options.mode.chained_assignment = None
 
 
@@ -25,7 +24,7 @@ class Evaluation(ABC):
                  start_cash, start_crypto, start_time, end_time, source="binance",
                  resample_period=60, evaluate_profit_on_last_order=True, verbose=True,
                  benchmark_backtest=None, time_delay=0, slippage=0, order_generator=OrderGenerator.ALTERNATING,
-                 database=db_interface):
+                 database=DB_INTERFACE):
 
         self._strategy = strategy
         self._transaction_currency = transaction_currency
@@ -37,7 +36,7 @@ class Evaluation(ABC):
         self._source = source
         self._resample_period = resample_period
         self._evaluate_profit_on_last_order = evaluate_profit_on_last_order
-        self._transaction_cost_percent = transaction_cost_percents[source]
+        self._transaction_cost_percent = TRANSACTION_COST_PERCENTS[source]
         self._verbose = verbose
         self._benchmark_backtest = benchmark_backtest
         self._time_delay = time_delay
@@ -191,7 +190,7 @@ class Evaluation(ABC):
     @property
     def end_value(self):
         try:
-            return self.end_cash + (self.end_price * self.end_crypto) * (1-transaction_cost_percents[self._source])
+            return self.end_cash + (self.end_price * self.end_crypto) * (1 - TRANSACTION_COST_PERCENTS[self._source])
         except:
             return None
 
@@ -319,7 +318,9 @@ class Evaluation(ABC):
     def benchmark_backtest(self):
         return self._benchmark_backtest
 
-
+    @property
+    def num_trades_per_hour(self):
+        return self.num_trades / ((self._end_time - self._start_time)/3600)
 
     def _write_trading_df_row(self):
         total_value = self._crypto * self._current_price + self._cash

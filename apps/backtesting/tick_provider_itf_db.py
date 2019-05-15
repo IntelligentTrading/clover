@@ -1,5 +1,5 @@
 import pandas as pd
-from apps.backtesting.data_sources import db_interface
+from apps.backtesting.data_sources import DB_INTERFACE
 from apps.backtesting.signals import Signal
 from apps.backtesting.tick_provider import TickProvider, TickerData
 
@@ -7,7 +7,7 @@ from apps.backtesting.tick_provider import TickProvider, TickerData
 class TickProviderITFDB(TickProvider):
 
     def __init__(self, transaction_currency, counter_currency, start_time, end_time, source=0,
-                 resample_period=60, database=db_interface):
+                 resample_period=60, database=DB_INTERFACE):
 
         super().__init__()
         self.database = database

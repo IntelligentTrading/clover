@@ -2,7 +2,6 @@ import numpy as np
 import inspect
 from collections import namedtuple
 from abc import ABC, abstractmethod
-from apps.backtesting.data_sources import db_interface
 from apps.TA import PERIODS_4HR, PERIODS_1HR
 
 class FunctionProvider(ABC):
@@ -34,13 +33,25 @@ DataKey = namedtuple('DataKey', 'source resample_period transaction_currency cou
 
 class TAProvider(FunctionProvider):
 
-    @abstractmethod
-    def get_indicator(self, indicator_name, input):
-        pass
+    def __init__(self, db_interface, exchange='binance', resample_period=PERIODS_1HR):
+        self._db_interface = db_interface
+        self._exchange = exchange
+        self._resample_period = resample_period  # TODO horizon, resample period and all that
 
-    @abstractmethod
+
+    def get_indicator(self, indicator_name, input):
+        timestamp = self._get_timestamp(input)
+        transaction_currency, counter_currency = input[1:3]
+        return self._db_interface.get_indicator(indicator_name, transaction_currency, counter_currency,
+                      timestamp)
+
+
     def get_indicator_at_previous_timestamp(self, indicator_name, input):
-        pass
+        timestamp = self._get_timestamp(input)
+        transaction_currency, counter_currency = input[1:3]
+        return self._db_interface.get_indicator_at_previous_timestamp(indicator_name, transaction_currency,
+                                                                      counter_currency,
+                                                                      timestamp)
 
     def _get_timestamp(self, input):
         return input[0]
@@ -86,11 +97,11 @@ class TAProvider(FunctionProvider):
         return self._crosses_from_above('close_price', 'bb_low', input)
 
     def bbands_squeeze_bullish(self, input):
-        return self.get_indicator('bb_width', input) <= self.get_indicator('min_bbw_180', input)\
+        return self.get_indicator('bb_squeeze', input)\
                and self._crosses_from_below('close_price', 'bb_up', input)
 
     def bbands_squeeze_bearish(self, input):
-        return self.get_indicator('bb_width', input) <= self.get_indicator('min_bbw_180', input)\
+        return self.get_indicator('bb_squeeze', input)\
                and self._crosses_from_above('close_price', 'bb_low', input)
 
     def bbands_price_gt_up(self, input):
@@ -111,7 +122,7 @@ class TAProvider(FunctionProvider):
 
     def candlestick_momentum_sell(self, input):
         return self.get_indicator('close_price', input) <\
-               0.5 * self.get_indicator_at_previous_timestamp('close_price', input)
+            0.5 * self.get_indicator_at_previous_timestamp('close_price', input)
 
     def _crosses_from_below(self, indicator, other, input):
         current_indicator = self.get_indicator(indicator, input)
@@ -177,11 +188,14 @@ class TAProvider(FunctionProvider):
 class CachedDataTAProvider(TAProvider):
 
     def __init__(self, data):
+        from apps.backtesting.data_sources import DB_INTERFACE
+        super().__init__(DB_INTERFACE, 'binance', PERIODS_1HR)
         self.data = data
 
     def __str__(self):
         return("TAprovider")
 
+    """
     def get_indicator(self, indicator_name, input):
         return self.data.__dict__[indicator_name][self._get_timestamp_index(input)]
 
@@ -192,46 +206,38 @@ class CachedDataTAProvider(TAProvider):
     def _get_timestamp_index(self, input):
         assert self.data.price_data.index.get_loc(input[0]) == np.where(self.data.price_data.index == input[0])[0][0]
         return self.data.price_data.index.get_loc(input[0])
+    """
+
+
+    @staticmethod
+    def build(start_time, end_time, ticker, horizon, exchange, db_interface):
+        from apps.backtesting.data_sources import Data
+        self._db_interface
+        return CachedDataTAProvider(Data(start_time=start_time,
+                                         end_time=end_time,
+                                         ticker=ticker,
+                                         horizon=horizon,
+                                         start_cash=0,
+                                         start_crypto=0,
+                                         source=exchange, database=db_interface))
 
 
 class RedisTAProvider(TAProvider):
 
-    default_indicator_periods = {
-        'sma20': 20,
-        'sma50': 50,
-        'sma200': 200,
-        'ema20': 20,
-        'ema50': 50,
-        'ema200': 200,
-        'rsi': 14,
-        'bb_up': 5,
-        'bb_mid': 5,
-        'bb_low': 5,
-        'macd_value': 26,
-        'macd_signal': 26,
-        'macd_hist': 26,
-        'adx': 1,
-        'slowd': 5,
-        'close_price': 1,
-    }
+    def __init__(self, db_interface):
+        self.db_interface = db_interface
 
 
     def get_indicator(self, indicator_name, input, horizon=PERIODS_1HR): # TODO ensure the horizon can be changed
         timestamp = self._get_timestamp(input)
         transaction_currency, counter_currency = input[1:3]
 
-        if indicator_name.startswith('sma') or indicator_name.startswith('ema'):
-            indicator_period = int(indicator_name[3:])
-            indicator_name = 'sma'
-        else:
-            indicator_period = self.default_indicator_periods[indicator_name]
-
-        indicator_value = db_interface.get_indicator(
+        indicator_value = self.db_interface.get_indicator(
             timestamp=timestamp,
             indicator_name=indicator_name,  # TODO @tomcounsell ensure we have data for all indicator_names
             transaction_currency=transaction_currency,
             counter_currency=counter_currency,
-            resample_period=horizon * indicator_period
+            horizon=horizon,
         )
 
         return indicator_value
@@ -240,12 +246,12 @@ class RedisTAProvider(TAProvider):
     def get_indicator_at_previous_timestamp(self, indicator_name, input, horizon=PERIODS_1HR):
         timestamp = self._get_timestamp(input)
         transaction_currency, counter_currency = input[1:3]
-        indicator_value = db_interface.get_indicator_at_previous_timestamp(
+        indicator_value = self.db_interface.get_indicator_at_previous_timestamp(
             timestamp=timestamp,
             indicator_name=indicator_name,  # TODO @tomcounsell ensure we have data for all indicator_names
             transaction_currency=transaction_currency,
             counter_currency=counter_currency,
-            resample_period=horizon * self.default_indicator_periods[indicator_name]
+            horizon=horizon,
         )
 
         return indicator_value
@@ -254,7 +260,7 @@ class RedisTAProvider(TAProvider):
 class TAProviderCollection(FunctionProvider):
 
     def __init__(self, data_collection):
-        self.providers = {DataKey(data.source, data.resample_period, data.transaction_currency, data.counter_currency,
+        self.providers = {DataKey(data.exchange, data.resample_period, data.transaction_currency, data.counter_currency,
                                   data.start_time, data.end_time): CachedDataTAProvider(data) for data in data_collection}
         # create methods
         members = inspect.getmembers(CachedDataTAProvider, predicate=inspect.isfunction)
@@ -269,13 +275,12 @@ class TAProviderCollection(FunctionProvider):
 
             setattr(TAProviderCollection, function_name, self._create_function(function_name))
 
-
     def _create_function(self, function_name):
         exec(f'''
 def {function_name}(self, input):
     timestamp, transaction_currency, counter_currency = input
     provider = self.get_provider(timestamp, transaction_currency, counter_currency)
-    return provider.{function_name}([timestamp])
+    return provider.{function_name}(input)
 ''')
         return locals()[f'{function_name}']
 

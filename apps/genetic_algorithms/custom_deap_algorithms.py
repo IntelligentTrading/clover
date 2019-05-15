@@ -37,7 +37,7 @@ from apps.genetic_algorithms.gp_utils import compress
 
 
 def eaSimpleCustom(population, toolbox, cxpb, mutpb, ngen, stats=None,
-             halloffame=None, verbose=__debug__, genetic_program=None):
+             halloffame=None, verbose=__debug__, genetic_program=None, filter_same_fitnesses_in_hof=True):
     """This algorithm reproduce the simplest evolutionary algorithm as
     presented in chapter 7 of [Back2000]_.
 
@@ -104,14 +104,8 @@ def eaSimpleCustom(population, toolbox, cxpb, mutpb, ngen, stats=None,
     logbook.header = ['gen', 'nevals'] + (stats.fields if stats else [])
     best_in_gens = []
 
-    # Evaluate the individuals with an invalid fitness
-    invalid_ind = [ind for ind in population if not ind.fitness.valid]
-    fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
-    for ind, fit in zip(invalid_ind, fitnesses):
-        ind.fitness.values = fit
-
-    if halloffame is not None:
-        halloffame.update(population)
+    invalid_ind = _compute_fitnesses_and_update_hof(filter_same_fitnesses_in_hof, halloffame,
+                                                    population, toolbox)
 
     record = stats.compile(population) if stats else {}
     logbook.record(gen=0, nevals=len(invalid_ind), **record)
@@ -134,15 +128,8 @@ def eaSimpleCustom(population, toolbox, cxpb, mutpb, ngen, stats=None,
         # compress offspring
         offspring = compress_population(offspring, genetic_program)
 
-        # Evaluate the individuals with an invalid fitness
-        invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
-        fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
-        for ind, fit in zip(invalid_ind, fitnesses):
-            ind.fitness.values = fit
-
-        # Update the hall of fame with the generated individuals
-        if halloffame is not None:
-            halloffame.update(offspring)
+        invalid_ind = _compute_fitnesses_and_update_hof(filter_same_fitnesses_in_hof, halloffame,
+                                                        offspring, toolbox)
 
         # Replace the current population by the offspring
         population[:] = offspring
@@ -157,6 +144,39 @@ def eaSimpleCustom(population, toolbox, cxpb, mutpb, ngen, stats=None,
             print(logbook.stream)
 
     return population, logbook, best_in_gens
+
+
+def _compute_fitnesses_and_update_hof(filter_same_fitnesses_in_hof, halloffame, offspring, toolbox):
+    hof_fitnesses = set([x.fitness.values[0] for x in halloffame.items])
+    # min_hof_fitness = min(hof_fitnesses)
+    filtered_offspring = []
+    # Evaluate the individuals with an invalid fitness
+    invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
+    fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
+
+    filtered_offspring = {}
+    for ind, fit in zip(invalid_ind, fitnesses):
+        ind.fitness.values = fit
+        if (not filter_same_fitnesses_in_hof) or (filter_same_fitnesses_in_hof
+                                                  and not fit[0] in hof_fitnesses):  # and fit[0] > min_hof_fitness):
+            if fit in filtered_offspring:
+                if len(filtered_offspring[fit]) > len(ind):
+                    filtered_offspring[fit] = ind  # if we've already seen this fitness, prefer the shortest individual that has it
+            else:
+                filtered_offspring[fit] = ind
+
+    filtered_offspring = list(filtered_offspring.values())
+
+    #print(f'Filtered offspring fitnesses: {sorted(set([x.fitness.values[0] for x in filtered_offspring]))}')
+    #print(f'HoF fitnesses before update (a total of {len(halloffame.items)} items): {sorted(hof_fitnesses)}')
+    # Update the hall of fame with the generated individuals
+    if halloffame is not None:
+        halloffame.update(filtered_offspring)
+    #print(f'HoF fitnesses after update: {sorted(set([x.fitness.values[0] for x in halloffame.items]))} '
+    #      f'(a total of {len(halloffame.items)} items)')
+    #print(f'Offspring fitnesses: {sorted(set([x.fitness.values[0] for x in offspring]))}')
+    return invalid_ind
+
 
 def compress_population(population, genetic_program):
     return [genetic_program.individual_from_string(compress(individual)) for individual in population]

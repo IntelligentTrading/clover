@@ -42,8 +42,8 @@ class TimeseriesStorage(KeyValueStorage):
         if self.unix_timestamp < JAN_1_2017_TIMESTAMP:
             raise TimeseriesException("timestamp before January 1st, 2017")
 
-    def save_own_existance(self, describer_key=""):
-        self.describer_key = describer_key or f'{self.__class__.class_describer}:{self.get_db_key()}'
+    # def save_own_existance(self, describer_key=""):
+    #     self.describer_key = describer_key or f'{self.__class__.class_describer}:{self.get_db_key()}'
 
     @classmethod
     def score_from_timestamp(cls, timestamp) -> float:
@@ -85,10 +85,7 @@ class TimeseriesStorage(KeyValueStorage):
         # logger.debug(f'query for sorted set key {sorted_set_key}')
         # example key f'{key_prefix}:{cls.__name__}:{key_suffix}'
 
-        # do a quick check to make sure this is a class of things we know is in existence
-        describer_key = f'{cls.class_describer}:{sorted_set_key}'
         # if no timestamp, assume query to find the most recent, the last one
-
         if not timestamp:
             query_response = database.zrange(sorted_set_key, -1, -1)
             try:
@@ -173,35 +170,46 @@ class TimeseriesStorage(KeyValueStorage):
 
         return np.array(value_array)
 
+    def get_z_rem_data(self):
+        z_rem_key = f'{self.get_db_key()}'  # set key name
+        z_rem_score = f'{self.score_from_timestamp(self.unix_timestamp)}'  # timestamp as score (int or float)
+        return {"key": z_rem_key, "min": z_rem_score, "max": z_rem_score}  # key, score, name
+
     def get_z_add_data(self):
         z_add_key = f'{self.get_db_key()}'  # set key name
         z_add_score = f'{self.score_from_timestamp(self.unix_timestamp)}'  # timestamp as score (int or float)
         z_add_name = f'{self.value}:{z_add_score}'  # item unique value
-        z_add_data = {"key": z_add_key, "name": z_add_name, "score": z_add_score}  # key, score, name
-        return z_add_data
+        return {"key": z_add_key, "name": z_add_name, "score": z_add_score}  # key, score, name
 
     def save(self, publish=False, pipeline=None, *args, **kwargs):
 
         if self.value is None:
             logger.warning("no value was set, nothing to save, but will save empty string anyway")
 
-        self.value = self.value or ""  # use empty string for None, False, etc
+        # self.value = self.value or ""  # use empty string for None, False, etc
+                                         # !!! @tomcounsell this will kill perfectly valid values of 0.0!
+        if self.value != 0:
+            self.value = self.value or ""  # there, this is ugly, but should exclude 0s from the test
+
 
         if not self.force_save:
             # validate some rules here?
             pass
 
-        self.save_own_existance()  # todo: is this still necessary?
+        # self.save_own_existance()  # todo: is this still necessary?
 
+        z_rem_data = self.get_z_rem_data()
         z_add_data = self.get_z_add_data()
-        # # logger.debug(f'savingdata with args {z_add_data}')
+        # logger.debug(f'savingdata with args {z_add_data}')
 
         if pipeline is not None:
+            pipeline.zremrangebyscore(*z_rem_data.values())
             pipeline = pipeline.zadd(*z_add_data.values())
             # logger.debug("added command to redis pipeline")
             if publish: pipeline = self.publish(pipeline)
             return pipeline
         else:
+            database.zremrangebyscore(*z_rem_data.values())
             response = database.zadd(*z_add_data.values())
             # logger.debug("no pipeline, executing zadd command immediately.")
             if publish:

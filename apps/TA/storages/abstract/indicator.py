@@ -154,7 +154,7 @@ class IndicatorStorage(TickerStorage):
         # return str(sma_value)
         return ""
 
-    def compute_and_save(self) -> bool:
+    def compute_and_save(self, pipeline=None) -> bool:
         """
 
         :return: True if value saved, else False
@@ -167,15 +167,17 @@ class IndicatorStorage(TickerStorage):
 
         self.value = self.compute_value(self.periods)
         if self.value:
-            self.save()
+            self.save(pipeline=pipeline)
         return bool(self.value)
 
     @classmethod
     def compute_and_save_all_values_for_timestamp(cls, ticker, exchange, timestamp):
         new_class_storage = cls(ticker=ticker, exchange=exchange, timestamp=timestamp)
+        from settings.redis_db import database
+        pipeline = database.pipeline()
         for periods in cls.get_periods_list():
             new_class_storage.periods = periods
-            new_class_storage.compute_and_save()
+            new_class_storage.compute_and_save(pipeline)
 
     def produce_signal(self):
         """

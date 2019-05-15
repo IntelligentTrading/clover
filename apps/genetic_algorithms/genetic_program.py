@@ -6,7 +6,8 @@ import math
 from deap import creator, tools, base
 from deap.gp import PrimitiveTree
 from apps.backtesting.signals import Signal
-from apps.backtesting.strategies import SignalStrategy, Strength, TickerStrategy, StrategyDecision
+from apps.backtesting.strategies import SignalStrategy, TickerStrategy, StrategyDecision
+from apps.backtesting.legacy_postgres import Strength
 from apps.genetic_algorithms.chart_plotter import *
 from apps.genetic_algorithms.custom_deap_algorithms import combined_mutation, eaSimpleCustom, harm
 from apps.backtesting.backtester_ticks import TickDrivenBacktester
@@ -14,6 +15,7 @@ from apps.backtesting.tick_provider import PriceDataframeTickProvider
 from abc import ABC, abstractmethod
 from apps.backtesting.order_generator import OrderGenerator
 import dill as pickle
+from apps.backtesting.utils import datetime_from_timestamp
 #logger = logging.getLogger()
 #logger.setLevel(logging.DEBUG)
 
@@ -58,7 +60,14 @@ class GeneticTickerStrategy(TickerStrategy):
 
     def get_decision(self, ticker_data):
 
-        outcome = self.func([ticker_data.timestamp, ticker_data.transaction_currency, ticker_data.counter_currency])
+
+        try:
+            outcome = self.func([ticker_data.timestamp, ticker_data.transaction_currency, ticker_data.counter_currency])
+            # logging.info('Successfully decided on the outcome.')
+        except Exception as e:
+            outcome = self.gp_object.function_provider.ignore
+            logging.info(f'Unable to form decision for {ticker_data.transaction_currency}'
+                          f'_{ticker_data.counter_currency} at {datetime_from_timestamp(ticker_data.timestamp)}: {e}')
 
         decision = None
         if outcome == self.gp_object.function_provider.buy:
@@ -183,6 +192,63 @@ class BenchmarkDiffFitness(FitnessFunction):
     def compute(self, individual, evaluation, genetic_program):
         return evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent,
 
+class BenchmarkDiffAbsFitness(FitnessFunction):
+    _name = "ff_benchmarkdiffabs"
+
+    def compute(self, individual, evaluation, genetic_program):
+        return (evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent) * \
+               abs(evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent),
+
+class BenchmarkDiffAbsFitness(FitnessFunction):
+    _name = "ff_benchmarkdiffabsv2"
+
+    def compute(self, individual, evaluation, genetic_program):
+        terminals = set()
+        for element in individual:
+            if not element.name in ('buy', 'sell', 'ignore'):
+                continue
+            terminals.add(element.name)
+            if len(terminals) == 3:
+                break
+
+        return (evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent) * \
+               abs(evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent)\
+               * evaluation.num_trades / ((evaluation._end_time - evaluation._start_time) / 3600) \
+               * len(terminals),
+
+class BenchmarkDiffAbsFitness(FitnessFunction):
+    _name = "ff_benchmarkdiffabsv3"
+
+    def compute(self, individual, evaluation, genetic_program):
+        terminals = set()
+        for element in individual:
+            if not element.name in ('buy', 'sell', 'ignore'):
+                continue
+            terminals.add(element.name)
+            if len(terminals) == 3:
+                break
+
+        return (evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent) * \
+               abs(evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent)\
+               * (1 - (1/math.exp(evaluation.num_trades_per_hour))) \
+               * len(terminals),
+
+class BenchmarkDiffAbsFitness(FitnessFunction):
+    _name = "ff_benchmarkdiffabsv4"
+
+    def compute(self, individual, evaluation, genetic_program):
+        terminals = set()
+        for element in individual:
+            if not element.name in ('buy', 'sell', 'ignore'):
+                continue
+            terminals.add(element.name)
+            if len(terminals) == 3:
+                break
+
+        return (evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent) * \
+               abs(evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent)\
+               * evaluation.num_profitable_trades \
+               * len(terminals),
 
 class BenchmarkDiffTrades(FitnessFunction):
     _name = "ff_benchmarkdiff_trades"
@@ -190,6 +256,18 @@ class BenchmarkDiffTrades(FitnessFunction):
     def compute(self, individual, evaluation, genetic_program):
         return (evaluation.profit_percent - evaluation.benchmark_backtest.profit_percent)*evaluation.num_profitable_trades,
 
+
+class FitnessTrades(FitnessFunction):
+    _name = "ff_trades"
+
+    def compute(self, individual, evaluation, genetic_program):
+        return evaluation.num_profitable_trades,
+
+class FitnessTradesPercent(FitnessFunction):
+    _name = "ff_trades_percent"
+
+    def compute(self, individual, evaluation, genetic_program):
+        return evaluation.num_profitable_trades / evaluation.num_trades if evaluation.num_trades > 0 else 0,
 
 class BenchmarkLengthControlFitness(FitnessFunction):
     _name = "ff_benchlenctrl"
@@ -396,7 +474,7 @@ class GeneticProgram:
             tick_provider = PriceDataframeTickProvider(data.price_data,
                                                        transaction_currency=data.transaction_currency,
                                                        counter_currency=data.counter_currency,
-                                                       source=data.source,
+                                                       source=data.exchange,
                                                        resample_period=data.resample_period, )
 
             # create a new tick based backtester
@@ -405,13 +483,13 @@ class GeneticProgram:
                 strategy=strategy,
                 transaction_currency=data.transaction_currency,
                 counter_currency=data.counter_currency,
-                source=data.source,
+                source=data.exchange,
                 resample_period=data.resample_period,
                 start_cash=data.start_cash,
                 start_crypto=data.start_crypto,
                 start_time=data.start_time,
                 end_time=data.end_time,
-                benchmark_backtest=data.build_buy_and_hold_benchmark(),
+                benchmark_backtest=data.buy_and_hold_benchmark,
                 time_delay=0,
                 slippage=0,
                 verbose=False,

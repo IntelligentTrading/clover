@@ -8,7 +8,7 @@ from settings.redis_db import database
 logger = logging.getLogger(__name__)
 
 try:
-    earliest_price_score = int(float(database.zrangebyscore("BTC_USDT:bittrex:PriceStorage:close_price", 0, "inf", 0, 1)[0].decode("utf-8").split(":")[0]))
+    earliest_price_score = int(float(database.zrangebyscore("BTC_USDT:binance:PriceStorage:close_price", 0, "inf", 0, 1)[0].decode("utf-8").split(":")[0]))
 except:
     from apps.TA.storages.abstract.timeseries_storage import TimeseriesStorage
     earliest_price_score = TimeseriesStorage.score_from_timestamp(int(time.time()))
@@ -29,7 +29,8 @@ class Command(BaseCommand):
         logger.info("Starting TA worker.")
 
         subscribers = {}
-        all_subscriber_classes = get_subscriber_classes()  # + get_doge_subscriber_classes()
+        all_subscriber_classes = get_subscriber_classes() + get_doge_subscriber_classes()
+
         for subscriber_class in all_subscriber_classes:
             subscribers[subscriber_class.__name__] = subscriber_class()
             logger.debug(f'added subscriber {subscriber_class}')
@@ -55,6 +56,10 @@ class Command(BaseCommand):
 
 def get_subscriber_classes():
 
+    from apps.TA.storages.data.price import PriceSubscriber
+    # from apps.TA.storages.data.volume import VolumeSubscriber
+    # only PriceStorage:close_price is publishing. All other p and v indexes are muted
+
     from apps.TA.indicators.overlap import sma, ema, wma, dema, tema, trima, bbands, ht_trendline, kama, midprice
     from apps.TA.indicators.momentum import adx, adxr, apo, aroon, aroonosc, bop, cci, cmo, dx, macd, mom, ppo, \
         roc, rocr, rsi, stoch, stochf, stochrsi, trix, ultosc, willr
@@ -62,13 +67,15 @@ def get_subscriber_classes():
 
     return [
 
+        PriceSubscriber,
+        # VolumeSubscriber,  # the PriceSubscriber handles volume resampling
+
         # OVERLAP INDICATORS
         # midprice.MidpriceSubscriber,
         sma.SmaSubscriber, ema.EmaSubscriber, wma.WmaSubscriber,
         # dema.DemaSubscriber, tema.TemaSubscriber, trima.TrimaSubscriber, kama.KamaSubscriber,
         bbands.BbandsSubscriber,
         # ht_trendline.HtTrendlineSubscriber,
-
 
         # MOMENTUM INDICATORS
         # adx.AdxSubscriber,
@@ -93,9 +100,9 @@ def get_subscriber_classes():
 
     ]
 
-# def get_doge_subscriber_classes():
-#     from apps.doge.doge_TA_actors import DogeSubscriber
-#
-#     return [
-#         DogeSubscriber,
-#     ]
+def get_doge_subscriber_classes():
+    from apps.doge.doge_train_test import DogeSubscriber
+
+    return [
+        DogeSubscriber,
+    ]

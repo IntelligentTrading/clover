@@ -1,6 +1,6 @@
 import itertools
 import numpy as np
-from apps.backtesting.data_sources import db_interface
+from apps.backtesting.data_sources import DB_INTERFACE
 from apps.backtesting.backtester_signals import SignalDrivenBacktester
 from apps.backtesting.config import backtesting_report_columns, backtesting_report_column_names, COINMARKETCAP_TOP_20_ALTS
 from apps.backtesting.signals import ALL_SIGNALS
@@ -12,7 +12,6 @@ from apps.backtesting.utils import time_performance
 from collections import namedtuple
 import pandas.io.formats.excel
 from apps.backtesting.utils import parallel_run
-import xlsxwriter
 
 Ticker = namedtuple("Ticker", "source transaction_currency counter_currency")
 
@@ -161,7 +160,7 @@ class ComparativeEvaluation:
         currency_tuples = []
         for source, counter_currency in itertools.product(sources, counter_currencies):
             currency_tuples += [Ticker(source, transaction_currency, counter_currency)
-                                for transaction_currency in db_interface.get_currencies_trading_against_counter(counter_currency, source)]
+                                for transaction_currency in DB_INTERFACE.get_currencies_trading_against_counter(counter_currency, source)]
         return currency_tuples
 
 
@@ -367,6 +366,7 @@ class ComparativeReportBuilder:
 
 
     def _reformat_sheet_grouped_by_strategy(self, formats, outperforms, sheet, additional_columns = []):
+        import xlsxwriter
         # add outperformance percent at the top
         sheet.write('V4', np.mean(outperforms), formats['large_bold_red'])
 

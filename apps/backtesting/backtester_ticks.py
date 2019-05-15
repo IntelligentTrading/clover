@@ -5,7 +5,7 @@ from apps.backtesting.config import INF_CASH, INF_CRYPTO
 from apps.backtesting.strategies import BuyAndHoldTimebasedStrategy
 from apps.backtesting.order_generator import OrderGenerator
 from apps.backtesting.caching import memoize
-from apps.backtesting.data_sources import db_interface
+from apps.backtesting.data_sources import DB_INTERFACE
 
 
 @memoize
@@ -35,7 +35,7 @@ class TickDrivenBacktester(Evaluation, TickListener):
         self._current_price = ticker_data.close_price
 
         decision = self._strategy.get_decision(ticker_data)
-        order = self._order_generator.generate_order(decision)
+        order = self._order_generator.generate_order(decision, ticker_data)
         if order is not None:
             self.orders.append(order)
             self.order_signals.append(decision.signal)
@@ -59,7 +59,7 @@ class TickDrivenBacktester(Evaluation, TickListener):
 
     @staticmethod
     def build_benchmark(transaction_currency, counter_currency, start_cash, start_crypto, start_time, end_time,
-                        source, tick_provider=None, time_delay=0, slippage=0, database=db_interface):
+                        source, tick_provider=None, time_delay=0, slippage=0, database=DB_INTERFACE):
         if tick_provider is None:
             tick_provider = TickProviderITFDB(transaction_currency,
                                                     counter_currency,
@@ -84,7 +84,7 @@ class TickDrivenBacktester(Evaluation, TickListener):
                 time_delay=time_delay,
                 slippage=slippage,
                 order_generator=benchmark_order_generator,
-                database=database
+                database=database,
             )
         return benchmark
 

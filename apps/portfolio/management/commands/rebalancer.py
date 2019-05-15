@@ -11,8 +11,10 @@ from django.core.management.base import BaseCommand
 from apps.portfolio.models import Portfolio
 from apps.portfolio.models.allocation import ITF1HR, ITF6HR, ITF24HR, ITFPRIV, MOONDOGE, ITF_PACKS
 from apps.portfolio.services.signals import get_allocations_from_signals, SHORT_HORIZON, MEDIUM_HORIZON, LONG_HORIZON
-from apps.portfolio.services.doge_votes import get_allocations_from_doge
+from apps.portfolio.services.doge_votes import get_allocations_from_doge, NoCommitteeVotesFoundException
 from apps.portfolio.services.trading import set_portfolio
+from apps.backtesting.utils import datetime_from_timestamp
+
 
 logger = logging.getLogger(__name__)
 
@@ -37,17 +39,20 @@ def balance_portfolios():
 
     ITF_PACK_HORIZONS = {ITF1HR: SHORT_HORIZON, ITF6HR: MEDIUM_HORIZON, ITF24HR: LONG_HORIZON}
 
-    ITF_doge_binance_allocations = get_allocations_from_doge(at_datetime=datetime.now())
 
-    ITF_binance_allocations = {
-        itf_group: get_allocations_from_signals(horizon=horizon, at_datetime=datetime.now())
-        for itf_group, horizon in ITF_PACK_HORIZONS.items()
-    }
 
+    ITF_doge_binance_allocations, committees_used = \
+        get_allocations_from_doge(at_datetime=datetime.now())    # will raise an exception if no votes are found
+
+
+    # ITF_binance_allocations = {
+    #     itf_group: get_allocations_from_signals(horizon=horizon, at_datetime=datetime.now())
+    #    for itf_group, horizon in ITF_PACK_HORIZONS.items()
+    # }   # disable for now
 
     for portfolio in Portfolio.objects.all():
-        if portfolio.recently_rebalanced:
-            continue
+        # if portfolio.recently_rebalanced:  # we don't need this logic for Clover so far
+        #       continue
 
         binance_account = portfolio.exchange_accounts.first()
 
@@ -57,6 +62,8 @@ def balance_portfolios():
             continue
 
         try:
+
+            '''
             target_allocation = deepcopy(portfolio.target_allocation)
             for alloc in portfolio.target_allocation:
                 if alloc['coin'] in ITF_PACKS:
@@ -78,11 +85,20 @@ def balance_portfolios():
                     )
 
             final_target_allocation = clean_allocation(target_allocation)
+            '''
 
-            set_portfolio(portfolio, final_target_allocation)  # multithreaded
+
+            # for now, disable all other options for rebalancing and just use doge allocations
+            set_portfolio(portfolio, ITF_doge_binance_allocations, committees_used)  # multithreaded
 
         except Exception as e:
             logging.error(str(e))
+            return str(e)   # for unit tests
+
+
+
+
+
 
 
 def clean_allocation(allocation):

@@ -47,3 +47,12 @@ def condensed_fill_redis_TA_gaps(ugly_tuple):
     return missing_TA_data.find_TA_storage_data_gaps(
         ticker, exchange, storage_class_name, force_fill=force_fill
     )
+
+
+
+# maybe just rewrite this whole thing?
+# we need to delete duplicate scores
+# and make sure there are no gaps in the TA indicator data
+# even force some values if able to safely
+
+

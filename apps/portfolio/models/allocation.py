@@ -52,6 +52,7 @@ class Allocation(models.Model):
     def __str__(self):
         return f"allocation_{self.id}"
 
+
     class Meta:
         verbose_name_plural = 'allocations'
         ordering = ["-_timestamp"]
@@ -62,4 +63,4 @@ def update_BTC_price(sender, instance, **kwargs):
     if not getattr(instance, 'BTC_price_updated', False):
         instance.BTC_price = get_BTC_price()
         instance.BTC_price_updated = True
-        instance.save()
+        # instance.save()

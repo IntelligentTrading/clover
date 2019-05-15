@@ -34,15 +34,16 @@ backtesting_report_columns = list(backtesting_cols_to_names.keys())
 backtesting_report_column_names = list(backtesting_cols_to_names.values())
 
 
-transaction_cost_percents = {
-    "binance": 0.001
+TRANSACTION_COST_PERCENTS = {
+    "binance": 0.001,
+    2: 0.001  # temp fix for Postgres backward compatibility
 }
 
 # top 20 altcoins on Coinmarketcap (USDT not included)
 COINMARKETCAP_TOP_20_ALTS = "ETH,XRP,BCH,EOS,XLM,LTC,ADA,MIOTA,XMR,TRX,DASH,ETC,NEO,BNB,VET,XEM,XTZ,ZEC,OMG,LSK".split(",")
 
-INF_CASH = 100000000000
-INF_CRYPTO = 100000000000
+INF_CASH = 100000000001 * 1E8
+INF_CRYPTO = 100000000001 * 1E8
 
 ENABLE_BACKTEST_CACHE = False
 CACHE_MODE_REDIS, CACHE_MODE_DICTIONARY = ("redis", "dictionary")

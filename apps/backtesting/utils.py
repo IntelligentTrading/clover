@@ -2,7 +2,7 @@ import datetime
 import logging
 import time
 from apps.backtesting.config import POOL_SIZE
-from pathos.multiprocessing import Pool
+from pathos.multiprocessing import Pool, ThreadPool
 import tqdm
 from dateutil import parser
 
@@ -40,6 +40,19 @@ def parallel_run(func, param_list, pool_size=POOL_SIZE):
 #        pool.restart()   # see https://stackoverflow.com/questions/49888485/pathos-multiprocessings-pool-appears-to-be-nonlocal
     return results
 
+
+def parallel_run_thread_pool(func, param_list, pool_size=POOL_SIZE):
+    with ThreadPool(pool_size) as pool:
+        #results = pool.map(func, param_list)
+        results = list(tqdm.tqdm(pool.imap(func, param_list), total=len(param_list)))
+        pool.close()
+        pool.join()
+        pool.terminate() # needed for Pathos,
+#        pool.restart()   # see https://stackoverflow.com/questions/49888485/pathos-multiprocessings-pool-appears-to-be-nonlocal
+    return results
+
+
+
 def in_notebook():
     try:
         shell = get_ipython().__class__.__name__
@@ -58,6 +71,6 @@ class LogDuplicateFilter(object):
         self.msgs = set()
 
     def filter(self, record):
-        rv = record.msg not in self.msgs
-        self.msgs.add(record.msg)
+        rv = str(record.msg) not in self.msgs
+        self.msgs.add(str(record.msg))
         return rv

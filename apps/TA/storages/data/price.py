@@ -57,9 +57,8 @@ class PriceStorage(TickerStorage):
 
 
 class PriceSubscriber(TickerSubscriber):
-    classes_subscribing_to = [
-        PriceVolumeHistoryStorage
-    ]
+    classes_subscribing_to = [PriceVolumeHistoryStorage]
+    storage_class = PriceStorage
 
     def handle(self, channel, data, *args, **kwargs):
         from apps.TA.storages.utils.pv_resampling import generate_pv_storages # import here, bc has circular dependancy

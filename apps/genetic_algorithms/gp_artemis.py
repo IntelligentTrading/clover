@@ -3,13 +3,12 @@ import json
 import itertools
 import numpy as np
 import pandas as pd
-from apps.backtesting.data_sources import db_interface
+from apps.backtesting.data_sources import DB_INTERFACE, Data, NoPriceDataException
 from apps.backtesting.utils import datetime_to_timestamp
 
 from artemis.experiments import experiment_root
 from artemis.experiments.experiments import clear_all_experiments
 from collections import OrderedDict
-from apps.genetic_algorithms.gp_data import Data
 from apps.genetic_algorithms.genetic_program import GeneticProgram, FitnessFunction
 from apps.genetic_algorithms.leaf_functions import TAProviderCollection
 from apps.genetic_algorithms.grammar import Grammar
@@ -19,13 +18,12 @@ from apps.backtesting.config import INF_CASH, INF_CRYPTO
 from apps.backtesting.comparative_evaluation import ComparativeEvaluation, ComparativeReportBuilder
 #from data_sources import get_currencies_trading_against_counter
 from apps.backtesting.backtesting_runs import build_itf_baseline_strategies
-from apps.backtesting.data_sources import NoPriceDataException
 from apps.backtesting.utils import time_performance
 from functools import partial
 #from pathos.multiprocessing import ProcessingPool as Pool
 from apps.backtesting.utils import parallel_run
 from apps.genetic_algorithms.gp_utils import Period
-
+from apps.genetic_algorithms.leaf_functions import TAProviderCollection
 
 
 from apps.backtesting.utils import LogDuplicateFilter
@@ -35,7 +33,7 @@ logging.getLogger().addFilter(dup_filter)
 
 class ExperimentManager:
 
-    START_CASH = 1000
+    START_CASH = 1000*1E6
     START_CRYPTO = 0
 
     @experiment_root
@@ -51,11 +49,12 @@ class ExperimentManager:
         return hof, best
 
 
-    def __init__(self, experiment_container, read_from_file=True, database=db_interface, hof_size=10,
-                 function_provider=None, rockstars=[]):
+    def __init__(self, experiment_container, read_from_file=True, database=DB_INTERFACE, hof_size=10,
+                 function_provider=None, rockstars=[], parallel_run=False):
         self.database = database
         self.hof_size = hof_size
         self.rockstars = rockstars
+        self._parallel_run = parallel_run
 
         if read_from_file:
             with open(experiment_container) as f:
@@ -71,12 +70,17 @@ class ExperimentManager:
         # if function provider is set to none, using cached data
         if function_provider is None:
             # initialize data
-            self.training_data = [Data(start_cash=self.START_CASH, start_crypto=self.START_CRYPTO, database=self.database,
-                                      **dataset) for dataset in self.experiment_json["training_data"]]
-            self.validation_data = [Data(start_cash=self.START_CASH, start_crypto=self.START_CRYPTO, database=self.database,
+
+            self.training_data = [
+                DB_INTERFACE.build_data_object(start_cash=self.START_CASH, start_crypto=self.START_CRYPTO,
+                                               **dataset) for dataset in self.experiment_json["training_data"]
+            ]
+
+            self.validation_data = [Data(start_cash=self.START_CASH, start_crypto=self.START_CRYPTO,
                                       **dataset) for dataset in self.experiment_json["validation_data"]]
             # create function provider objects based on data
-            self.function_provider = TAProviderCollection(self.training_data + self.validation_data)
+            from apps.genetic_algorithms.leaf_functions import TAProvider
+            self.function_provider = TAProvider(db_interface=DB_INTERFACE) #Collection(self.training_data + self.validation_data)
 
         else:
             self.training_data = [Data.to_string(dataset['transaction_currency'],
@@ -90,6 +94,7 @@ class ExperimentManager:
         # generate and register variants
         self._fill_experiment_db()
         self._register_variants()
+        self._fill_variants()
 
 
 
@@ -117,7 +122,7 @@ class ExperimentManager:
             )
 
     def _register_variants(self, rebuild_grammar=True):
-        clear_all_experiments()
+        # clear_all_experiments()  # new safeguards in place, so maybe we don't need this
 
         if rebuild_grammar:
             for experiment_name, experiment in self.experiment_db.get_all():
@@ -129,10 +134,22 @@ class ExperimentManager:
 
         for experiment_name, experiment in self.experiment_db.get_all():
             self.run_evolution.add_variant(variant_name=experiment_name, hof_size=self.hof_size, **experiment)
-        self.variants = self.run_evolution.get_variants()
 
-    def get_variants(self):
-        return self.run_evolution.get_variants()
+    @property
+    def variants(self):
+        return self._variants
+
+    def _fill_variants(self):
+        variants = []
+
+        for variant in self.run_evolution.get_variants():
+            try:
+                self.get_db_record(variant)   # will raise an exception if no record exists
+                variants.append(variant)
+            except KeyError as e:
+                logging.warning(f'Variant {variant.name} not in current experiment (key {str(e)} not found), skipping...')
+        self._variants = variants
+
 
     @staticmethod
     def run_variant(variant, keep_record, display_results, rerun_existing, saved_figure_ext):
@@ -142,27 +159,23 @@ class ExperimentManager:
 
         return variant.run(keep_record=keep_record, display_results=display_results, saved_figure_ext=saved_figure_ext)
 
-    @time_performance
-    def run_parallel_experiments(self, num_processes=8, rerun_existing=False, display_results=True):
-        #from pathos.multiprocessing import ProcessingPool as Pool
+    def run_experiments(self, rerun_existing=False, display_results=True, keep_record=True):
+        if self._parallel_run:
+            self.run_parallel_experiments(rerun_existing, display_results, keep_record)
+        else:
+            self.run_sequential_experiments(rerun_existing, display_results, keep_record)
 
-        partial_run_func = partial(ExperimentManager.run_variant, keep_record=True, display_results=display_results,
+    @time_performance
+    def run_parallel_experiments(self, rerun_existing=False, display_results=True, keep_record=True):
+        partial_run_func = partial(ExperimentManager.run_variant, keep_record=keep_record, display_results=display_results,
                            rerun_existing=rerun_existing, saved_figure_ext='.fig.png')
 
         records = parallel_run(partial_run_func, self.variants)
-        #with Pool(num_processes) as pool:
-        #    records = pool.map(partial_run_func, self.variants)
-        #    pool.close()
-        #    pool.join()
-        #    pool.terminate()
-
-        for record in records:
-            if record is not None: # empty records if experiments already exist
-                self._save_rockstars(record)
-
+        return records
 
     @time_performance
-    def run_experiments(self, rerun_existing=False, display_results=True, keep_record=True):
+    def run_sequential_experiments(self, rerun_existing=False, display_results=True, keep_record=True):
+        records = []
         for i, variant in enumerate(self.variants):
             if len(variant.get_records(only_completed=True)) > 0 and not rerun_existing:
                 logging.info(f">>> Variant {variant.name} already has completed records, skipping...")
@@ -170,6 +183,8 @@ class ExperimentManager:
 
             logging.info(f"Running variant {i}")
             record = variant.run(keep_record=keep_record, display_results=display_results, saved_figure_ext='.fig.png')
+            records.append(record)
+        return records
 
 
     def explore_records(self, use_validation_data=True):
@@ -177,7 +192,7 @@ class ExperimentManager:
             data = self.validation_data
         else:
             data = self.training_data
-        #   variants = run_evolution.get_variants()
+
         for variant in self.variants:
             # for variant_name in variant_names:
             #   variant = run_evolution.get_variant(variant_name)
@@ -224,11 +239,16 @@ class ExperimentManager:
             logging.warning(f">>> No records found for variant {variant.name}, skipping...")
             return
         hof, best = latest.get_result()
+
+        # look at best of all time and best in every generation
+        individuals = hof.items + best
+        individuals = sorted(individuals, key=lambda x: x.fitness, reverse=True)
+
         result = []
         if top_n is None:
-            top_n = len(hof) # just take all of them
+            top_n = len(individuals)  # just take all of them
         for i in range(top_n):
-            best_individual = hof[i]
+            best_individual = individuals[i]
             evaluations = []
             for data in datasets:
                 evaluation = self._build_evaluation_object(best_individual, variant, data)
@@ -236,8 +256,9 @@ class ExperimentManager:
             result.append((best_individual, evaluations))
         return result
 
-    def get_best_performing_across_variants_and_datasets(self, datasets, sort_by=["mean_profit"], top_n_per_variant=5,
-                                                         remove_duplicates=True):
+
+    def get_best_performing_across_variants_and_datasets(self, datasets, sort_by=["mean_profit"], top_n_per_variant=None,
+                                                         remove_duplicates=True, min_fitness=None):
         """
         Returns a list of best performing individuals, top_n_per_variant per experiment variant.
         :return:
@@ -246,7 +267,7 @@ class ExperimentManager:
                                    "mean_profit", "std_profit", "max_profit", "min_profit", "all_profits",
                                    "benchmark_profits", "differences", "variant",
                                    "evaluations", "individual"])
-        for variant in self.get_variants():
+        for variant in self.variants:
             best_individuals = self.get_best_performing_individuals_and_dataset_performance(variant, datasets)
 
             if best_individuals is None:
@@ -256,7 +277,7 @@ class ExperimentManager:
                 if remove_duplicates and str(best_individual) in df.doge.values:
                     continue
 
-                if i > top_n_per_variant: # already got enough from this variant
+                if top_n_per_variant is not None and i > top_n_per_variant: # already got enough from this variant
                     break
 
                 profits = [evaluation.profit_percent for evaluation in evaluations]
@@ -278,6 +299,8 @@ class ExperimentManager:
                            "individual": best_individual}, ignore_index=True)
 
         df = df.sort_values(by=sort_by, ascending=False)
+        if min_fitness is not None:
+            df = df[df.fitness_value >= min_fitness]
         return df
 
 
@@ -418,7 +441,7 @@ class ExperimentManager:
     def get_performance_df_for_dataset_and_variant(self, variant, data):
         """
         Produces a performance dataframe for the given training set and experiment variant.
-        :param variant: experiment variant (get a list of all by invoking get_variants() on this object)
+        :param variant: experiment variant (get a list of all by invoking the property variants of this object)
         :param data: a Data object, part of the training_data collection
         :return: a dataframe showing performance
         """
@@ -428,6 +451,14 @@ class ExperimentManager:
             logging.warning(f">>> No records found for variant {variant.name}, skipping...")
             return
         hof, best = latest.get_result()
+
+        print('HoF::::::')
+        for item in hof.items:
+            print(f'    {str(item)[:10]} {item.fitness.values[0]}')
+
+        print('GenBest::::::')
+        for item in best:
+            print(f'    {str(item)[:10]} {item.fitness.values[0]}')
 
         for rank, individual in enumerate(hof):
             row = self.generate_performance_df_row(data, individual, variant, rank)
@@ -468,7 +499,7 @@ class ExperimentManager:
     def get_joined_performance_dfs_over_all_variants(self, verbose=True):
         """
         Produces a list of N dataframes, where N is the number of training sets in the training collection.
-        Each dataframe shows profits on the the corresponding training set across all experiment variants.
+        Each dataframe shows profits on the corresponding training set across all experiment variants.
         :return: a list of dataframes
         """
         joined_dfs = []
@@ -690,14 +721,9 @@ class ExperimentManager:
 
         return backtest_results, baseline_results
 
-    @staticmethod
-    def resurrect_doge(experiment_json, experiment_id, individual_str, database, function_provider=None):
-        e = ExperimentManager(experiment_container=experiment_json, read_from_file=False, database=database, function_provider=function_provider)
-        gp = e.build_genetic_program(data=None, function_provider=e.function_provider, db_record=e.get_db_record_from_experiment_id(experiment_id))
-        return gp.individual_from_string(individual_str), gp
 
     @staticmethod
-    def resurrect_better_doge(experiment_json, individual_str, function_provider):
+    def resurrect_doge(experiment_json, individual_str, function_provider, fitness_function):
         experiment_json = json.loads(experiment_json)
         grammar = Grammar.construct(
             grammar_name=experiment_json['grammar_version'],
@@ -708,7 +734,7 @@ class ExperimentManager:
             data_collection=None,
             function_provider=function_provider,
             grammar=grammar,
-            fitness_function=experiment_json['fitness_functions'][0],
+            fitness_function=fitness_function,
             tree_depth=experiment_json['tree_depth'],
             order_generator=experiment_json['order_generator']
 
@@ -769,6 +795,7 @@ class ExperimentDB:
 
     def __getitem__(self, key):
         return self._experiments[key]
+
 
 
 

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from django.core.cache import cache
 
 from apps.common.utilities.multithreading import start_new_thread
-from settings import ITF_CORE_API_URL, ITF_CORE_API_KEY
+from settings import ITF_CORE_API_URL, ITF_CORE_API_KEY, ITF_CORE_API_TOKEN
 
 (SHORT_HORIZON, MEDIUM_HORIZON, LONG_HORIZON) = list(range(3))
 (POLONIEX, BITTREX, BINANCE, BITFINEX, KUCOIN, GDAX, HITBTC) = list(range(7))
@@ -15,7 +15,9 @@ from settings import ITF_CORE_API_URL, ITF_CORE_API_KEY
 def get_BTC_price():
     BTC_price = cache.get("current_BTC_price")
     if not BTC_price:
-        fix_missing_BTC_price_in_cache()
+        BTC_price = fix_missing_BTC_price_in_cache()
+        if BTC_price:
+            return int(BTC_price)
         from apps.portfolio.models import Allocation
         # last resort, steal from the most recent known one
         allocation_object = Allocation.objects.filter(BTC_price__isnull=False).first()
@@ -23,17 +25,18 @@ def get_BTC_price():
 
     return int(BTC_price) if BTC_price else None
 
-@start_new_thread
 def fix_missing_BTC_price_in_cache():
     BTC_price = None
     for i in range(3):
         if BTC_price: continue
-        url = ITF_CORE_API_URL + "v2/prices/BTC"
-        r = requests.get(url, headers={"API-KEY": ITF_CORE_API_KEY})
+
+        url = ITF_CORE_API_URL + "v2/resampled-prices/?transaction_currency=BTC&page_size=1&source=2&counter_currency=2"
+        r = requests.get(url, headers={"Authorization": f"Token {ITF_CORE_API_TOKEN}"})
         try:
-            BTC_price = int(r.json()['results'][0]['price'])
+            BTC_price = int(r.json()['results'][0]['close_price'])
             assert BTC_price > 10 ** 11
             cache.set("current_BTC_price", BTC_price, 60 * 10)
+            return BTC_price
         except:
             pass
 
@@ -75,7 +78,7 @@ def get_allocations_from_signals(horizon="all", at_datetime=None):
                 horizon_periods[horizon] * horizon_life_spans[horizon]
         ))
         r = requests.get(
-            url, headers={"API-KEY": ITF_CORE_API_KEY},
+            url, headers={"Authorization": f"Token {ITF_CORE_API_TOKEN}"},
             params={
                 "horizon": horizon,
                 "source": source,

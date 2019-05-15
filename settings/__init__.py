@@ -32,8 +32,9 @@ DEMO = 'DEMO' in DEPLOYMENT_TYPE
 STAGE = 'STAGE' in DEPLOYMENT_TYPE
 LOCAL = 'LOCAL' in DEPLOYMENT_TYPE
 
+
 # for Heroku deployment wierdness
-LOAD_TALIB = True
+LOAD_TALIB = False
 
 # Set up logger
 if LOCAL:
@@ -65,6 +66,7 @@ ALLOWED_HOSTS = [
     '.herokuapp.com',
     'localhost',
     '127.0.0.1',
+    '.ngrok.io'
 ]
 
 
@@ -76,6 +78,7 @@ DJANGO_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize'
 ]
 
 THIRD_PARTY_APPS = [
@@ -85,10 +88,11 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     # 'apps.user',
     'apps.common',
-    'apps.communication',
-    'apps.TA',
+    'apps.channel',
+    'apps.doge',
     'apps.portfolio',
-    'apps.doge'
+    'apps.TA',
+    'apps.tests',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -200,14 +204,26 @@ HORIZONS_TIME2NAMES = {
 
 # list of the exchanges on which we generate signals. Make it in sync with same list in Data app settings
 #EXCHANGE_MARKETS = ('poloniex', 'binance', 'bittrex', 'bitfinex', 'kucoin')
-EXCHANGE_MARKETS = ('poloniex', 'binance', 'bittrex')
+EXCHANGE_MARKETS = ('binance',)
 
-LOAD_TALIB = True
+LOAD_TALIB = False
 
 # list of tickers for which doges will vote
-SUPPORTED_DOGE_TICKERS = ['BTC_USDT', ]
+SUPPORTED_DOGE_TICKERS = ['BTC_USDT', 'ETH_USDT', 'ETH_BTC',]
+
+ONE_WEEK = 60*60*24*7
+ONE_DAY = 60*60*24
+ONE_HOUR = 60*60
 
 # doge training schedule (how often to retrain and reinit the committee)
-DOGE_RETRAINING_PERIOD_SECONDS = 60*5
+DOGE_RETRAINING_PERIOD_SECONDS = ONE_HOUR           # how often to retrain and reinit the committee
+DOGE_TRAINING_PERIOD_DURATION_SECONDS = ONE_DAY     # the duration of the training period
 DOGE_LOAD_ROCKSTARS = True
 DOGE_MAX_ROCKSTARS = 20
+DOGE_REBALANCING_PERIOD_SECONDS = 20*60             # how often to run the rebalancer when autotrading
+
+for handler in logging.root.handlers[:]:
+    logging.root.removeHandler(handler)
+logger = logging.getLogger(__name__)
+logging.basicConfig(filename='doge.log', filemode='a', format='[%(asctime)s]:%(name)s:%(levelname)s %(message)s')
+logging.getLogger().addHandler(logging.StreamHandler())
