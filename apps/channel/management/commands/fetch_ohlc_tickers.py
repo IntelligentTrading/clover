@@ -6,6 +6,7 @@ import requests
 import schedule
 from django.core.management.base import BaseCommand
 
+from apps.TA.resources.historical_data import load_ticker
 from apps.channel.tickers import Tickers, get_usdt_rates_for
 from apps.common.utilities.multithreading import start_new_thread
 from settings import EXCHANGE_MARKETS, DEBUG
@@ -48,11 +49,11 @@ def fetch_and_process_one(exchange, usdt_rates):
     tickers = Tickers(exchange=exchange, usdt_rates=usdt_rates)
     tickers.run()
 
-    # send_ohlc_data_to_api(tickers)
+    send_ohlc_data_to_TA(tickers)
     # send_ohlc_data_to_queue(tickers)
 
 @start_new_thread
-def send_ohlc_data_to_api(tickers_object):
+def send_ohlc_data_to_TA(tickers_object):
     for symbol, symbol_info in tickers_object.tickers.items():
 
         if not symbol.count('/') == 1: # check format is like "ETH/BTC"
@@ -73,21 +74,20 @@ def send_ohlc_data_to_api(tickers_object):
                                           minimum_volume_in_usd=tickers_object.minimum_volume_in_usd):
 
             ticker = symbol.replace("/","_")
-            headers = {'Authorization': f"Token {ITF_API_KEY}"}
-            r = requests.put(f'{ITF_API}/v3/historical_data/{ticker}', headers=headers,
-                             json={
-                                 'exchange': tickers_object.exchange,
-                                 'ticker': symbol_info['symbol'],
-                                 'timestamp': int(symbol_info['timestamp'] / 1000),  # milliseconds -> sec
-                                 'open_price': symbol_info['open'],
-                                 'high_price': symbol_info['high'],
-                                 'low_price': symbol_info['low'],
-                                 'close_price': symbol_info['close'],
-                                 'close_volume': symbol_info['baseVolume'],
-                             })
+            data = {
+                'exchange': tickers_object.exchange,
+                'ticker': symbol_info['symbol'],
+                'timestamp': int(symbol_info['timestamp'] / 1000),  # milliseconds -> sec
+                'open_price': symbol_info['open'],
+                'high_price': symbol_info['high'],
+                'low_price': symbol_info['low'],
+                'close_price': symbol_info['close'],
+                'close_volume': symbol_info['baseVolume'],
+            }
+
 
             try:
-                logger.debug(r.url)
-                logger.debug(str(r.json()))
-            except:
-                pass
+                database_response = load_ticker(ticker, data)
+                logger.debug(str(database_response))
+            except Exception as e:
+                logger.debug(str(e))
