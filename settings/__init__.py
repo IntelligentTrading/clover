@@ -209,7 +209,7 @@ EXCHANGE_MARKETS = ('poloniex', 'binance', 'bittrex')
 LOAD_TALIB = False
 
 # list of tickers for which doges will vote
-SUPPORTED_DOGE_TICKERS = ['BTC_USDT', 'ETH_USDT'] # , 'ETH_BTC',] # TODO add ETH_BTC when ready
+SUPPORTED_DOGE_TICKERS = ['BTC_USDT', 'ETH_USDT', 'ETH_BTC',]
 
 ONE_WEEK = 60*60*24*7
 ONE_DAY = 60*60*24

@@ -310,6 +310,8 @@ class RedisDB(Database):
 
 
     def _extract_indicator_value(self, indicator_name, result):
+        if not result:
+            return float(result[0])
         result = result.split(':')
         if indicator_name == 'bb_up':
             return float(result[0])

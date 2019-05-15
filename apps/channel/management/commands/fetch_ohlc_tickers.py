@@ -6,11 +6,9 @@ import requests
 import schedule
 from django.core.management.base import BaseCommand
 
-from apps.channel.pubsub_queue import publish_message_to_queue
 from apps.channel.tickers import Tickers, get_usdt_rates_for
 from apps.common.utilities.multithreading import start_new_thread
-from settings import EXCHANGE_MARKETS, AWS_SNS_TOPIC_ARN, SNS_PRICES_BATCH_SIZE, ITF_API, ITF_API_KEY, DEBUG
-from settings import TICKERS_MINIMUM_USD_VOLUME
+from settings import EXCHANGE_MARKETS, DEBUG
 
 logger = logging.getLogger(__name__)
 
@@ -47,44 +45,11 @@ def fetch_and_process_all_exchanges(usdt_rates):
 
 
 def fetch_and_process_one(exchange, usdt_rates):
-    tickers = Tickers(exchange=exchange, usdt_rates=usdt_rates, minimum_volume_in_usd=TICKERS_MINIMUM_USD_VOLUME)
+    tickers = Tickers(exchange=exchange, usdt_rates=usdt_rates)
     tickers.run()
 
-    send_ohlc_data_to_api(tickers)
-    send_ohlc_data_to_queue(tickers)
-
-
-@start_new_thread
-def send_ohlc_data_to_queue(tickers_object, batch_size = SNS_PRICES_BATCH_SIZE):
-    message_value = []
-    for symbol, symbol_info in tickers_object.tickers.items():
-        try:
-            (transaction_currency, counter_currency) = symbol.split('/') # check format
-        except ValueError:
-            logger.debug(f'Skipping symbol: {symbol}')
-            continue # skip malformed currency pairs
-
-        if tickers_object._symbol_allowed(symbol_info=symbol_info, \
-            usdt_rates=tickers_object.usdt_rates, \
-            minimum_volume_in_usd=tickers_object.minimum_volume_in_usd):
-
-            message_value.append({
-                'source': tickers_object.exchange,
-                'symbol': symbol_info['symbol'],
-                'timestamp': symbol_info['timestamp']/1000, # timestamp in milliseconds,
-                'popen': symbol_info['open'],
-                'high': symbol_info['high'],
-                'low': symbol_info['low'],
-                'close': symbol_info['close'],
-                'bvolume': symbol_info['baseVolume'],
-                'average': symbol_info['average'],
-            })
-
-    # send messages in batches
-    for i in range(0, len(message_value), batch_size):
-        message_value_batch = message_value[i:i+batch_size]
-        #print(f"batch_{i}> size:{len(message_value_batch)}")
-        publish_message_to_queue(message=json.dumps(message_value_batch), topic_arn=AWS_SNS_TOPIC_ARN, subject="ohlc_prices")
+    # send_ohlc_data_to_api(tickers)
+    # send_ohlc_data_to_queue(tickers)
 
 @start_new_thread
 def send_ohlc_data_to_api(tickers_object):
