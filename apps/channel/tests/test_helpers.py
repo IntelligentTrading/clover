@@ -1,6 +1,6 @@
 import unittest
 
-from apps.channel.helpers import *
+from apps.channel.helpers import source_code_from_name, source_name_from_code, counter_currency_code_from_name
 
 class TestHelpers(unittest.TestCase):
 

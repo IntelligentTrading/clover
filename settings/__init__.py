@@ -88,11 +88,11 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     # 'apps.user',
     'apps.common',
-    'apps.communication',
-    'apps.TA',
-    'apps.portfolio',
+    'apps.channel',
     'apps.doge',
-    'apps.tests'
+    'apps.portfolio',
+    'apps.TA',
+    'apps.tests',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

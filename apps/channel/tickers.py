@@ -2,8 +2,6 @@ import logging
 
 import ccxt
 
-from settings import COUNTER_CURRENCIES
-
 logger = logging.getLogger(__name__)
 logging.getLogger("ccxt.base.exchange").setLevel(logging.INFO)
 
@@ -100,7 +98,7 @@ class Tickers:
             logger.warning(str(e))
             return False
 
-        if counter_currency not in COUNTER_CURRENCIES:
+        if counter_currency not in ["BTC", "USDT"]:
             return False
         elif len(transaction_currency) >= 6: # Filter out Bitmark from Poloniex
             return False
