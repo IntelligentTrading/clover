@@ -24,6 +24,8 @@ VoteFraction = namedtuple("VoteFraction", "transaction_currency_vote_fraction, c
 SHITCOIN_DAMPENING_FACTOR = 1.0   # TODO: fix and experiment with this
                                     # almost corresponds to max total proportion of shitcoins in the portfolio, but not quite :D
 
+ENFORCE_FRESH_VOTES = False
+
 
 def votes_on_test(ticker="BTC_USDT"):
     """
@@ -68,27 +70,39 @@ def votes_on_test(ticker="BTC_USDT"):
 def votes_on(ticker, when_datetime=None):
 
     if ticker == 'ALTS_BTC' or ticker =='ETH_BTC':
-        return VoteFraction(0.5, 0.5), []   # TODO we don't have data coming in for alts_btc or eth_btc yet, fix
+        return VoteFraction(0.0, 1.0), []   # TODO we don't have data coming in for alts_btc or eth_btc yet, fix
 
     if ticker == 'NEO_BTC':
-        return VoteFraction(1.0, 0.0), []
+        return VoteFraction(0.0, 1.0), []
 
     if ticker == 'OMG_BTC':
-        return VoteFraction(0.3, 0.7), []
+        return VoteFraction(0.0, 1.0), []
 
 
     when_datetime = when_datetime or datetime.now()
     exchange = 'binance'
-    query_result = CommitteeVoteStorage.query(
-        ticker=ticker, exchange=exchange, timestamp=when_datetime.timestamp(),
-        periods_range=PERIODS_1HR * 400,
-        periods_key=PERIODS_1HR
-    )
 
-    if len(query_result['scores']) == 0:  # no recent committees found
-        raise NoCommitteeVotesFoundException(f'No recent committee votes found for ticker '
-                                             f'{ticker} and time {when_datetime} '
-                                             f'(are you running TA_worker?)')
+    if ENFORCE_FRESH_VOTES:
+        query_result = CommitteeVoteStorage.query(
+            ticker=ticker, exchange=exchange, timestamp=when_datetime.timestamp(),
+            periods_range=PERIODS_1HR * 4,
+            periods_key=PERIODS_1HR
+        )
+
+        if len(query_result['scores']) == 0:  # no recent committees found
+            raise NoCommitteeVotesFoundException(f'No recent committee votes found for ticker '
+                                                 f'{ticker} and time {when_datetime} '
+                                                 f'(are you running TA_worker?)')
+    else:
+        query_result = CommitteeVoteStorage.query(
+            ticker=ticker, exchange=exchange, periods_key=PERIODS_1HR
+        )
+
+        if len(query_result['scores']) == 0:  # no recent committees found
+            raise NoCommitteeVotesFoundException(f'No committee votes found in all of history for ticker '
+                                                 f'{ticker}! ')
+
+
 
     committee_votes = []
     summary_vote = 0
@@ -103,7 +117,6 @@ def votes_on(ticker, when_datetime=None):
 
         time_weight = 1
         assert time_weight > 0
-
 
         committee_id = None
         split_weighted_vote = str(weighted_vote).split(':')
@@ -121,7 +134,6 @@ def votes_on(ticker, when_datetime=None):
     summary_vote /= len(committee_votes)
     print(ticker, summary_vote)
     return VoteFraction(summary_vote, 1-summary_vote), committee_votes
-
 
 
 class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
@@ -146,26 +158,30 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
 
 
     def _reinforce_minimum_reserves(self, normalized_allocations):
-
-        reassigned_portion_amount = 0
-        for ticker, portion in self.minimum_reserves.items():
-            allocation = max(portion, normalized_allocations[ticker]) if ticker in normalized_allocations else portion
-            reassigned_portion_amount += allocation
-            normalized_allocations[ticker] = allocation
-
+        total_reassigned = 0
         total_non_reassigned = 0
-        # now scale all non-reassigned tickers to accomodate new portions
+        reassigned_tickers = []
+        for ticker, portion in self.minimum_reserves.items():
+            if ticker in normalized_allocations and normalized_allocations[ticker] < portion or ticker not in normalized_allocations:
+                normalized_allocations[ticker] = portion
+                total_reassigned += portion
+                reassigned_tickers.append(ticker)
+
+        for ticker in normalized_allocations:
+            if ticker not in reassigned_tickers:
+                total_non_reassigned += normalized_allocations[ticker]
+
+
         for coin, allocation in normalized_allocations.items():
-            if coin not in self.minimum_reserves:  # we need to scale
-                total_non_reassigned += allocation
-
-        for coin in normalized_allocations:
-            if coin not in self.minimum_reserves:
+            if coin not in reassigned_tickers and total_non_reassigned > 0:
                 normalized_allocations[coin] = normalized_allocations[coin] / total_non_reassigned * (
-                            1 - reassigned_portion_amount)
+                            1 - total_reassigned)
 
-        print(sum([allocation for _, allocation in normalized_allocations.items()]))
+        print(normalized_allocations.items())
+        print('Allocation sum is ', sum([allocation for _, allocation in normalized_allocations.items()]))
         assert 0.99 < sum([allocation for _, allocation in normalized_allocations.items()]) <= 1.01
+        for _, allocation in normalized_allocations.items():
+            assert allocation >= 0
 
         return normalized_allocations
 
@@ -177,12 +193,6 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
         counter_currency_vote_fraction = 1 - transaction_currency_vote_fraction
         return VoteFraction(transaction_currency_vote_fraction, counter_currency_vote_fraction)
 
-    def total_shitcoin_transaction_votes(self, votes_on_tickers):
-        total = 0
-        for shitcoin_ticker in self.shitcoins:
-            total += votes_on_tickers[shitcoin_ticker].transaction_currency_vote_fraction
-        return total
-
 
     def _untangle_shitcoins(self, allocations, votes_on_tickers):
         shitcoin_transaction_votes = []
@@ -192,9 +202,7 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
 
         for shitcoin_ticker in self.shitcoins:
             shitcoin = shitcoin_ticker.split('_')[0]
-            # transaction_vote = votes_on_tickers[shitcoin_ticker].transaction_currency_vote_fraction / len(self.shitcoins)
             transaction_vote = votes_on_tickers[shitcoin_ticker].transaction_currency_vote_fraction ** 2 / total_shitcoin_mass if total_shitcoin_mass != 0 else 0
-            counter_vote = 1-transaction_vote
             allocations[shitcoin] = [transaction_vote,
                                      self.mean_shitcoin_vote_fraction(votes_on_tickers).transaction_currency_vote_fraction,
                                      SHITCOIN_DAMPENING_FACTOR,
@@ -232,15 +240,8 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
 
         allocations = self._untangle_shitcoins(allocations, votes_on_tickers)
 
-        # allocations["ALTS"] = [
-        #        votes_on_tickers["ALTS_BTC"].transaction_currency_vote_fraction,
-        #        len("Willr")/5
-        # ]
-
-
         from functools import reduce
         alloc_sum = sum([reduce(lambda x, y: x*y, value) for key, value in allocations.items()])
-
 
         for ticker, vote_fraction_list in allocations.items():
             alloc = (reduce(lambda x, y: x*y, vote_fraction_list)/float(alloc_sum))
@@ -248,9 +249,10 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
             normalized_allocations[ticker] = alloc
 
         # need to check minimum reserves
-        normalized_allocations = self._reinforce_minimum_reserves(normalized_allocations)
-
-
+        try:
+            normalized_allocations = self._reinforce_minimum_reserves(normalized_allocations)
+        except Exception as e:
+            logging.critical(f'Unable to reinforce minimum reserves: {e}, continuing with non-reinforced allocation...')
 
         # reformat normalized allocations as expected
         allocations_list = [{"coin": coin, "portion": (portion // 0.0001 / 10000)} for coin, portion in
@@ -258,15 +260,13 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
         return allocations_list, committees_used
 
 
-
-
-
-mp  = MappedDistribution()
-print(mp.get_allocations())
-test_allocations = {
-    'BTC': 0.04,
-    'USDT': 0.98,
-    'BNB': 0.02
-}
-print('With reinforced minimum reserves:')
-print(mp._reinforce_minimum_reserves(test_allocations))
+if __name__ == '__main__':
+    mp  = MappedDistribution()
+    #print(mp.get_allocations())
+    test_allocations = {
+        'BTC': 1.0,
+        'USDT': 0.0,
+        'BNB': 0.00
+    }
+    print('With reinforced minimum reserves:')
+    print(mp._reinforce_minimum_reserves(test_allocations))
