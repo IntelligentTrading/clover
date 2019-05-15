@@ -3,7 +3,7 @@ import logging
 from apps.backtesting.data_sources import DB_INTERFACE
 from apps.backtesting.utils import datetime_from_timestamp, parallel_run, time_performance
 from apps.doge.doge_train_test import DogeTrainer, DogeCommittee, DogeSubscriber
-from settings import DOGE_TRAINING_PERIOD_DURATION_SECONDS, DOGE_RETRAINING_PERIOD_SECONDS
+from settings.doge import DOGE_RETRAINING_PERIOD_SECONDS, DOGE_TRAINING_PERIOD_DURATION_SECONDS
 from functools import partial
 from apps.genetic_algorithms.leaf_functions import TAProvider
 
