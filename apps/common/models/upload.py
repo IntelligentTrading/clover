@@ -8,7 +8,7 @@ class Upload(Timestampable, models.Model):
     original = models.URLField(default="")
     name = models.CharField(max_length=50, blank=True, null=True)
     thumbnail = models.URLField(default="", blank=True, null=True)
-    meta_data = JSONField(blank=True, null=True)
+    meta_data = JSONField(blank=True, null=True, default=dict)
 
     @property
     def file_type(self):

@@ -12,7 +12,6 @@ from apps.backtesting.utils import time_performance
 from collections import namedtuple
 import pandas.io.formats.excel
 from apps.backtesting.utils import parallel_run
-import xlsxwriter
 
 Ticker = namedtuple("Ticker", "source transaction_currency counter_currency")
 
@@ -367,6 +366,7 @@ class ComparativeReportBuilder:
 
 
     def _reformat_sheet_grouped_by_strategy(self, formats, outperforms, sheet, additional_columns = []):
+        import xlsxwriter
         # add outperformance percent at the top
         sheet.write('V4', np.mean(outperforms), formats['large_bold_red'])
 
