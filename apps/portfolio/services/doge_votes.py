@@ -3,7 +3,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 from apps.TA import PERIODS_1HR
 from apps.doge.doge_TA_actors import CommitteeVoteStorage
-from settings import SUPPORTED_DOGE_TICKERS
+from settings.doge import SUPPORTED_DOGE_TICKERS
 from collections import namedtuple
 from apps.backtesting.utils import datetime_from_timestamp
 
