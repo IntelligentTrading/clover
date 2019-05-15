@@ -1,5 +1,6 @@
-from settings import SOURCE_CHOICES, COUNTER_CURRENCY_CHOICES
 
+SOURCE_CHOICES = ['binance']
+COUNTER_CURRENCY_CHOICES = ['BTC', 'USDT']
 
 
 def source_code_from_name(name):

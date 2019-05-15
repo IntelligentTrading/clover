@@ -10,7 +10,7 @@ from apps.indicator.models import Price, Volume, PriceHistory
 
 from taskapp.helpers.common import get_source_name
 
-from settings import INCOMING_SQS_QUEUE, SOURCE_CHOICES, COUNTER_CURRENCY_CHOICES, BINANCE
+from settings import INCOMING_SQS_QUEUE, COUNTER_CURRENCY_CHOICES, BINANCE
 
 
 
