@@ -6,7 +6,7 @@ from unixtimestampfield.fields import UnixTimeStampField
 
 class ExchangeData(models.Model):
     source = models.CharField(max_length=128)
-    data = JSONField(default="")
+    data = JSONField(default=dict)
     timestamp = UnixTimeStampField(null=False)
 
 

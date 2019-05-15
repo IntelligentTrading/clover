@@ -2,14 +2,13 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from deap import gp
 from string import Template
-import networkx as nx
-from graphviz import Source
 from apps.backtesting.utils import in_notebook
 
 from apps.genetic_algorithms.gp_utils import recompute_tree_graph
 
 
 def draw_tree(individual):
+    import networkx as nx
     nodes, edges, labels = gp.graph(individual)
     g = nx.Graph()
     g.add_nodes_from(nodes)
@@ -502,11 +501,13 @@ def dot_graph(individual):
     return dot_str
 
 def save_dot_graph(individual, out_filename, format='dot'):
+    from graphviz import Source
     g = Source(dot_graph(individual))
     g.render(out_filename, format=format)
 
 
 def get_dot_graph(individual):
+    from graphviz import Source
     return Source(dot_graph(individual))
 
 
@@ -518,6 +519,7 @@ def rewrite_graph_as_tree(individual, json_file_name):
 
 
 def networkx_graph(individual):
+    import networkx as nx
     from networkx.drawing.nx_agraph import graphviz_layout
     import pylab
     pylab.figure(1, figsize=(18, 12))
