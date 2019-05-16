@@ -1,20 +1,14 @@
 import logging
-from copy import deepcopy
-from datetime import datetime
-
-import schedule
 import time
-import threading
+from datetime import datetime
 
 from django.core.management.base import BaseCommand
 
 from apps.portfolio.models import Portfolio
-from apps.portfolio.models.allocation import ITF1HR, ITF6HR, ITF24HR, ITFPRIV, MOONDOGE, ITF_PACKS
-from apps.portfolio.services.signals import get_allocations_from_signals, SHORT_HORIZON, MEDIUM_HORIZON, LONG_HORIZON
-from apps.portfolio.services.doge_votes import get_allocations_from_doge, NoCommitteeVotesFoundException
+from apps.portfolio.models.allocation import ITF1HR, ITF6HR, ITF24HR, ITF_PACKS
+from apps.portfolio.services.doge_votes import get_allocations_from_doge
+from apps.portfolio.services.signals import SHORT_HORIZON, MEDIUM_HORIZON, LONG_HORIZON
 from apps.portfolio.services.trading import set_portfolio
-from apps.backtesting.utils import datetime_from_timestamp
-
 
 logger = logging.getLogger(__name__)
 
