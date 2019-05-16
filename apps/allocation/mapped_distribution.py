@@ -1,13 +1,10 @@
 from apps.TA.storages.abstract.ticker import TickerStorage as MassiveShit
 import logging
-from copy import deepcopy
 from datetime import datetime, timedelta
 from apps.TA import PERIODS_1HR
 from apps.doge.doge_TA_actors import CommitteeVoteStorage
-from settings import SUPPORTED_DOGE_TICKERS
+from settings.doge import DOGE_ENFORCE_FRESH_VOTES
 from collections import namedtuple
-from apps.backtesting.utils import datetime_from_timestamp
-
 
 (POLONIEX, BITTREX, BINANCE, BITFINEX, KUCOIN, GDAX, HITBTC) = list(range(7))
 
@@ -22,9 +19,7 @@ from collections import namedtuple
 VoteFraction = namedtuple("VoteFraction", "transaction_currency_vote_fraction, counter_currency_vote_fraction")
 
 SHITCOIN_DAMPENING_FACTOR = 1.0   # TODO: fix and experiment with this
-                                    # almost corresponds to max total proportion of shitcoins in the portfolio, but not quite :D
-
-ENFORCE_FRESH_VOTES = False
+                                  # almost corresponds to max total proportion of shitcoins in the portfolio, but not quite :D
 
 
 def votes_on_test(ticker="BTC_USDT"):
@@ -82,7 +77,7 @@ def votes_on(ticker, when_datetime=None):
     when_datetime = when_datetime or datetime.now()
     exchange = 'binance'
 
-    if ENFORCE_FRESH_VOTES:
+    if DOGE_ENFORCE_FRESH_VOTES:
         query_result = CommitteeVoteStorage.query(
             ticker=ticker, exchange=exchange, timestamp=when_datetime.timestamp(),
             periods_range=PERIODS_1HR * 4,
@@ -132,7 +127,7 @@ def votes_on(ticker, when_datetime=None):
         summary_vote += vote
 
     summary_vote /= len(committee_votes)
-    print(ticker, summary_vote)
+    # print(ticker, summary_vote)
     return VoteFraction(summary_vote, 1-summary_vote), committee_votes
 
 
