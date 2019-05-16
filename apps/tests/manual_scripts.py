@@ -116,5 +116,6 @@ class RedisTests:
                 end = datetime_from_timestamp(PriceStorage.timestamp_from_score(gap[1]))
                 logging.info(f'    start: {start}, end: {end}  (scores {gap[0]}-{gap[1]})')
 
-logging.getLogger().setLevel(logging.DEBUG)
-RedisTests.test_ticker_storages('ETH_BTC')
+if __name__ == '__main__':
+    logging.getLogger().setLevel(logging.DEBUG)
+    RedisTests.test_ticker_storages('ETH_BTC')

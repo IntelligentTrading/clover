@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from apps.doge.doge_train_test import DogeTrainer
-from settings import SUPPORTED_DOGE_TICKERS, DOGE_TRAINING_PERIOD_DURATION_SECONDS
+from settings.doge import SUPPORTED_DOGE_TICKERS, DOGE_TRAINING_PERIOD_DURATION_SECONDS
 import time
 
 
