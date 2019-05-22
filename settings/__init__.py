@@ -206,7 +206,7 @@ HORIZONS_TIME2NAMES = {
 #EXCHANGE_MARKETS = ('poloniex', 'binance', 'bittrex', 'bitfinex', 'kucoin')
 EXCHANGE_MARKETS = ('binance',)
 
-LOAD_TALIB = False
+LOAD_TALIB = True
 
 # list of tickers for which doges will vote
 
