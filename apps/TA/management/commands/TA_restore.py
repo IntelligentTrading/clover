@@ -13,6 +13,9 @@ from apps.indicator.models.price_history import PriceHistory
 
 logger = logging.getLogger(__name__)
 
+START_DATE = datetime(2019, 5, 1)
+END_DATE = datetime.now()
+
 
 class Command(BaseCommand):
     help = 'Run Redis Data Restore from SQL'
@@ -20,14 +23,11 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         logger.info("Starting TA restore script...")
 
-        start_datetime = datetime(2019, 3, 1)
-        end_datetime = datetime.today()
-
-        restore_db_to_redis(start_datetime, end_datetime)
+        restore_db_to_redis(START_DATE, END_DATE)
 
         from apps.TA.management.commands.TA_fill_gaps import fill_data_gaps
-        fill_data_gaps(SQL_fill=True, force_fill=False)
-        fill_data_gaps(SQL_fill=False, force_fill=False)
+        fill_data_gaps(SQL_fill=True)
+        fill_data_gaps(SQL_fill=False)
 
 
 def restore_db_to_redis(start_datetime, end_datetime):
