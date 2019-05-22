@@ -3,6 +3,7 @@ import time
 
 from django.core.management.base import BaseCommand
 
+from apps.TA.indicators.fantasy import dracarys
 from settings.redis_db import database
 
 logger = logging.getLogger(__name__)
@@ -88,15 +89,13 @@ def get_subscriber_classes():
         # stoch.StochSubscriber,
         # stochf.StochfSubscriber, stochrsi.StochrsiSubscriber,
         # trix.TrixSubscriber, ultosc.UltoscSubscriber,
-        # willr.WillrSubscriber ... wait no!! it has to be the last one - leave it for the end please :)
-
+        willr.WillrSubscriber,  # formerly know as "THE LAST ONE"
 
         # EVENTS INDICATORS
         bbands_squeeze_180min.BbandsSqueeze180MinSubscriber,
 
-
-        # THE LAST ONE
-        willr.WillrSubscriber,  # the last one (if changes, change in SignalSubscriber default subscription)
+        # 🔥🔥🔥🔥🔥🐉🔥🔥🔥🔥🔥
+        dracarys.DracarysSubscriber,  # the last one (if changes, change in SignalSubscriber default subscription)
 
     ]
 
