@@ -71,7 +71,7 @@ class IndicatorStorage(TickerStorage):
         except IndexError:
             self.value = None  # value not found
         except Exception as e:
-            logger.error(str(e))
+            logger.error("Error getting indicator value: " + str(e))
             self.value = None
 
         return self.value
