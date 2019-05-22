@@ -11,7 +11,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
-        key_pattern = options['key_pattern'] or '*BTC_USDT*Willr*'
+        key_pattern = options['key_pattern'] or '*BTC_USDT*Dracarys*'
         find_gaps(key_pattern, time.time() - 60 * 60 * 24 * 30, time.time())
 
 def find_gaps(key_pattern, start_timestamp, end_timestamp):
