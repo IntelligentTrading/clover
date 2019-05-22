@@ -41,7 +41,7 @@ class WillrStorage(IndicatorStorage):
         if math.isnan(willr_value):
             return ""
 
-        return  str(willr_value)
+        return str(willr_value)
 
 
 class WillrSubscriber(IndicatorSubscriber):
