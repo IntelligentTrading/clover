@@ -592,12 +592,11 @@ class DogeSubscriber(SignalSubscriber):
 
 
     def _should_process_event(self, channel, data, *args, **kwargs):
-        # we want to invoke this only for one of the Rsi channels, temporary fix
-        return data['key'].endswith(':672')
+        return True  # this function is needed for historical data filling
 
 
     def handle(self, channel, data, *args, **kwargs):
-        # logger.debug(f'Received data {data} for ticker {self.ticker}')
+        logging.info(f'Received data {data} for ticker {self.ticker}')
         # we want to invoke this only for one of the Rsi channels, temporary fix
         if not self._should_process_event(channel, data, *args, **kwargs):
             return
