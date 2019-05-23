@@ -9,7 +9,7 @@ class DracarysStorage(IndicatorStorage):
 
     class_periods_list = [2,]
     requisite_pv_indexes = ["close_price"]
-    always_publish = True # do not change! it's the last one! everyone is watching
+    always_publish = True # do not change! It's the last one. All the doge is watching.
 
 
     def compute_value_with_requisite_indexes(self, requisite_pv_index_arrays: dict, periods: int = 0) -> str:
@@ -41,3 +41,14 @@ class DracarysStorage(IndicatorStorage):
 class DracarysSubscriber(IndicatorSubscriber):
     classes_subscribing_to = [PriceStorage]
     storage_class = DracarysStorage
+
+
+def test_Dracarys():
+
+    ticker="BTC_USDT"
+    exchange="binance"
+    class_name = "PriceStorage"
+    score=251297
+
+    from apps.TA.storages.data.price import PriceStorage as PS
+    PS.query(ticker="BTC_USDT", exchange="binance", periods_range=2, score=251297)
