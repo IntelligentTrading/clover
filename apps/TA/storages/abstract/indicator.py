@@ -17,7 +17,7 @@ class IndicatorException(TAException):
 class IndicatorStorage(TickerStorage):
     """
     stores indicators in a sorted set unique to each ticker and exchange
-    requires data to be a resampling to represent the most recent 5min block of time
+    requires data to be a re-sampling to represent the most recent 5min block of time
     timestamp value must be evenly divisible by 5 minutes (300 seconds)
     add short, medium, long as 1hr, 4hr, 24hr time horizons
     """
@@ -41,7 +41,7 @@ class IndicatorStorage(TickerStorage):
             raise IndicatorException("indicator timestamp should be % 300")
 
         # self.horizon = int(kwargs.get('horizon', 1))
-        self.periods = int(kwargs.get('periods', 1))  # * self.horizon))
+        self.periods = int(kwargs.get('periods', 1))
 
         self.periods_key = kwargs.get("periods_key", "")
         self.key_suffix = kwargs.get("key_suffix", "")
@@ -109,6 +109,9 @@ class IndicatorStorage(TickerStorage):
 
     def get_denoted_price_array(self, index: str = "close_price", periods: int = 0):
         from apps.TA.storages.data.price import PriceStorage
+
+        logger.debug(f"{self.__class__.__name__} is querying for key {self.ticker} over {periods or self.periods} periods")
+
         results_dict = PriceStorage.query(
             ticker=self.ticker,
             exchange=self.exchange,

@@ -68,7 +68,9 @@ class TimeseriesStorage(KeyValueStorage):
     @classmethod
     def query(cls, key: str = "", key_suffix: str = "", key_prefix: str = "",
               timestamp: int = None,
+              score: int = None,
               timestamp_tolerance: int = 299,
+              score_tolerance: int = None,
               periods_range: float = 0.01,
               *args, **kwargs) -> dict:
         """
@@ -86,7 +88,7 @@ class TimeseriesStorage(KeyValueStorage):
         # example key f'{key_prefix}:{cls.__name__}:{key_suffix}'
 
         # if no timestamp, assume query to find the most recent, the last one
-        if not timestamp:
+        if not (timestamp or score):
             query_response = database.zrange(sorted_set_key, -1, -1)
             try:
                 [value, score] = query_response[0].decode("utf-8").split(":")
@@ -99,11 +101,10 @@ class TimeseriesStorage(KeyValueStorage):
 
         else:
             # compress timestamps to scores
-            target_score = cls.score_from_timestamp(timestamp)
-            score_tolerance = cls.periods_from_seconds(timestamp_tolerance)
+            target_score = score or cls.score_from_timestamp(timestamp)
+            score_tolerance = score_tolerance or cls.periods_from_seconds(timestamp_tolerance)
 
-            # logger.debug(f"querying for key {sorted_set_key} \
-            # with score {target_score} and back {periods_range} periods")
+            # logger.debug(f"{cls.__name__} is querying for key {sorted_set_key} with score {target_score} and back {periods_range} periods")
 
             min_score, max_score = (target_score - score_tolerance - periods_range), (target_score + score_tolerance)
             min_timestamp,  max_timestamp = cls.timestamp_from_score(min_score), cls.timestamp_from_score(max_score)

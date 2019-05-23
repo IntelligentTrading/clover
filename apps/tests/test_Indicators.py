@@ -10,7 +10,7 @@ from settings.redis_db import database
 
 logger = logging.getLogger(__name__)
 
-ticker = "CWC_ETH"
+ticker = "CWC_BTC"
 exchange = "test"
 
 
