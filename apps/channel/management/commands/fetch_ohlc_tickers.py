@@ -23,30 +23,24 @@ class Command(BaseCommand):  # fetch_ohlc_tickers
 
         #fetch_and_process_all_exchanges(usdt_rates); return # one iteration for debug only
 
-        schedule.every(1).minutes.do(fetch_and_process_all_exchanges, usdt_rates)
+        schedule.every(1).minutes.do(fetch_and_process_binance, usdt_rates)
         if DEBUG:
-            fetch_and_process_all_exchanges(usdt_rates) # and go now too!
+            fetch_and_process_binance(usdt_rates) # and go now too!
 
         keep_going = True
         while keep_going:
             try:
                 schedule.run_pending()
-                time.sleep(10)
+                time.sleep(5)
             except Exception as e:
                 logger.debug(str(e))
                 logger.info(">>> Fetching shut down")
                 keep_going = False
 
 
-def fetch_and_process_all_exchanges(usdt_rates):
-    for exchange in EXCHANGE_MARKETS:
-        logger.debug(f'Starting fetch_and_process_one({exchange})')
-        fetch_and_process_one(exchange, usdt_rates)
-    logger.info('\n>>> Waiting for next call of fetch_and_process_all_exchanges')
-
-
-def fetch_and_process_one(exchange, usdt_rates):
-    tickers = Tickers(exchange=exchange, usdt_rates=usdt_rates)
+def fetch_and_process_binance(usdt_rates):
+    logger.debug(f'Starting fetch_and_process_binance')
+    tickers = Tickers(exchange='binance', usdt_rates=usdt_rates)
     tickers.run()
 
     send_ohlc_data_to_TA(tickers)
@@ -84,7 +78,6 @@ def send_ohlc_data_to_TA(tickers_object):
                 'close_price': symbol_info['close'],
                 'close_volume': symbol_info['baseVolume'],
             }
-
 
             try:
                 database_response = load_ticker(ticker, data)
