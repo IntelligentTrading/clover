@@ -7,7 +7,8 @@ from settings import logger
 
 class DracarysStorage(IndicatorStorage):
 
-    class_periods_list = [2,]
+    class_periods_list = [1,]
+    add_horizons = [1,]
     requisite_pv_indexes = ["close_price"]
     always_publish = True # do not change! It's the last one. All the doge is watching.
 
