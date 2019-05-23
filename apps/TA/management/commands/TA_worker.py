@@ -46,6 +46,7 @@ class Command(BaseCommand):
             for class_name in subscribers:
                 # logger.debug(f'checking subscription {class_name}: {subscribers[class_name]}')
                 try:
+                    # logger.debug("calling "+class_name)
                     subscribers[class_name]()  # run subscriber class
 
                 except Exception as e:
