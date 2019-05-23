@@ -24,7 +24,7 @@ class WillrStorage(IndicatorStorage):
         periods = periods or self.periods
 
         if min([len(array) for array in requisite_pv_index_arrays] + [periods, ]) < periods:
-            logger.debug("not enough data to compute")
+            logger.debug("not enough data for Willr")
             return ""
 
         willr_value = talib.WILLR(
