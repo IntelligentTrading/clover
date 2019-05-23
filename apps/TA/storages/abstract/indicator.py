@@ -24,7 +24,8 @@ class IndicatorStorage(TickerStorage):
     class_describer = "indicator"
     value_sig_figs = 6
 
-    class_periods_list = [1, ]  # class should override this
+    class_periods_list = [1,]  # class should override this
+    add_horizons = []
     # list of integers where for x: (1 <= x <= 200)
 
     requisite_pv_indexes = []  # class should override this.
@@ -103,8 +104,9 @@ class IndicatorStorage(TickerStorage):
     @classmethod
     def get_periods_list(cls):
         periods_list = []
-        for s in cls.class_periods_list:
-            periods_list.extend([h * s for h in HORIZONS])
+        horizons = cls.add_horizons + HORIZONS
+        for period_size in cls.class_periods_list:
+            periods_list.extend([period_size * h for h in horizons])
         return set(periods_list)
 
     def get_denoted_price_array(self, index: str = "close_price", periods: int = 0):
