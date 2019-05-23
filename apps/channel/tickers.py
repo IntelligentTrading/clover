@@ -96,13 +96,18 @@ class Tickers:
             (transaction_currency, counter_currency) = symbol_info['symbol'].split('/')
         except Exception as e:
             logger.warning(str(e))
+            logger.debug(f'Skipping symbol: {symbol_info["symbol"]}')
             return False
 
-        if counter_currency not in ["BTC", "USDT"]:
+        if counter_currency in ["USDT",] and not transaction_currency in ["BTC", "ETH",]:
+            logger.debug(f'Skipping symbol: {symbol_info["symbol"]}')
             return False
-        elif len(transaction_currency) >= 6: # Filter out Bitmark from Poloniex
+
+        if counter_currency in ["ETH",]: # skip ETH counter currency tickers
+            logger.debug(f'Skipping symbol: {symbol_info["symbol"]}')
             return False
-        elif None in (minimum_volume_in_usd, usdt_rates):
+
+        if None in (minimum_volume_in_usd, usdt_rates):
             return True
 
         quote_volume_in_usdt = symbol_info['quoteVolume']*usdt_rates[counter_currency]
