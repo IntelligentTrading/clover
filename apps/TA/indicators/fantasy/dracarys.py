@@ -8,7 +8,7 @@ from settings import logger
 class DracarysStorage(IndicatorStorage):
 
     class_periods_list = [1,]
-    add_horizons = [1,]
+    add_horizons = [2,]
     requisite_pv_indexes = ["close_price"]
     always_publish = True # do not change! It's the last one. All the doge is watching.
 
@@ -26,6 +26,9 @@ class DracarysStorage(IndicatorStorage):
             logger.debug("not enough data to compute")
             return ""
 
+        if len(requisite_pv_index_arrays["close_price"]) < 2:
+            return None
+
         dracarys_value = (int(
             (float(requisite_pv_index_arrays["close_price"][-1]) / requisite_pv_index_arrays["close_price"][-2])
             * 100
@@ -34,7 +37,7 @@ class DracarysStorage(IndicatorStorage):
         logger.debug(f"Dracarys computed: {dracarys_value}")
 
         if math.isnan(dracarys_value):
-            return ""
+            return None
 
         return str(dracarys_value)
 
