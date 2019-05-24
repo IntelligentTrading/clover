@@ -171,7 +171,7 @@ class IndicatorStorage(TickerStorage):
             raise Exception("missing required values")
 
         self.value = self.compute_value(self.periods)
-        if self.value in [None, ""]:
+        if self.value not in [None, ""]:
             self.save(pipeline=pipeline)
         return bool(self.value)
 
