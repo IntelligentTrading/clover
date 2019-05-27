@@ -183,6 +183,7 @@ class IndicatorStorage(TickerStorage):
         for periods in cls.get_periods_list():
             new_class_storage.periods = periods
             new_class_storage.compute_and_save(pipeline)
+        pipeline.execute()  # TODO @tomcounsell check if this is a good fix
 
     def produce_signal(self):
         """
