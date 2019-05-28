@@ -611,8 +611,11 @@ class DogeSubscriber(SignalSubscriber):
             logger.info(f'Doge committee for ticker {self.ticker} expired, reloading...')
             self._reload_committee(ticker=self.ticker)
         elif not DOGE_COMMITTEES_EXPIRE and committee_expired:
-            logger.warning(f'You are trading using an expired committee for ticker {self.ticker}! '
-                           'Set DOGE_COMMITTEES_EXPIRE to False in doge settings if this is not the desired behavior.')
+            try:
+                self._reload_committee(ticker=self.ticker)
+            except NoNewCommitteeException:
+                logger.warning(f'You are trading using an expired committee for ticker {self.ticker}! '
+                               'Set DOGE_COMMITTEES_EXPIRE to False in doge settings if this is not the desired behavior.')
 
         logger.info(f'Doge subscriber invoked at {datetime_from_timestamp(self.timestamp)}, '
                     f'channel={str(channel)}, data={str(data)} '
