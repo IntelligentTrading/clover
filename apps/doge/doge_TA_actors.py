@@ -1,12 +1,10 @@
+from apps.TA.indicators.fantasy import dracarys
 from apps.TA.resources.abstract_subscriber import SubscriberException
 from apps.TA.storages.abstract.indicator import IndicatorStorage, BULLISH, BEARISH, OTHER
 from apps.TA.storages.abstract.indicator_subscriber import IndicatorSubscriber
-from apps.TA.indicators.momentum import willr
 from apps.TA.storages.abstract.key_value import KeyValueStorage
 from apps.TA.storages.abstract.ticker import TickerStorage
 from settings.doge import DOGE_RETRAINING_PERIOD_SECONDS
-from apps.TA.indicators.events import bbands_squeeze_180min
-from apps.TA.indicators.momentum import rsi
 import logging
 
 class SignalSubscriberException(SubscriberException):
@@ -16,10 +14,7 @@ class SignalSubscriberException(SubscriberException):
 class SignalSubscriber(IndicatorSubscriber):
     class_describer = "signal_subscriber"
     classes_subscribing_to = [
-        #bbands_squeeze_180min.BbandsSqueeze180MinStorage,
-        rsi.RsiStorage, # TODO: re-enable Willr!
-        #willr.WillrStorage  # the last one
-
+        dracarys.DracarysStorage,
     ]
     storage_class = IndicatorStorage  # override with applicable storage class
 

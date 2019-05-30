@@ -13,8 +13,6 @@ class WillrStorage(IndicatorStorage):
 
     class_periods_list = [14,]
     requisite_pv_indexes = ["high_price", "low_price", "close_price"]
-    always_publish = True # do not change! it's the last one! everyone is watching
-
 
     def compute_value_with_requisite_indexes(self, requisite_pv_index_arrays: dict, periods: int = 0) -> str:
         """
@@ -26,7 +24,7 @@ class WillrStorage(IndicatorStorage):
         periods = periods or self.periods
 
         if min([len(array) for array in requisite_pv_index_arrays] + [periods, ]) < periods:
-            logger.debug("not enough data to compute")
+            logger.debug("not enough data for Willr")
             return ""
 
         willr_value = talib.WILLR(
@@ -41,7 +39,7 @@ class WillrStorage(IndicatorStorage):
         if math.isnan(willr_value):
             return ""
 
-        return  str(willr_value)
+        return str(willr_value)
 
 
 class WillrSubscriber(IndicatorSubscriber):

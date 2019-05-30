@@ -88,11 +88,11 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     # 'apps.user',
     'apps.common',
-    'apps.communication',
-    'apps.TA',
-    'apps.portfolio',
+    'apps.channel',
     'apps.doge',
-    'apps.tests'
+    'apps.portfolio',
+    'apps.TA',
+    'apps.tests',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -204,11 +204,17 @@ HORIZONS_TIME2NAMES = {
 
 # list of the exchanges on which we generate signals. Make it in sync with same list in Data app settings
 #EXCHANGE_MARKETS = ('poloniex', 'binance', 'bittrex', 'bitfinex', 'kucoin')
-EXCHANGE_MARKETS = ('poloniex', 'binance', 'bittrex')
+EXCHANGE_MARKETS = ('binance',)
 
-LOAD_TALIB = False
+LOAD_TALIB = True
 
 # list of tickers for which doges will vote
+
+SUPPORTED_DOGE_TICKERS = ['BTC_USDT', 'ETH_USDT', 'ETH_BTC',]
+
+ONE_WEEK = 60*60*24*7
+ONE_DAY = 60*60*24
+ONE_HOUR = 60*60
 
 # doge training schedule (how often to retrain and reinit the committee)
 # if set to False, loads the latest vote for a ticker regardless when it was obtained

@@ -3,6 +3,7 @@ import pandas as pd
 import logging
 
 from dateutil import parser
+
 from apps.TA.storages.data.price import PriceStorage
 from apps.TA.storages.data.pv_history import PriceVolumeHistoryStorage
 from abc import ABC
@@ -11,6 +12,7 @@ from apps.backtesting.utils import time_performance
 from apps.TA.indicators.momentum import rsi, stochrsi, adx, macd, mom, stoch, willr
 from apps.TA.indicators.overlap import sma, ema, wma, bbands, ht_trendline
 from apps.TA.indicators.events import bbands_squeeze_180min
+from apps.TA.indicators.fantasy.dracarys import DracarysStorage
 from collections import OrderedDict
 
 
@@ -40,6 +42,7 @@ STORAGE_CLASS = {
     'slowd': stoch.StochStorage,
     'willr': willr.WillrStorage,
     'close_price': PriceStorage,
+    'dracarys': DracarysStorage,
 }
 
 MAX_CACHED_INDICATORS = 20
@@ -310,6 +313,8 @@ class RedisDB(Database):
 
 
     def _extract_indicator_value(self, indicator_name, result):
+        if not result:
+            return float(result[0])
         result = result.split(':')
         if indicator_name == 'bb_up':
             return float(result[0])
