@@ -13,7 +13,8 @@ from apps.genetic_algorithms.gp_artemis import ExperimentManager
 from apps.genetic_algorithms.leaf_functions import RedisTAProvider
 from apps.TA import PERIODS_1HR
 from settings import logger
-from settings.doge import SUPPORTED_DOGE_TICKERS, DOGE_RETRAINING_PERIOD_SECONDS, DOGE_LOAD_ROCKSTARS
+from settings.doge import SUPPORTED_DOGE_TICKERS, DOGE_RETRAINING_PERIOD_SECONDS, DOGE_LOAD_ROCKSTARS, \
+    DOGE_COMMITTEES_EXPIRE, DOGE_FALLBACK_IF_UNABLE_TO_TRAIN, DOGE_FALLBACK_BUY_SELL_THRESHOLD_PERCENT
 from apps.genetic_algorithms.chart_plotter import save_dot_graph, get_dot_graph
 from apps.backtesting.utils import datetime_from_timestamp, time_performance
 
@@ -136,21 +137,18 @@ class DogeTrainer:
                              f'Consider retraining, lowering the minimum required fitness or '
                              f'using a different fitness function')
 
-            FALLBACK_IF_UNABLE_TO_TRAIN = True
-            FALLBACK_BUY_SELL_THRESHOLD_PERCENT = 0.5
-
-            if FALLBACK_IF_UNABLE_TO_TRAIN:
+            if DOGE_FALLBACK_IF_UNABLE_TO_TRAIN:
 
                 evaluation = e._build_evaluation_object("ignore", e.variants[0], e.training_data[0])
                 benchmark_profits = evaluation.benchmark_backtest.profit_percent
-                if benchmark_profits > FALLBACK_BUY_SELL_THRESHOLD_PERCENT:
+                if benchmark_profits > DOGE_FALLBACK_BUY_SELL_THRESHOLD_PERCENT:
                     fallback_doge = "buy"
-                elif benchmark_profits < -FALLBACK_BUY_SELL_THRESHOLD_PERCENT:
+                elif benchmark_profits < -DOGE_FALLBACK_BUY_SELL_THRESHOLD_PERCENT:
                     fallback_doge = "sell"
                 else:
                     fallback_doge = "ignore"
                 logging.critical(f'Falling back to predefined trader: {fallback_doge} '
-                                 f'(benchmark profit is {benchmark_profits} and threshold is {FALLBACK_BUY_SELL_THRESHOLD_PERCENT})')
+                                 f'(benchmark profit is {benchmark_profits} and threshold is {DOGE_FALLBACK_BUY_SELL_THRESHOLD_PERCENT})')
 
                 redis_entries.append(
                     DogeRecord(train_end_timestamp=end_timestamp, doge_str=str(fallback_doge),
@@ -364,6 +362,8 @@ class DogeCommittee:
         doge_traders = []
 
         query_response = CommitteeStorage.query(ticker=self._training_ticker, exchange='binance', timestamp=self._committee_timestamp)
+        if not len(query_response['scores']):
+            return doge_traders
         loaded_timestamp = CommitteeStorage.timestamp_from_score(query_response['scores'][-1])
         if self._committee_timestamp is not None and self._committee_timestamp != loaded_timestamp:
             logger.critical('Loaded committee timestamp differs from the requested timestamp')
@@ -590,12 +590,11 @@ class DogeSubscriber(SignalSubscriber):
 
 
     def _should_process_event(self, channel, data, *args, **kwargs):
-        # we want to invoke this only for one of the Rsi channels, temporary fix
-        return data['key'].endswith(':672')
+        return True  # this function is needed for historical data filling
 
 
     def handle(self, channel, data, *args, **kwargs):
-        # logger.debug(f'Received data {data} for ticker {self.ticker}')
+        # logging.info(f'Received data {data} for ticker {self.ticker}')
         # we want to invoke this only for one of the Rsi channels, temporary fix
         if not self._should_process_event(channel, data, *args, **kwargs):
             return
@@ -603,13 +602,20 @@ class DogeSubscriber(SignalSubscriber):
         # check if we received data for a ticker we support
         if self.ticker not in SUPPORTED_DOGE_TICKERS:  # @tomcounsell please check if this is OK or I should register
                                                        # for tickers of interest in some other way
-            logger.debug(f'Ticker {self.ticker} not in {SUPPORTED_DOGE_TICKERS}, skipping...')
+            # logger.debug(f'Ticker {self.ticker} not in {SUPPORTED_DOGE_TICKERS}, skipping...')
             return
 
         # check if the committee has expired
-        if self._check_committee_expired(self.ticker):
+        committee_expired = self._check_committee_expired(self.ticker)
+        if DOGE_COMMITTEES_EXPIRE and committee_expired:
             logger.info(f'Doge committee for ticker {self.ticker} expired, reloading...')
             self._reload_committee(ticker=self.ticker)
+        elif not DOGE_COMMITTEES_EXPIRE and committee_expired:
+            try:
+                self._reload_committee(ticker=self.ticker)
+            except NoNewCommitteeException:
+                logger.warning(f'You are trading using an expired committee for ticker {self.ticker}! '
+                               'Set DOGE_COMMITTEES_EXPIRE to False in doge settings if this is not the desired behavior.')
 
         logger.info(f'Doge subscriber invoked at {datetime_from_timestamp(self.timestamp)}, '
                     f'channel={str(channel)}, data={str(data)} '

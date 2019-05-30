@@ -17,14 +17,15 @@ class IndicatorException(TAException):
 class IndicatorStorage(TickerStorage):
     """
     stores indicators in a sorted set unique to each ticker and exchange
-    requires data to be a resampling to represent the most recent 5min block of time
+    requires data to be a re-sampling to represent the most recent 5min block of time
     timestamp value must be evenly divisible by 5 minutes (300 seconds)
     add short, medium, long as 1hr, 4hr, 24hr time horizons
     """
     class_describer = "indicator"
     value_sig_figs = 6
 
-    class_periods_list = [1, ]  # class should override this
+    class_periods_list = [1,]  # class should override this
+    add_horizons = []
     # list of integers where for x: (1 <= x <= 200)
 
     requisite_pv_indexes = []  # class should override this.
@@ -41,7 +42,7 @@ class IndicatorStorage(TickerStorage):
             raise IndicatorException("indicator timestamp should be % 300")
 
         # self.horizon = int(kwargs.get('horizon', 1))
-        self.periods = int(kwargs.get('periods', 1))  # * self.horizon))
+        self.periods = int(kwargs.get('periods', 1))
 
         self.periods_key = kwargs.get("periods_key", "")
         self.key_suffix = kwargs.get("key_suffix", "")
@@ -71,7 +72,7 @@ class IndicatorStorage(TickerStorage):
         except IndexError:
             self.value = None  # value not found
         except Exception as e:
-            logger.error(str(e))
+            logger.error("Error getting indicator value: " + str(e))
             self.value = None
 
         return self.value
@@ -103,12 +104,16 @@ class IndicatorStorage(TickerStorage):
     @classmethod
     def get_periods_list(cls):
         periods_list = []
-        for s in cls.class_periods_list:
-            periods_list.extend([h * s for h in HORIZONS])
+        horizons = cls.add_horizons + HORIZONS
+        for period_size in cls.class_periods_list:
+            periods_list.extend([period_size * h for h in horizons])
         return set(periods_list)
 
     def get_denoted_price_array(self, index: str = "close_price", periods: int = 0):
         from apps.TA.storages.data.price import PriceStorage
+
+        logger.debug(f"{self.__class__.__name__} is querying for key {self.ticker} over {periods or self.periods} periods")
+
         results_dict = PriceStorage.query(
             ticker=self.ticker,
             exchange=self.exchange,
@@ -132,7 +137,7 @@ class IndicatorStorage(TickerStorage):
                     return ""
 
         if min([len(array) for array in index_value_arrays] + [periods, ]) < periods:
-            logger.warning("possibly not enough data to compute")
+            logger.warning(f"possibly not enough data for {self.__class__.__name__} to compute")
 
         return self.compute_value_with_requisite_indexes(index_value_arrays, periods)
 
@@ -166,7 +171,7 @@ class IndicatorStorage(TickerStorage):
             raise Exception("missing required values")
 
         self.value = self.compute_value(self.periods)
-        if self.value:
+        if self.value not in [None, ""]:
             self.save(pipeline=pipeline)
         return bool(self.value)
 
@@ -178,6 +183,7 @@ class IndicatorStorage(TickerStorage):
         for periods in cls.get_periods_list():
             new_class_storage.periods = periods
             new_class_storage.compute_and_save(pipeline)
+        pipeline.execute()  # TODO @tomcounsell check if this is a good fix
 
     def produce_signal(self):
         """

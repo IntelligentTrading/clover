@@ -3,6 +3,7 @@ import time
 
 from django.core.management.base import BaseCommand
 
+from apps.TA.indicators.fantasy import dracarys
 from settings.redis_db import database
 
 logger = logging.getLogger(__name__)
@@ -29,8 +30,8 @@ class Command(BaseCommand):
         logger.info("Starting TA worker.")
 
         subscribers = {}
-        # all_subscriber_classes = get_subscriber_classes() + get_doge_subscriber_classes()
-        all_subscriber_classes = get_doge_subscriber_classes()
+        all_subscriber_classes = get_subscriber_classes() + get_doge_subscriber_classes()
+
         for subscriber_class in all_subscriber_classes:
             subscribers[subscriber_class.__name__] = subscriber_class()
             logger.debug(f'added subscriber {subscriber_class}')
@@ -45,6 +46,7 @@ class Command(BaseCommand):
             for class_name in subscribers:
                 # logger.debug(f'checking subscription {class_name}: {subscribers[class_name]}')
                 try:
+                    # logger.debug("calling "+class_name)
                     subscribers[class_name]()  # run subscriber class
 
                 except Exception as e:
@@ -56,6 +58,10 @@ class Command(BaseCommand):
 
 def get_subscriber_classes():
 
+    from apps.TA.storages.data.price import PriceSubscriber
+    # from apps.TA.storages.data.volume import VolumeSubscriber
+    # only PriceStorage:close_price is publishing. All other p and v indexes are muted
+
     from apps.TA.indicators.overlap import sma, ema, wma, dema, tema, trima, bbands, ht_trendline, kama, midprice
     from apps.TA.indicators.momentum import adx, adxr, apo, aroon, aroonosc, bop, cci, cmo, dx, macd, mom, ppo, \
         roc, rocr, rsi, stoch, stochf, stochrsi, trix, ultosc, willr
@@ -63,13 +69,15 @@ def get_subscriber_classes():
 
     return [
 
+        PriceSubscriber,
+        # VolumeSubscriber,  # the PriceSubscriber handles volume resampling
+
         # OVERLAP INDICATORS
         # midprice.MidpriceSubscriber,
         sma.SmaSubscriber, ema.EmaSubscriber, wma.WmaSubscriber,
         # dema.DemaSubscriber, tema.TemaSubscriber, trima.TrimaSubscriber, kama.KamaSubscriber,
         bbands.BbandsSubscriber,
         # ht_trendline.HtTrendlineSubscriber,
-
 
         # MOMENTUM INDICATORS
         # adx.AdxSubscriber,
@@ -82,15 +90,13 @@ def get_subscriber_classes():
         # stoch.StochSubscriber,
         # stochf.StochfSubscriber, stochrsi.StochrsiSubscriber,
         # trix.TrixSubscriber, ultosc.UltoscSubscriber,
-        # willr.WillrSubscriber ... wait no!! it has to be the last one - leave it for the end please :)
-
+        willr.WillrSubscriber,  # formerly know as "THE LAST ONE"
 
         # EVENTS INDICATORS
         bbands_squeeze_180min.BbandsSqueeze180MinSubscriber,
 
-
-        # THE LAST ONE
-        willr.WillrSubscriber,  # the last one (if changes, change in SignalSubscriber default subscription)
+        # 🔥🔥🔥🔥🔥🐉🔥🔥🔥🔥🔥
+        dracarys.DracarysSubscriber,  # the last one (if changes, change in SignalSubscriber default subscription)
 
     ]
 

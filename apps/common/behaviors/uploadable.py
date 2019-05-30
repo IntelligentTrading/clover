@@ -9,7 +9,7 @@ class Uploadable(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     url = models.URLField(default="")
-    meta_data = JSONField(blank=True, null=True)
+    meta_data = JSONField(blank=True, null=True, default=dict)
 
     class Meta:
         abstract = True
