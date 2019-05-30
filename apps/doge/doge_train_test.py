@@ -656,7 +656,7 @@ class DogeSubscriber(SignalSubscriber):
 
             vote = (sum(ticker_votes) / len(ticker_votes))
             new_doge_storage.value = f'{vote}:{self.committees[committee_ticker].committee_id}'  # normalize to +-1 scale
-            # new_doge_storage.save(publish=True)
+            new_doge_storage.save(publish=True)
             logger.debug('Doge vote saved')
         except Exception as e:
             logging.info(f'Unable to vote for {self.ticker} '
