@@ -77,10 +77,12 @@ def load_ticker(ticker, data):
         if not data.get(index):
             continue
 
-        index_value = int(float(data[index]))
+        index_value = float(data[index])
 
         if index in default_price_indexes:
             index_value = index_value * (10 ** 8)
+
+        index_value = int(index_value)  # if you do int(float()) it will trim values such as 0.1237 to 0 💩
 
         if index_value > 0:
             data_history.index = index
