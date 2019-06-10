@@ -3,7 +3,7 @@ ONE_DAY = 60*60*24
 ONE_HOUR = 60*60
 
 SUPPORTED_DOGE_TICKERS = ['BTC_USDT', 'ETH_USDT', 'ETH_BTC',]
-ENABLE_SHITCOIN_TRADING = True
+ENABLE_SHITCOIN_TRADING = False
 SHITCOIN_TRADING = {
     'BTC_USDT': ['BNB_BTC', 'XRP_BTC',] #  'EOS_BTC', 'BCHABC_BTC', 'LTC_BTC', 'IOTA_BTC', 'NEO_BTC', 'BTT_BTC', 'IOST_BTC',
                  #'ADA_BTC', 'BCD_BTC', 'ATOM_BTC', 'TFUEL_BTC', 'MATIC_BTC', 'TRX_BTC', 'ONT_BTC', 'ZEC_BTC', 'XMR_BTC']
@@ -30,3 +30,9 @@ DOGE_FALLBACK_BUY_SELL_THRESHOLD_PERCENT = 0.5      # if falling back to buy/sel
                                                     # benchmark returns in the training period are greater than this
                                                     # threshold, selling if the losses are greater than -threshold, and ignore otherwise
 
+
+def supported_shitcoins():
+    shitcoins = []
+    for key in SHITCOIN_TRADING:
+        shitcoins += SHITCOIN_TRADING[key]
+    return set(shitcoins)

@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, timedelta
 from apps.TA import PERIODS_1HR
 from apps.doge.doge_TA_actors import CommitteeVoteStorage
-from settings.doge import DOGE_ENFORCE_FRESH_VOTES
+from settings.doge import DOGE_ENFORCE_FRESH_VOTES, ENABLE_SHITCOIN_TRADING, SHITCOIN_TRADING, supported_shitcoins, SUPPORTED_DOGE_TICKERS
 from collections import namedtuple
 
 (POLONIEX, BITTREX, BINANCE, BITFINEX, KUCOIN, GDAX, HITBTC) = list(range(7))
@@ -64,14 +64,8 @@ def votes_on_test(ticker="BTC_USDT"):
 
 def votes_on(ticker, when_datetime=None):
 
-    if ticker == 'ALTS_BTC' or ticker =='ETH_BTC':
-        return VoteFraction(0.0, 1.0), []   # TODO we don't have data coming in for alts_btc or eth_btc yet, fix
-
-    if ticker == 'NEO_BTC':
-        return VoteFraction(0.0, 1.0), []
-
-    if ticker == 'OMG_BTC':
-        return VoteFraction(0.0, 1.0), []
+    if not ENABLE_SHITCOIN_TRADING and ticker not in SUPPORTED_DOGE_TICKERS:
+        return [0.0, 1.0]   # if we're not trading shitcoins, always trade on BTC
 
 
     when_datetime = when_datetime or datetime.now()
@@ -144,8 +138,9 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
     def __init__(self):
 
         self.assets = ["USDT", "BTC", "ETH", "ALTS",]
-        self.tickers = ["BTC_USDT", "ETH_USDT", "ETH_BTC"] #, "ALTS_BTC",]
-        self.shitcoins = ['OMG_BTC', 'NEO_BTC']
+        self.tickers = SUPPORTED_DOGE_TICKERS
+
+        self.shitcoins = supported_shitcoins()
         self.minimum_reserves = {
             'BTC': 0.01,  # 1%
             'BNB': 0.001  # .1%
