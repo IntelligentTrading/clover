@@ -620,32 +620,47 @@ class DogeSubscriber(SignalSubscriber):
         logger.info(f'Doge subscriber invoked at {datetime_from_timestamp(self.timestamp)}, '
                     f'channel={str(channel)}, data={str(data)} '
                     f'(it is now {datetime_from_timestamp(time.time())})')
-        transaction_currency, counter_currency = self.ticker.split('_')
 
-        new_doge_storage = CommitteeVoteStorage(ticker=self.ticker,
+        ticker_to_vote_on = self.ticker
+        self._vote_for_ticker(committee_ticker=self.ticker, ticker_to_vote_on=ticker_to_vote_on)
+
+        # next: check if this committee also needs to vote on some shitcoins
+        from settings.doge import ENABLE_SHITCOIN_TRADING, SHITCOIN_TRADING
+
+        if ENABLE_SHITCOIN_TRADING:
+            shitcoins = SHITCOIN_TRADING[self.ticker] # shitcoins on which we want to use this committee
+            for shitcoin in shitcoins:
+                self._vote_for_ticker(committee_ticker=self.ticker, ticker_to_vote_on=shitcoin)
+
+
+    def _vote_for_ticker(self, committee_ticker, ticker_to_vote_on):
+        logging.debug(f'Voting on ticker {ticker_to_vote_on} using committee for {committee_ticker}')
+        transaction_currency, counter_currency = ticker_to_vote_on.split('_')
+
+        new_doge_storage = CommitteeVoteStorage(ticker=ticker_to_vote_on,
                                                 exchange=self.exchange,
                                                 timestamp=self.timestamp,
                                                 periods=self.committees[self.ticker].periods)
 
         if not self._rewrite_history:
-            if new_doge_storage.has_saved_value(self.committees[self.ticker].committee_id):
-                logging.warning(f'Found existing committee vote for {self.ticker} '
+            if new_doge_storage.has_saved_value(self.committees[committee_ticker].committee_id):
+                logging.warning(f'Found existing committee vote for {ticker_to_vote_on} '
                                 f'at {datetime_from_timestamp(self.timestamp)}, skipping computation.')
                 logging.warning('To rewrite history, set rewrite_history=True when invoking DogeSubscriber.')
                 return
 
-
         try:
-            ticker_votes, weights = self.committees[self.ticker].vote(transaction_currency, counter_currency, self.timestamp)
+            ticker_votes, weights = self.committees[committee_ticker].vote(transaction_currency, counter_currency,
+                                                                           self.timestamp)
             # weighted_vote = sum([ticker_votes[i] * weights[i] for i in range(len(ticker_votes))]) / sum(weights)
 
             vote = (sum(ticker_votes) / len(ticker_votes))
-            new_doge_storage.value = f'{vote}:{self.committees[self.ticker].committee_id}'  # normalize to +-1 scale
+            new_doge_storage.value = f'{vote}:{self.committees[committee_ticker].committee_id}'  # normalize to +-1 scale
             new_doge_storage.save(publish=True)
             logger.debug('Doge vote saved')
         except Exception as e:
             logging.info(f'Unable to vote for {self.ticker} '
-                          f'at {datetime_from_timestamp(self.timestamp)}')
+                         f'at {datetime_from_timestamp(self.timestamp)}')
 
 
     def pre_handle(self, channel, data, *args, **kwargs):
