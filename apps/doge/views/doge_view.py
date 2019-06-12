@@ -8,14 +8,13 @@ import time
 
 class CommitteesView(View):
 
-    cached_committees = None
 
     def dispatch(self, request, *args, **kwargs):
 
-        if CommitteesView.cached_committees is None:
-           CommitteesView.cached_committees = load_committees_in_period(ticker='BTC_USDT', exchange='binance', start_timestamp=time.time()-60*60*24*1,
-                                               end_timestamp=time.time())
-        print(f'Loaded {len(CommitteesView.cached_committees)} committees.')
+        # if CommitteesView.cached_committees is None:
+        #   CommitteesView.cached_committees = load_committees_in_period(ticker='BTC_USDT', exchange='binance', start_timestamp=time.time()-60*60*24*1,
+        #                                       end_timestamp=time.time())
+        # print(f'Loaded {len(CommitteesView.cached_committees)} committees.')
 
 
         return super().dispatch(request, *args, **kwargs)
@@ -65,14 +64,10 @@ class CommitteesView(View):
 
 
 
-    def get(self, request):
-        ticker = 'BTC_USDT'
-
-        if not request.path.endswith('/dashboard'):
-            ticker = request.path.split('/')[-1]
+    def get(self, request, ticker, hours=4):
 
         committees = load_committees_in_period(ticker=ticker, exchange='binance',
-                                               start_timestamp=time.time() - 60*60*24*1,
+                                               start_timestamp=time.time() - 60*60*int(hours),
                                                end_timestamp=time.time())
 
         # reorder from newest to oldest

@@ -38,7 +38,7 @@ def load_committees_in_period(ticker, exchange, start_timestamp, end_timestamp):
     timestamps = [CommitteeStorage.timestamp_from_score(score.decode('utf8').split(':')[-1]) for score in
         database.zrangebyscore(key, min=CommitteeStorage.score_from_timestamp(start_timestamp),
                                max=CommitteeStorage.score_from_timestamp(end_timestamp))]
-    committees = [DogeCommittee(committee_timestamp=timestamp) for timestamp in timestamps]
+    committees = [DogeCommittee(committee_timestamp=timestamp, training_ticker=ticker) for timestamp in timestamps]
     logging.info(f'Loaded {len(committees)} committees.')
     return committees
 

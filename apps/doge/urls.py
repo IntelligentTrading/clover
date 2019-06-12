@@ -5,7 +5,7 @@ app_name = 'doge'
 
 urlpatterns = [
 
-    url(r'^dashboard$', CommitteesView.as_view(), name='dashboard'),
+    url(r'^dashboard/(?P<ticker>\w+)/(?P<hours>[0-9]+)/$', CommitteesView.as_view(), name='dashboard'),
     #url(r'^exchange_account$', ExchangeAccountView.as_view(), name='exchange_account'),
     #url(r'^allocation$', AllocationsView.as_view(), name='allocation'),
 
