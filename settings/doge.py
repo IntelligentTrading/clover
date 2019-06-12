@@ -35,4 +35,4 @@ def supported_shitcoins():
     shitcoins = []
     for key in SHITCOIN_TRADING:
         shitcoins += SHITCOIN_TRADING[key]
-    return set(shitcoins)
+    return list(set(shitcoins))

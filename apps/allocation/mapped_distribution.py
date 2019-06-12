@@ -140,12 +140,11 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
         self.assets = ["USDT", "BTC", "ETH", "ALTS",]
         self.tickers = SUPPORTED_DOGE_TICKERS
 
-        self.shitcoins = supported_shitcoins()
+        self.shitcoins = supported_shitcoins() if ENABLE_SHITCOIN_TRADING else []
         self.minimum_reserves = {
             'BTC': 0.01,  # 1%
             'BNB': 0.001  # .1%
         }
-
 
     def _reinforce_minimum_reserves(self, normalized_allocations):
         total_reassigned = 0
@@ -177,6 +176,9 @@ class MappedDistribution(MassiveShit):  # todo: Karla refactor this 💩
 
 
     def mean_shitcoin_vote_fraction(self, votes_on_tickers):
+        if not ENABLE_SHITCOIN_TRADING:
+            return VoteFraction(0.0, 1.0)   # we are not trading on shitcoins, their mean vote should all go to BTC
+
         transaction_currency_vote_fraction = sum(
             [votes_on_tickers[shitcoin_ticker].transaction_currency_vote_fraction
              for shitcoin_ticker in self.shitcoins]) / len(self.shitcoins)
