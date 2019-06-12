@@ -64,7 +64,7 @@ class CommitteesView(View):
 
 
 
-    def get(self, request, ticker, hours=4):
+    def get(self, request, ticker="BTC_USDT", hours=4):
 
         committees = load_committees_in_period(ticker=ticker, exchange='binance',
                                                start_timestamp=time.time() - 60*60*int(hours),
@@ -114,7 +114,9 @@ class CommitteesView(View):
 
         context = {
             "committees": committees,
-            "data": data
+            "data": data,
+            "ticker": ticker,
+            "hours": hours
         }
 
         return render(request, 'committees.html', context)
