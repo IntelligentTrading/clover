@@ -22,7 +22,7 @@ class DracarysStorage(IndicatorStorage):
         """
         periods = periods or self.periods
 
-        if min([len(array) for array in requisite_pv_index_arrays] + [periods, ]) < periods:
+        if min([len(array) for array in requisite_pv_index_arrays.values()] + [periods, ]) < periods:
             logger.debug("not enough data to compute")
             return ""
 
