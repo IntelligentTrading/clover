@@ -136,8 +136,8 @@ class IndicatorStorage(TickerStorage):
                         f"Error finding denoted price array for requisite index {index}. Returning empty value.")
                     return ""
 
-        if min([len(array) for array in index_value_arrays] + [periods, ]) < periods:
-            logger.warning(f"possibly not enough data for {self.__class__.__name__} to compute")
+        if min([len(index_value_arrays[array_name]) for array_name in index_value_arrays] + [periods, ]) < periods:
+            logger.debug(f"possibly not enough data for {self.__class__.__name__} to compute")
 
         return self.compute_value_with_requisite_indexes(index_value_arrays, periods)
 

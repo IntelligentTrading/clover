@@ -42,7 +42,10 @@ class Command(BaseCommand):
 
         logger.info("Pubsub clients are ready.")
 
+
         while True:
+            start = time.time()
+
             for class_name in subscribers:
                 # logger.debug(f'checking subscription {class_name}: {subscribers[class_name]}')
                 try:
@@ -54,6 +57,9 @@ class Command(BaseCommand):
                     logger.debug(subscribers[class_name].__dict__)
 
                 time.sleep(0.001)  # be nice to the system :)
+
+            end = time.time()
+            logging.info(f'!!! Running all subscribers took {(end-start)/60:.2f} minutes. !!!')
 
 
 def get_subscriber_classes():

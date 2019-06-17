@@ -12,6 +12,10 @@ class DracarysStorage(IndicatorStorage):
     requisite_pv_indexes = ["close_price"]
     always_publish = True # do not change! It's the last one. All the doge is watching.
 
+    @classmethod
+    def get_periods_list(cls):
+        return [12,]  # TODO: check, overridden all horizons for now because they are not needed
+
 
     def compute_value_with_requisite_indexes(self, requisite_pv_index_arrays: dict, periods: int = 0) -> str:
         """
@@ -22,7 +26,7 @@ class DracarysStorage(IndicatorStorage):
         """
         periods = periods or self.periods
 
-        if min([len(array) for array in requisite_pv_index_arrays] + [periods, ]) < periods:
+        if min([len(array) for array in requisite_pv_index_arrays.values()] + [periods, ]) < periods:
             logger.debug("not enough data to compute")
             return ""
 
