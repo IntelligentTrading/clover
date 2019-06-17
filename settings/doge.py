@@ -16,8 +16,8 @@ DOGE_TRAINING_PERIOD_DURATION_SECONDS = ONE_DAY     # the duration of the traini
 DOGE_LOAD_ROCKSTARS = True
 DOGE_MAX_ROCKSTARS = 20
 DOGE_REBALANCING_PERIOD_SECONDS = 20*60             # how often to run the rebalancer when autotrading
-DOGE_ENFORCE_FRESH_VOTES = False                    # if set to True, fails if no recent committee votes exist
-DOGE_COMMITTEES_EXPIRE = False                      # if set to True, enforces loading a new doge committee if the
+DOGE_ENFORCE_FRESH_VOTES = True                     # if set to True, fails if no recent committee votes exist
+DOGE_COMMITTEES_EXPIRE = True                       # if set to True, enforces loading a new doge committee if the
                                                     # current committee is older than DOGE_RETRAINING_PERIOD_SECONDS
                                                     # NOTE: if this is False, it will trade using the most recent committee
                                                     # (even if it's e.g. a few months old!!!)
