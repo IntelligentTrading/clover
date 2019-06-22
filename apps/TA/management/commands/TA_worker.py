@@ -48,7 +48,6 @@ class Command(BaseCommand):
 
             for class_name in subscribers:
                 # logger.debug(f'checking subscription {class_name}: {subscribers[class_name]}')
-                logger.info(f'... calling {class_name} (subscribers list is {subscribers})')
 
                 try:
                     # logger.debug("calling "+class_name)
