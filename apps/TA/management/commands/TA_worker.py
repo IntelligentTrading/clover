@@ -46,21 +46,26 @@ class Command(BaseCommand):
         while True:
             start = time.time()
 
+            logger.info('Restarting TA computation...')
+
             for class_name in subscribers:
                 # logger.debug(f'checking subscription {class_name}: {subscribers[class_name]}')
+
                 try:
                     # logger.debug("calling "+class_name)
-                    logger.info(f'... processing {class_name}')
                     subscribers[class_name]()  # run subscriber class
 
                 except Exception as e:
                     logger.error(str(e))
                     logger.debug(subscribers[class_name].__dict__)
 
-                time.sleep(0.001)  # be nice to the system :)
+                time.sleep(1)
 
             end = time.time()
-            logging.info(f'!!! Running all subscribers took {(end-start)/60:.2f} minutes. !!!')
+            logger.info(f'!!! Running all subscribers took {(end-start)/60:.2f} minutes. !!!')
+
+            time.sleep(120)  # be nice to the system :)
+
 
 
 def get_subscriber_classes():
