@@ -31,7 +31,7 @@ PRODUCTION = 'PRODUCTION' in DEPLOYMENT_TYPE
 DEMO = 'DEMO' in DEPLOYMENT_TYPE
 STAGE = 'STAGE' in DEPLOYMENT_TYPE
 LOCAL = 'LOCAL' in DEPLOYMENT_TYPE
-
+BACKTESTING_MODE = False
 
 # for Heroku deployment wierdness
 LOAD_TALIB = False
@@ -43,10 +43,12 @@ elif PRODUCTION:
     log_level = logging.INFO
 elif STAGE:
     log_level = logging.DEBUG
+elif BACKTESTING_MODE:
+    log_level = logging.CRITICAL
 else:
     log_level = logging.DEBUG
 
-log_level = logging.CRITICAL
+
 
 logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
@@ -224,7 +226,7 @@ ONE_HOUR = 60*60
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.ERROR)
+logger.setLevel(log_level)
 import datetime, time
 time_str = datetime.datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d-%H.%M.%S-UTC')
 logging.basicConfig(filename=f'doge-{time_str}.log', filemode='a', format='[%(asctime)s]:%(name)s:%(levelname)s %(message)s')
