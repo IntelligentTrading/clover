@@ -186,7 +186,7 @@ class DogeTrainer:
         new_committee_storage.value = committee_str + ':' + CommitteeStorage.committee_id(timestamp=end_timestamp,
                                                                                           ticker=training_ticker,
                                                                                           doge_hashes=doge_hashes)
-        new_committee_storage.save(publish=True)
+        response = new_committee_storage.save(publish=True)
         logging.info('>>>>>>> GPs saved to database.')
         return e
 

@@ -31,6 +31,7 @@ class Command(BaseCommand):
 
         subscribers = {}
         all_subscriber_classes = get_subscriber_classes() + get_doge_subscriber_classes()
+        # all_subscriber_classes = get_doge_subscriber_classes()
 
         for subscriber_class in all_subscriber_classes:
             subscribers[subscriber_class.__name__] = subscriber_class()
@@ -62,7 +63,7 @@ class Command(BaseCommand):
             end = time.time()
             logger.info(f'!!! Running all subscribers took {(end-start)/60:.2f} minutes. !!!')
 
-            time.sleep(120)  # be nice to the system :)
+            time.sleep(0.001)  # be nice to the system :)
 
 
 
