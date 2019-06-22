@@ -49,7 +49,7 @@ class Command(BaseCommand):
                         f'(total runtime: {(end-start)/60:.2f} minutes)')
 
             except Exception as e:
-                logging.critical(f'Error during retraining committees: {str(e)}')
+                logging.critical(f'!! Error during retraining committees: {str(e)}')
 
 
             # run rebalancer
