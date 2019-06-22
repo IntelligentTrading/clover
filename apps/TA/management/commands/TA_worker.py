@@ -6,7 +6,7 @@ from django.core.management.base import BaseCommand
 from apps.TA.indicators.fantasy import dracarys
 from settings.redis_db import database
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 try:
     earliest_price_score = int(float(database.zrangebyscore("BTC_USDT:binance:PriceStorage:close_price", 0, "inf", 0, 1)[0].decode("utf-8").split(":")[0]))

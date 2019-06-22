@@ -346,7 +346,7 @@ class RedisDB(Database):
             try:
                 return self.query_data_cache(ticker, exchange, horizon, timestamp, indicator_name)
             except NoCachedDataException:
-                logging.info(f'No cached value found for {indicator_name} at {timestamp}')
+                logging.debug(f'No cached value found for {indicator_name} at {timestamp}')
 
 
         # build the periods key
@@ -368,7 +368,7 @@ class RedisDB(Database):
             params['periods_range'] = periods_range
 
         try:
-            logging.info(f'Going to Redis for indicator {indicator_name} for {ticker} at {timestamp}...')
+            logging.debug(f'Going to Redis for indicator {indicator_name} for {ticker} at {timestamp}...')
 
             # remove the periods for sma or ema, as they aren't stored in STORAGE_CLASS
             if indicator_name.startswith('sma') or indicator_name.startswith('ema'):
@@ -464,7 +464,7 @@ class RedisDB(Database):
         # first try to find the indicator within cached data objects
         for data in self.data_cache.objects:
             if data.applicable(ticker, exchange, horizon, timestamp):
-                logging.info('Returning value from cache...')
+                logging.debug('Returning value from cache...')
                 return data.get_indicator(indicator_name, timestamp)
             if ticker == 'BTC_USDT' and data.start_time <= timestamp <= data.end_time:
                 try:

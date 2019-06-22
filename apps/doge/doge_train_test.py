@@ -12,11 +12,12 @@ from apps.genetic_algorithms.genetic_program import GeneticTickerStrategy
 from apps.genetic_algorithms.gp_artemis import ExperimentManager
 from apps.genetic_algorithms.leaf_functions import RedisTAProvider
 from apps.TA import PERIODS_1HR
-from settings import logger
 from settings.doge import SUPPORTED_DOGE_TICKERS, DOGE_RETRAINING_PERIOD_SECONDS, DOGE_LOAD_ROCKSTARS, \
     DOGE_COMMITTEES_EXPIRE, DOGE_FALLBACK_IF_UNABLE_TO_TRAIN, DOGE_FALLBACK_BUY_SELL_THRESHOLD_PERCENT
 from apps.genetic_algorithms.chart_plotter import save_dot_graph, get_dot_graph
 from apps.backtesting.utils import datetime_from_timestamp, time_performance
+
+logger = logging.getLogger()
 
 METRIC_IDS = {
     'mean_profit': 0,

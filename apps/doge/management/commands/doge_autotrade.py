@@ -30,18 +30,23 @@ class Command(BaseCommand):
                         end_timestamp = int(time.time())  # UTC timestamp
                         start_timestamp = end_timestamp - DOGE_TRAINING_PERIOD_DURATION_SECONDS
 
-                        logging.info(f'AUTOTRADING: >>> Starting to retrain committee for {ticker} '
+                        end_time_str = datetime_from_timestamp(
+                            latest_training_timestamp) if latest_training_timestamp else "N/A"
+                        logging.info(f'AUTOTRADING: >>> Preparing to retrain committee for {ticker} (the latest committee was '
+                                     f'trained with end time {end_time_str})'
                                      f'at {datetime_from_timestamp(time.time())}...')
-                        end_time_str = datetime_from_timestamp(latest_training_timestamp) if latest_training_timestamp else "N/A"
-                        logging.info(f'AUTOTRADING: >>> (the latest committee was '
-                                     f'trained with end time {end_time_str}')
+
                         arguments.append((start_timestamp, end_timestamp, ticker))
 
                 # DogeTrainer.run_training(start_timestamp, end_timestamp, ticker)
                 if len(arguments) > 0:
-                    self.run_training_in_parallel(arguments, num_processes=2)   # should run for BTC_USDT, ETH_USDT, ETH_BTC
+                    start = time.time()
+                    self.run_training_in_parallel(arguments, num_processes=3)   # should run for BTC_USDT, ETH_USDT, ETH_BTC
+                    end = time.time()
+
                     logging.info(
-                        f'AUTOTRADING: >>> Retraining for {ticker} completed at {datetime_from_timestamp(time.time())}...')
+                        f'AUTOTRADING: >>> Retraining completed at {datetime_from_timestamp(time.time())} '
+                        f'(total runtime: {(end-start)/60:.2f} minutes)')
 
             except Exception as e:
                 logging.critical(f'Error during retraining committees: {str(e)}')

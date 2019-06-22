@@ -24,7 +24,7 @@ def time_performance(func):
         start = time.time()
         result = func(*args, **kwargs)
         end = time.time()
-        logging.info(f"{func.__name__} took {end-start:.4f} seconds")
+        logging.debug(f"{func.__name__} took {end-start:.4f} seconds")
         return result
 
     return wrapper
