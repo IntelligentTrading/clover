@@ -14,6 +14,8 @@ class PriceException(TAException):
 
 
 class PriceStorage(TickerStorage):
+    always_publish = True
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.index = kwargs.get('index', "close_price")
