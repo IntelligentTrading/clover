@@ -112,7 +112,7 @@ class IndicatorStorage(TickerStorage):
     def get_denoted_price_array(self, index: str = "close_price", periods: int = 0):
         from apps.TA.storages.data.price import PriceStorage
 
-        logger.info(f"{self.__class__.__name__} is querying for key {self.ticker} over {periods or self.periods} periods")
+        logger.debug(f"{self.__class__.__name__} is querying for key {self.ticker} over {periods or self.periods} periods")
 
         results_dict = PriceStorage.query(
             ticker=self.ticker,
