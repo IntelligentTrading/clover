@@ -68,7 +68,7 @@ class DogeHistorySimulator:
 
     @staticmethod
     @time_performance
-    def _single_period_run(time_interval, time_to_retrain_seconds, ticker, horizon, exchange):
+    def _single_period_run(time_interval, time_to_retrain_seconds, ticker, horizon, exchange, rewrite_history=True):
         training_start_time, training_end_time = time_interval
         logging.info(f'Processing data for committee trained on data '
                      f'from {datetime_from_timestamp(training_start_time)} '
@@ -81,18 +81,25 @@ class DogeHistorySimulator:
                                        horizon=horizon,
                                        exchange=exchange)
 
-        # check if a committee record already exists
-        try:
-            committee = DogeCommittee(committee_timestamp=training_end_time, db_interface=DB_INTERFACE,
-                                      function_provider=ta_provider)
-            logging.info(f'Committee successfully loaded at {training_end_time}')
-        except:
+
+        committee = None
+
+        if not rewrite_history:
+            # check if a committee record already exists
+            try:
+                committee = DogeCommittee(committee_timestamp=training_end_time, db_interface=DB_INTERFACE,
+                                          function_provider=ta_provider)
+                logging.info(f'Committee successfully loaded at {training_end_time}')
+            except:
+                committee = None
+
+        if committee is None:
             # no committee, we need to rerun training
             logging.info(f'No committee found, running training for timestamp {training_end_time}...')
             karen = DogeTrainer(database=DB_INTERFACE)  # see Karen Pryor; TODO: ensure cached TA values are used
 
             karen.retrain_doges(start_timestamp=training_start_time, end_timestamp=training_end_time,
-                                training_ticker=ticker)
+                                training_ticker=ticker, parallelize=False)
 
             # now that Karen did her job we should totally have a working committee
             committee = DogeCommittee(committee_timestamp=training_end_time, db_interface=DB_INTERFACE,
@@ -149,4 +156,3 @@ class DogeHistorySimulator:
             except Exception as e:
                 logging.error(str(e))
         logging.info('Doges ingested all prices.')
-

@@ -18,7 +18,6 @@ from apps.genetic_algorithms.chart_plotter import save_dot_graph, get_dot_graph
 from apps.backtesting.utils import datetime_from_timestamp, time_performance
 
 logger = logging.getLogger()
-
 METRIC_IDS = {
     'mean_profit': 0,
     'fitness': 1
@@ -88,7 +87,7 @@ class DogeTrainer:
         self.database = database
         # self.function_provider = function_provider or RedisTAProvider(db_interface=database)
 
-    def retrain_doges(self, start_timestamp, end_timestamp, max_doges_to_save=50, training_ticker='BTC_USDT'):
+    def retrain_doges(self, start_timestamp, end_timestamp, max_doges_to_save=50, training_ticker='BTC_USDT', parallelize=True):
         """
         Reruns doge training and saves results to the database.
         :param start_timestamp: starting time to use for training (tickers are specified in GP_TRAINING_CONFIG json)
@@ -113,7 +112,7 @@ class DogeTrainer:
 
         # create an experiment manager
         e = ExperimentManager(experiment_container=config_json, read_from_file=False, database=self.database,
-                              hof_size=50, rockstars=rockstars, parallel_run=True)  # we will have one central json with all the parameters
+                              hof_size=50, rockstars=rockstars, parallel_run=parallelize)  # we will have one central json with all the parameters
 
         # run experiments
         e.run_experiments(keep_record=True)
@@ -221,7 +220,6 @@ class DogeTrainer:
         :param end_timestamp:
         :return:
         """
-
         start_time = DB_INTERFACE.get_nearest_db_timestamp(start_timestamp, ticker)
         end_time = DB_INTERFACE.get_nearest_db_timestamp(end_timestamp, ticker)
 

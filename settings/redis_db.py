@@ -8,10 +8,12 @@ SIMULATED_ENV = deployment_type == "LOCAL"
 # todo: use this to mark keys in redis db, so they can be separated and deleted
 
 logger = logging.getLogger('redis_db')
+BACKTESTING_MODE = False
+
 
 if deployment_type == "LOCAL":
     from settings.local_settings import TA_REDIS_URL
-    if TA_REDIS_URL:
+    if TA_REDIS_URL and not BACKTESTING_MODE:
         database = redis.from_url(TA_REDIS_URL)
     else:
         REDIS_HOST, REDIS_PORT = "127.0.0.1:6379".split(":")

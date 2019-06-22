@@ -46,6 +46,8 @@ elif STAGE:
 else:
     log_level = logging.DEBUG
 
+log_level = logging.CRITICAL
+
 logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
@@ -222,6 +224,7 @@ ONE_HOUR = 60*60
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.ERROR)
 import datetime, time
 time_str = datetime.datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d-%H.%M.%S-UTC')
 logging.basicConfig(filename=f'doge-{time_str}.log', filemode='a', format='[%(asctime)s]:%(name)s:%(levelname)s %(message)s')

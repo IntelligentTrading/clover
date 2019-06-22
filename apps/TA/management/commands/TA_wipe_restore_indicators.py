@@ -48,12 +48,55 @@ def restore_indicators(start_score, end_score):
 
     for key in database.keys("*PriceStorage*close_price*"):
         [ticker, exchange, storage_class, index] = key.decode("utf-8").split(":")
+        logging.critical(f'Restoring {ticker}...')
 
         for score in range(int(start_score), int(end_score)+1):
+            if score % 10000 == 0:
+                logging.critical(f'    ... score {score}')
             for subscriber in subscribers:
                 subscriber(data_event=forge_data_event(
                     ticker, exchange, storage_class, index, "123ABC", score
                 ))
+        logging.critical(f'{ticker} done')
+
+
+def parallel_restore(start_score, end_score, allowed_tickers=None):
+    from apps.backtesting.utils import parallel_run
+    subscribers = []
+    for subsrciber_class in get_subscriber_classes():
+        subscribers.append(subsrciber_class())
+
+    for key in database.keys("*PriceStorage*close_price*"):
+        [ticker, exchange, storage_class, index] = key.decode("utf-8").split(":")
+        if allowed_tickers is not None and not ticker in allowed_tickers:
+            logging.critical(f'Skipping {ticker}...')
+            continue
+
+        logging.critical(f'Restoring {ticker}...')
+        import time
+
+        start = time.time()
+
+
+        params = []
+        for score in range(int(start_score), int(end_score)+1):
+            if score % 10000 == 0:
+                logging.critical(f'    ... score {score}')
+            data_event = forge_data_event(
+                ticker, exchange, storage_class, index, "123ABC", score
+            )
+            params += [(subscriber, data_event) for subscriber in subscribers]
+
+        parallel_run(run_subscriber, params, pool_size=10, enable_tqdm=False)
+
+        end = time.time()
+        logging.critical(f'{ticker} done in {(start-end)/60:.2f} minutes')
+
+
+
+def run_subscriber(params):
+    subscriber, data_event = params
+    subscriber(data_event)
 
 
 def forge_data_event(ticker, exchange, storage_class, index, value, score):
@@ -71,3 +114,6 @@ def forge_data_event(ticker, exchange, storage_class, index, value, score):
         'data': bytes(json.dumps(data), "utf-8")
     }
 
+
+if __name__ == '__main__':
+    parallel_restore(227222, 259056, ['ETH_BTC'])

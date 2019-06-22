@@ -24,16 +24,19 @@ def time_performance(func):
         start = time.time()
         result = func(*args, **kwargs)
         end = time.time()
-        logging.debug(f"{func.__name__} took {end-start:.4f} seconds")
+        logging.info(f"{func.__name__} took {end-start:.4f} seconds")
         return result
 
     return wrapper
 
 
-def parallel_run(func, param_list, pool_size=POOL_SIZE):
+def parallel_run(func, param_list, pool_size=POOL_SIZE, enable_tqdm=True):
     with Pool(pool_size) as pool:
         #results = pool.map(func, param_list)
-        results = list(tqdm.tqdm(pool.imap(func, param_list), total=len(param_list)))
+        if enable_tqdm:
+            results = list(tqdm.tqdm(pool.imap(func, param_list), total=len(param_list)))
+        else:
+            results = list(pool.imap(func, param_list))
         pool.close()
         pool.join()
         pool.terminate() # needed for Pathos,
