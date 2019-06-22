@@ -59,8 +59,6 @@ class Command(BaseCommand):
                     logger.error(str(e))
                     logger.debug(subscribers[class_name].__dict__)
 
-                time.sleep(1)
-
             end = time.time()
             logger.info(f'!!! Running all subscribers took {(end-start)/60:.2f} minutes. !!!')
 

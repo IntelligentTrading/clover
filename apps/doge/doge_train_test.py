@@ -634,7 +634,7 @@ class DogeSubscriber(SignalSubscriber):
 
 
     def _vote_for_ticker(self, committee_ticker, ticker_to_vote_on):
-        logging.debug(f'Voting on ticker {ticker_to_vote_on} using committee for {committee_ticker}')
+        logger.info(f'Voting on ticker {ticker_to_vote_on} using committee for {committee_ticker}')
         transaction_currency, counter_currency = ticker_to_vote_on.split('_')
 
         new_doge_storage = CommitteeVoteStorage(ticker=ticker_to_vote_on,
@@ -644,9 +644,9 @@ class DogeSubscriber(SignalSubscriber):
 
         if not self._rewrite_history:
             if new_doge_storage.has_saved_value(self.committees[committee_ticker].committee_id):
-                logging.warning(f'Found existing committee vote for {ticker_to_vote_on} '
+                logger.warning(f'Found existing committee vote for {ticker_to_vote_on} '
                                 f'at {datetime_from_timestamp(self.timestamp)}, skipping computation.')
-                logging.warning('To rewrite history, set rewrite_history=True when invoking DogeSubscriber.')
+                logger.warning('To rewrite history, set rewrite_history=True when invoking DogeSubscriber.')
                 return
 
         try:
@@ -659,7 +659,7 @@ class DogeSubscriber(SignalSubscriber):
             new_doge_storage.save(publish=True)
             logger.info(f'Doge vote saved for {ticker_to_vote_on}')
         except Exception as e:
-            logging.info(f'Unable to vote for {self.ticker} '
+            logger.info(f'Unable to vote for {self.ticker} '
                          f'at {datetime_from_timestamp(self.timestamp)}')
 
 
