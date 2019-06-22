@@ -46,7 +46,7 @@ class Command(BaseCommand):
         while True:
             start = time.time()
 
-            logging.info('Restarting TA computation...')
+            logger.info('Restarting TA computation...')
 
             for class_name in subscribers:
                 # logger.debug(f'checking subscription {class_name}: {subscribers[class_name]}')
