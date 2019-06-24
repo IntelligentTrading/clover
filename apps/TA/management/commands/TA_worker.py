@@ -47,9 +47,10 @@ class Command(BaseCommand):
         while True:
             start = time.time()
 
-            logger.info('Restarting TA computation...')
+            logger.debug('Restarting TA computation...')
 
             for class_name in subscribers:
+                logger.debug(f'Processing {class_name}...')
                 # logger.debug(f'checking subscription {class_name}: {subscribers[class_name]}')
 
                 try:
@@ -61,7 +62,7 @@ class Command(BaseCommand):
                     logger.debug(subscribers[class_name].__dict__)
 
             end = time.time()
-            logger.info(f'!!! Running all subscribers took {(end-start)/60:.2f} minutes. !!!')
+            logger.debug(f'!!! Running all subscribers took {(end-start)/60:.2f} minutes. !!!')
 
             time.sleep(0.001)  # be nice to the system :)
 

@@ -8,7 +8,7 @@ from apps.backtesting.caching import memoize
 from apps.backtesting.data_sources import DB_INTERFACE
 
 
-@memoize
+# @memoize temporarily remove this decorator
 class TickDrivenBacktester(Evaluation, TickListener):
 
     def __init__(self, tick_provider, **kwargs):

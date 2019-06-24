@@ -32,10 +32,8 @@ class Command(BaseCommand):
 
                         end_time_str = datetime_from_timestamp(
                             latest_training_timestamp) if latest_training_timestamp else "N/A"
-                        logging.info(f'AUTOTRADING: >>> Preparing to retrain committee for {ticker} (the latest committee was '
-                                     f'trained with end time {end_time_str})'
-                                     f'at {datetime_from_timestamp(time.time())}...')
-
+                        logging.info(f'AUTOTRADING: >>> Preparing to retrain committee for {ticker} at {datetime_from_timestamp(time.time())} '
+                                     f'(the latest committee was trained with end time {end_time_str}) ')
                         arguments.append((start_timestamp, end_timestamp, ticker))
 
                 # DogeTrainer.run_training(start_timestamp, end_timestamp, ticker)
