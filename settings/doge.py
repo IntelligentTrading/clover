@@ -9,7 +9,7 @@ SHITCOIN_TRADING = {
                  #'ADA_BTC', 'BCD_BTC', 'ATOM_BTC', 'TFUEL_BTC', 'MATIC_BTC', 'TRX_BTC', 'ONT_BTC', 'ZEC_BTC', 'XMR_BTC']
 }
 
-DOGE_RETRAINING_PERIOD_SECONDS = ONE_HOUR           # how often to retrain and reinit the committee
+DOGE_RETRAINING_PERIOD_SECONDS = 1.5*ONE_HOUR           # how often to retrain and reinit the committee
 
 
 DOGE_TRAINING_PERIOD_DURATION_SECONDS = ONE_DAY     # the duration of the training period
