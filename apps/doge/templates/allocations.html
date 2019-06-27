@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block tab_title %}
+  Doge committees
+{% endblock tab_title %}
+
+{#{% block content_title %}#}
+{#  Portfolio#}
+{#{% endblock content_title %}#}
+
+{% block content %}
+{% load humanize %}
+
+
+
+
+
+
+<div class="container">
+
+    <div class="row pb-md-4">
+          <h2> Showing committees for {{ ticker }} not older than {{ hours }} hours </h2>
+      </div>
+
+    {% for allocation in allocations %}
+
+      <div class="row pb-md-4">
+          <h3> Allocation: {{ allocation }}</h3>
+            &nbsp;
+      </div>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+            <script>
+
+
+
+    {% endfor %}
+     ]);
+
+
+
+                var options = {
+                  title: '{{timestamp}}',
+                  'width':600,
+                  'height':300,
+                  'backgroundColor': 'transparent',
+                  'is3D':true,
+                  titleTextStyle: {
+                        color: 'white'
+                    },
+                    hAxis: {
+                        textStyle: {
+                            color: 'white'
+                        },
+                        titleTextStyle: {
+                            color: 'white'
+                        }
+                    },
+                    vAxis: {
+                        textStyle: {
+                            color: 'white'
+                        },
+                        titleTextStyle: {
+                            color: 'white'
+                        }
+                    },
+                    legend: {
+                        textStyle: {
+                            color: 'white'
+                        }
+                    }
+                };
+
+
+                var chart = new google.visualization.PieChart(document.getElementById('piechart_{{committee.committee_id}}_{{forloop.counter}}'));
+
+                chart.draw(data, options);
+              }
+            </script>
+
+</div>
+
+
+
+
+{% endblock content %}
+
+{% load static %}
+{% block javascript %}
+  <script src="{% static '/javascript/allocation.js' %}"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+{% endblock javascript %}
