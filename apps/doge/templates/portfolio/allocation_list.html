@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+
+<html>
+  <head>
+    <script type='text/javascript' src='https://www.gstatic.com/charts/loader.js'></script>
+    <script type='text/javascript'>
+      google.charts.load('current', {'packages':['annotatedtimeline']});
+      google.charts.setOnLoadCallback(drawChart);
+      function drawChart() {
+        var data = new google.visualization.DataTable();
+        data.addColumn('date', 'Date');
+
+        {% for coin in supported_coins %}
+        data.addColumn('number', '{{coin}}');
+        // data.addColumn('string', 'title1');
+        // data.addColumn('string', 'text1');
+        {% endfor %}
+
+
+        var rows = [];
+
+        {% for allocation in allocation_list %}
+
+
+        var row = [];
+        row.push(new Date({{allocation.timestamp|date:"U" }}*1000));
+
+            {% for coin in supported_coins %}
+
+            {% for item in allocation.realized_allocation %}
+                {% if item.coin == coin %}
+                   row.push({{item.portion}}); // , "{{item.coin}}", undefined);
+                {% endif %}
+             {% endfor %}
+
+        {% endfor %}
+        console.log(row.length);
+        if(row.length==4)
+           rows.push(row);
+        {% endfor %}
+
+
+        //data.addRows([
+          // [new Date(2008, 1 ,1), 30000, undefined, undefined, 40645, undefined, undefined],
+          // [new Date(2008, 1 ,2), 14045, undefined, undefined, 20374, undefined, undefined],
+          // [new Date(2008, 1 ,3), 55022, undefined, undefined, 50766, undefined, undefined],
+          // [new Date(2008, 1 ,4), 75284, undefined, undefined, 14334, 'Out of Stock','Ran out of stock on pens at 4pm'],
+          // [new Date(2008, 1 ,5), 41476, 'Bought Pens','Bought 200k pens', 66467, undefined, undefined],
+          // [Date.parse({{allocation.timestamp}}), 33322, undefined, undefined, 39463, undefined, undefined]
+        //]);
+
+        data.addRows(rows);
+
+        var chart = new google.visualization.AnnotatedTimeLine(document.getElementById('chart_div'));
+        chart.draw(data, {displayAnnotations: true});
+      }
+    </script>
+  </head>
+
+  <body>
+    // Note how you must specify the size of the container element explicitly!
+    <div id='chart_div' style='width: 1500px; height: 800px;'></div>
+
+  </body>
+</html>
+
+
+  <h1>allocation List</h1>
+  {% if allocation_list %}
+  <ul>
+    {% for allocation in allocation_list %}
+      {{allocation.timestamp}}
+      <li>
+        {{ allocation.realized_allocation }}
+      </li>
+
+      <div>
+
+           <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+            <script type="text/javascript">
+              google.charts.load('current', {'packages':['corechart']});
+              google.charts.setOnLoadCallback(drawChart);
+
+              function drawChart() {
+
+                data = new google.visualization.DataTable();
+                  data.addColumn('string', 'Coin');
+                  data.addColumn('number', 'Portion');
+<!--           data.addColumn({type: 'number', role: 'tooltip'}); -->
+                  data.addRows([
+                    {% for data in allocation.realized_allocation %}
+
+                  ['{{data.coin}}', {{data.portion}}],   <!-- , {{data.amount}} -->
+
+                  {% endfor %}
+
+        ]);
+
+
+
+                var options = {
+                  title: '{{timestamp}}',
+                  'width':600,
+                  'height':300,
+                  'backgroundColor': 'transparent',
+                  'is3D':true,
+                  titleTextStyle: {
+                        color: 'white'
+                    },
+                    hAxis: {
+                        textStyle: {
+                            color: 'white'
+                        },
+                        titleTextStyle: {
+                            color: 'white'
+                        }
+                    },
+                    vAxis: {
+                        textStyle: {
+                            color: 'white'
+                        },
+                        titleTextStyle: {
+                            color: 'white'
+                        }
+                    },
+                    legend: {
+                        textStyle: {
+                            color: 'white'
+                        }
+                    }
+                };
+
+
+                var chart = new google.visualization.PieChart(document.getElementById('realized_{{allocation.id}}'));
+
+                chart.draw(data, options);
+              }
+            </script>
+      </div>
+
+      <div id="realized_{{allocation.id}}"></div>
+    {% endfor %}
+  </ul>
+  {% else %}
+    <p>There are no allocations in the library.</p>
+  {% endif %}       
+{% endblock %}
