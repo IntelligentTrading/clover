@@ -18,7 +18,7 @@ class IndicatorSubscriber(TickerSubscriber):
         #     "name": "176760000:1532373300",
         #     "score": "1532373300"
         # }
-        
+
         self.data = data
 
         [self.ticker, self.exchange, object_class, self.key_suffix] = data["key"].split(":")
@@ -61,9 +61,9 @@ class IndicatorSubscriber(TickerSubscriber):
 
     def handle(self, channel, data, *args, **kwargs):
         """
-        a new instance was saved belonging to one of the classes subscribed to
-        for standard indicators self.ticker, self.exchange, and self.timestamp are available
-        these values were collected by self.pre_handle() and self.extract_params()
+        A new instance was saved belonging to one of the classes subscribed to.
+        For standard indicators, self.ticker, self.exchange, and self.timestamp are available.
+        These values were collected by self.pre_handle() and self.extract_params()
 
         :param channel:
         :param data:
@@ -72,25 +72,24 @@ class IndicatorSubscriber(TickerSubscriber):
         :return:
         """
 
-        if len(self.storage_class.requisite_pv_indexes):
+        # only run TA on the tickers that our doge support.
+        should_compute = self.ticker in SUPPORTED_DOGE_TICKERS or not ENABLE_TA_FOR_SUPPORTED_DOGE_TICKERS_ONLY
+        if not should_compute:
+            return  # stop handler
+
+        if len(self.storage_class.requisite_pv_indexes):  # check that we have all the requisits needed for handling
             if self.key_suffix not in self.storage_class.requisite_pv_indexes:
                 logger.debug(f'index {self.key_suffix} is not in {self.storage_class.requisite_pv_indexes} ...ignoring...')
-                return ""
+                return  # stop handler
             else:
                 # logger.debug(f'using indexes {self.storage_class.requisite_pv_indexes} for {self.storage_class.__name__} indicator')
-                pass
-
-        should_compute = (not ENABLE_TA_FOR_SUPPORTED_DOGE_TICKERS_ONLY) \
-                         or (ENABLE_TA_FOR_SUPPORTED_DOGE_TICKERS_ONLY and self.ticker in SUPPORTED_DOGE_TICKERS)
+                pass  # all good, carry on...
 
         import time
         from apps.backtesting.utils import datetime_from_timestamp
 
-        if should_compute:
-            self.storage_class.compute_and_save_all_values_for_timestamp(self.ticker, self.exchange, self.timestamp)
-            logger.info(f'Computed {self.storage_class.__name__} '
-                         f'for {self.ticker} with message timestamp {datetime_from_timestamp(self.timestamp)} '
-                         f'(it is now {datetime_from_timestamp(time.time())})')
-        else:
-            pass
-            # logger.debug(f'Ignoring {self.storage_class.__name__} for {self.ticker}')
+        self.storage_class.compute_and_save_all_values_for_timestamp(self.ticker, self.exchange, self.timestamp)
+        logger.info(f'Computed {self.storage_class.__name__} '
+                     f'for {self.ticker} with message timestamp {datetime_from_timestamp(self.timestamp)} '
+                     f'(it is now {datetime_from_timestamp(time.time())})')
+        # logger.debug(f'Ignoring {self.storage_class.__name__} for {self.ticker}')
