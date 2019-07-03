@@ -2,13 +2,12 @@ import os
 import logging
 import redis
 from apps.TA import deployment_type
-from settings import DEBUG
+from settings import DEBUG, BACKTESTING_MODE
 
 SIMULATED_ENV = deployment_type == "LOCAL"
 # todo: use this to mark keys in redis db, so they can be separated and deleted
 
 logger = logging.getLogger('redis_db')
-BACKTESTING_MODE = False
 
 
 if deployment_type == "LOCAL":

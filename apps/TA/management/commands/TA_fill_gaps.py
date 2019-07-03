@@ -31,7 +31,7 @@ class Command(BaseCommand):
         fill_data_gaps()
 
 
-def refill_pv_storages():
+def refill_pv_storages(ticker_filter=None):
     from apps.TA.storages.abstract.timeseries_storage import TimeseriesStorage
     from apps.TA.storages.utils.pv_resampling import generate_pv_storages
     from apps.TA.storages.utils.memory_cleaner import clear_pv_history_values
@@ -42,8 +42,13 @@ def refill_pv_storages():
     tei_processed = {}  # tei: ticker-exchange-index
 
     for key in database.keys("*PriceVolumeHistoryStorage*"):
-        logger.info("running pv refill for " + str(key))
+
         [ticker, exchange, object_class, index] = key.decode("utf-8").split(":")
+        if ticker_filter is not None and ticker not in ticker_filter:
+            continue
+
+        logger.info("running pv refill for " + str(key))
+
         tei_key = f"{ticker}_{exchange}"
 
         for score in range(start_score, end_score):
@@ -57,15 +62,18 @@ def refill_pv_storages():
                 clear_pv_history_values(ticker, exchange, score)
 
 
-def fill_data_gaps():
+def fill_data_gaps(ticker_filter=None):
     method_params = []
 
-    for ticker in ["BTC_USDT", ]:  # ["*_USDT", "*_BTC"]:
+    for ticker in ["*_USDT", "*_BTC"]:
         for exchange in ["binance", ]:  # ["binance", "poloniex", "bittrex"]:
             for index in ['close_volume', 'open_price', 'high_price', 'low_price', 'close_price']:
 
                 for key in database.keys(f"{ticker}*{exchange}*PriceStorage*{index}*"):
                     [ticker, exchange, storage_class, index] = key.decode("utf-8").split(":")
+
+                    if ticker_filter is not None and ticker not in ticker_filter:
+                        continue
 
                     ugly_tuple = (ticker, exchange, index)
                     method_params.append(ugly_tuple)

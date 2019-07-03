@@ -347,6 +347,10 @@ class DogeCommittee:
         self._training_ticker = training_ticker
 
         doge_traders = self._load_doge_traders()
+
+        if len(doge_traders) == 0:
+            raise NoNewCommitteeException("This committee doesn't seem to have any traders associated with it!")
+
         self.doge_traders = doge_traders if len(doge_traders) <= max_doges else doge_traders[:max_doges]
         self._set_benchmark_profit()
 

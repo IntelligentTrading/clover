@@ -15,4 +15,4 @@ class Command(BaseCommand):
             simulator = DogeHistorySimulator(start_time=start_time, end_time=end_time, ticker=ticker,
                                              exchange='binance', horizon=PERIODS_1HR, training_period_length=DOGE_TRAINING_PERIOD_DURATION_SECONDS,
                                              time_to_retrain_seconds=DOGE_RETRAINING_PERIOD_SECONDS)
-            simulator.fill_history()
+            simulator.fill_history(rewrite_history=False)
