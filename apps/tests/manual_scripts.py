@@ -61,31 +61,37 @@ class RedisTests:
             exchange="binance",
         )
 
+        from apps.doge.doge_TA_actors import CommitteeVoteStorage
+        RedisTests._show_storage_status(CommitteeVoteStorage, params)
+
         for indicator_type in STORAGE_CLASS:
-            sorted_set_key = STORAGE_CLASS[indicator_type].compile_db_key(key=None,
-                                                                          key_prefix=f"{params['ticker']}"
-                                                                          f":{params['exchange']}:",
-                                                                          key_suffix='*')
-            logging.info(f'Processing indicator {sorted_set_key}')
-            if len(database.keys(sorted_set_key)) == 0:
-                logging.info('   no data.')
-            for key in database.keys(sorted_set_key):
-                query_response = database.zrange(key, 0, -1)
-                if len(query_response) == 0:
-                    logging.info(f'   {key}: no data')
-                    continue
-                try:
-                    score_start = query_response[0].decode("utf-8").split(":")[-1]
-                    score_end = query_response[-1].decode("utf-8").split(":")[-1]
-                    time_start = datetime_from_timestamp(
-                        STORAGE_CLASS[indicator_type].timestamp_from_score(score_start))
-                    time_end = datetime_from_timestamp(STORAGE_CLASS[indicator_type].timestamp_from_score(score_end))
-                    num_values = len(query_response)
-                    logging.info(f'   {key}: {num_values} values, start time = {time_start}, end time = {time_end}')
-                except Exception as e:
-                    logging.info(f'Error decoding input: {str(e)}')
+            RedisTests._show_storage_status(STORAGE_CLASS[indicator_type], params)
         return
 
+    @staticmethod
+    def _show_storage_status(storage_class, params):
+        sorted_set_key = storage_class.compile_db_key(key=None,
+                                                                      key_prefix=f"{params['ticker']}"
+                                                                                 f":{params['exchange']}:",
+                                                                      key_suffix='*')
+        logging.info(f'Processing indicator {sorted_set_key}')
+        if len(database.keys(sorted_set_key)) == 0:
+            logging.info('   no data.')
+        for key in database.keys(sorted_set_key):
+            query_response = database.zrange(key, 0, -1)
+            if len(query_response) == 0:
+                logging.info(f'   {key}: no data')
+                continue
+            try:
+                score_start = query_response[0].decode("utf-8").split(":")[-1]
+                score_end = query_response[-1].decode("utf-8").split(":")[-1]
+                time_start = datetime_from_timestamp(
+                    storage_class.timestamp_from_score(score_start))
+                time_end = datetime_from_timestamp(storage_class.timestamp_from_score(score_end))
+                num_values = len(query_response)
+                logging.info(f'   {key}: {num_values} values, start time = {time_start}, end time = {time_end} (scores {score_start}-{score_end})')
+            except Exception as e:
+                logging.info(f'Error decoding input: {str(e)}')
 
     @staticmethod
     def find_gaps(key_pattern, start_timestamp, end_timestamp):

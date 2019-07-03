@@ -80,7 +80,10 @@ class GoldPriceProvider(PriceProvider):
         import os
         from settings import BASE_DIR
         csv_path = os.path.join(BASE_DIR, csv_relative_path)
-        df = pd.read_csv(csv_path)
+        try:
+            df = pd.read_csv(csv_path)
+        except:
+            return
         df['Date'] = pd.to_datetime(df['Date'])
         df = df.set_index('Date')
         self.price_df = df

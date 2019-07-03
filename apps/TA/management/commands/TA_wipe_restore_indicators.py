@@ -40,7 +40,8 @@ def wipe_all_indicators():
             logger.debug("deleting key: " + key.decode("utf-8"))
             # database.delete(key)
 
-def restore_indicators(start_score, end_score):
+
+def restore_indicators(start_score, end_score, ticker_filter=None):
 
     subscribers = []
     for subsrciber_class in get_subscriber_classes():
@@ -48,6 +49,8 @@ def restore_indicators(start_score, end_score):
 
     for key in database.keys("*PriceStorage*close_price*"):
         [ticker, exchange, storage_class, index] = key.decode("utf-8").split(":")
+        if ticker_filter is not None and ticker not in ticker_filter:
+            continue
         logging.critical(f'Restoring {ticker}...')
 
         for score in range(int(start_score), int(end_score)+1):

@@ -30,7 +30,7 @@ class DogeHistorySimulator:
         self._start_time = DB_INTERFACE.get_nearest_db_timestamp(start_time, ticker, exchange)
         self._end_time = DB_INTERFACE.get_nearest_db_timestamp(end_time, ticker, exchange)
         self._training_period_length = training_period_length
-        self._time_to_retrain_seconds = time_to_retrain_seconds
+        self._time_to_retrain_seconds = int(time_to_retrain_seconds)
         self._ticker = ticker
         self._exchange = exchange
         self._ticker = ticker
@@ -38,12 +38,12 @@ class DogeHistorySimulator:
         self._parallel = parallel
 
     @time_performance
-    def fill_history(self):
+    def fill_history(self, rewrite_history=False):
 
         training_intervals = []
 
         for training_end_time in range(self._end_time,
-                                       self._start_time + self._training_period_length,
+                                      self._start_time + self._training_period_length,
                                        -self._time_to_retrain_seconds):
             # training_end_time = 1547132400  # debug stuff
             training_start_time = training_end_time - self._training_period_length
@@ -53,7 +53,8 @@ class DogeHistorySimulator:
                                time_to_retrain_seconds=self._time_to_retrain_seconds,
                                ticker=self._ticker,
                                horizon=self._horizon,
-                               exchange=self._exchange)
+                               exchange=self._exchange,
+                               rewrite_history=rewrite_history)
 
         logging.info(f'Preparing to run history filling for {len(training_intervals)} periods...')
 
@@ -68,7 +69,7 @@ class DogeHistorySimulator:
 
     @staticmethod
     @time_performance
-    def _single_period_run(time_interval, time_to_retrain_seconds, ticker, horizon, exchange, rewrite_history=True):
+    def _single_period_run(time_interval, time_to_retrain_seconds, ticker, horizon, exchange, rewrite_history=False):
         training_start_time, training_end_time = time_interval
         logging.info(f'Processing data for committee trained on data '
                      f'from {datetime_from_timestamp(training_start_time)} '

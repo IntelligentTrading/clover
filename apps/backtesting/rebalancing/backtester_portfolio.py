@@ -409,6 +409,8 @@ class FixedRatiosPortfolioBacktester(PortfolioBacktester):
         super().__init__(baseline_portions=portions_dict, *args, **kwargs)
 
 
+
+
     def _build_portfolio_snapshots(self):
         self._portfolio_snapshots = OrderedDict()
         current_snapshot = None

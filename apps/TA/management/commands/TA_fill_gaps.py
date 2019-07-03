@@ -11,13 +11,8 @@ from settings.redis_db import database
 logger = logging.getLogger(__name__)
 
 
-START_DATE = datetime(2019, 6, 29)
+START_DATE = datetime(2019, 5, 1)
 END_DATE = datetime.now()
-
-FILL_ONLY_SUPPORTED_TICKERS = True
-
-if FILL_ONLY_SUPPORTED_TICKERS:
-    from settings.doge import SUPPORTED_DOGE_TICKERS
 
 
 class Command(BaseCommand):
@@ -36,7 +31,7 @@ class Command(BaseCommand):
         fill_data_gaps()
 
 
-def refill_pv_storages():
+def refill_pv_storages(ticker_filter=None):
     from apps.TA.storages.abstract.timeseries_storage import TimeseriesStorage
     from apps.TA.storages.utils.pv_resampling import generate_pv_storages
     from apps.TA.storages.utils.memory_cleaner import clear_pv_history_values
@@ -49,7 +44,7 @@ def refill_pv_storages():
     for key in database.keys("*PriceVolumeHistoryStorage*"):
 
         [ticker, exchange, object_class, index] = key.decode("utf-8").split(":")
-        if FILL_ONLY_SUPPORTED_TICKERS and ticker not in SUPPORTED_DOGE_TICKERS:
+        if ticker_filter is not None and ticker not in ticker_filter:
             continue
 
         logger.info("running pv refill for " + str(key))
@@ -67,7 +62,7 @@ def refill_pv_storages():
                 clear_pv_history_values(ticker, exchange, score)
 
 
-def fill_data_gaps():
+def fill_data_gaps(ticker_filter=None):
     method_params = []
 
     for ticker in ["*_USDT", "*_BTC"]:
@@ -77,7 +72,7 @@ def fill_data_gaps():
                 for key in database.keys(f"{ticker}*{exchange}*PriceStorage*{index}*"):
                     [ticker, exchange, storage_class, index] = key.decode("utf-8").split(":")
 
-                    if FILL_ONLY_SUPPORTED_TICKERS and ticker not in SUPPORTED_DOGE_TICKERS:
+                    if ticker_filter is not None and ticker not in ticker_filter:
                         continue
 
                     ugly_tuple = (ticker, exchange, index)
