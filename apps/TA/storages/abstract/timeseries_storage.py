@@ -42,9 +42,6 @@ class TimeseriesStorage(KeyValueStorage):
         if self.unix_timestamp < JAN_1_2017_TIMESTAMP:
             raise TimeseriesException("timestamp before January 1st, 2017")
 
-    # def save_own_existance(self, describer_key=""):
-    #     self.describer_key = describer_key or f'{self.__class__.class_describer}:{self.get_db_key()}'
-
     @classmethod
     def score_from_timestamp(cls, timestamp) -> float:
         return round((float(timestamp) - JAN_1_2017_TIMESTAMP) / 300, 3)
@@ -187,17 +184,12 @@ class TimeseriesStorage(KeyValueStorage):
         if self.value is None:
             logger.warning("no value was set, nothing to save, but will save empty string anyway")
 
-        # self.value = self.value or ""  # use empty string for None, False, etc
-                                         # !!! @tomcounsell this will kill perfectly valid values of 0.0!
         if self.value != 0:
-            self.value = self.value or ""  # there, this is ugly, but should exclude 0s from the test
-
+            self.value = self.value or ""  # should exclude 0s from being overwritten
 
         if not self.force_save:
             # validate some rules here?
             pass
-
-        # self.save_own_existance()  # todo: is this still necessary?
 
         z_rem_data = self.get_z_rem_data()
         z_add_data = self.get_z_add_data()

@@ -56,7 +56,7 @@ class AbstractSubscriber(ABC):
 
             self.pre_handle(channel_name, event_data)
             self.handle(channel_name, event_data)
-        except KeyError as  e:
+        except KeyError as e:
             logger.warning(f'unexpected format: {data_event} ' + str(e))
             pass  # message not in expected format, just ignore
         except JSONDecodeError:

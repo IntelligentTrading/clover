@@ -34,7 +34,7 @@ class Command(BaseCommand):
         # all_subscriber_classes = get_doge_subscriber_classes()
 
         for subscriber_class in all_subscriber_classes:
-            subscribers[subscriber_class.__name__] = subscriber_class()
+            subscribers[subscriber_class.__name__] = subscriber_class()  # initialize class, see AbstractSubscriber.__init__()
             logger.debug(f'added subscriber {subscriber_class}')
             logger.debug(f'new subscriber is {subscribers[subscriber_class.__name__]}')
 
@@ -55,7 +55,7 @@ class Command(BaseCommand):
 
                 try:
                     # logger.debug("calling "+class_name)
-                    subscribers[class_name]()  # run subscriber class
+                    subscribers[class_name]()  # run subscriber class - see AbstractSubscriber.__call__()
 
                 except Exception as e:
                     logger.error(str(e))
