@@ -7,9 +7,7 @@ from django.core.management.base import BaseCommand
 from apps.TA.storages.abstract.ticker_subscriber import timestamp_is_near_5min
 from apps.TA.storages.data.pv_history import PriceVolumeHistoryStorage, default_price_indexes
 from apps.common.utilities.multithreading import run_all_multithreaded
-from settings import BTC, USDT, BINANCE
 from settings.redis_db import database
-from apps.indicator.models.price_history import PriceHistory
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +24,7 @@ class Command(BaseCommand):
         restore_db_to_redis(START_DATE, END_DATE)
 
         from apps.TA.management.commands.TA_fill_gaps import fill_data_gaps
-        fill_data_gaps(SQL_fill=True)
-        fill_data_gaps(SQL_fill=False)
+        fill_data_gaps()
 
 
 def restore_db_to_redis(start_datetime, end_datetime):
@@ -44,40 +41,44 @@ def restore_db_to_redis(start_datetime, end_datetime):
 
         logger.info(f"restoring past {num_hours_per_query} hours data to {process_datetime}")
 
-        price_history_objects = PriceHistory.objects.filter(
-            timestamp__gte=process_datetime - timedelta(hours=num_hours_per_query),
-            timestamp__lt=process_datetime,
-            source=BINANCE,  # Binance only for now
-            transaction_currency__in=["BTC", "ETH"],
-            counter_currency__in=[USDT]
-        )
+        #TODO: refactor to call data from Core API. Do not query directly from DB
 
-        results = run_all_multithreaded(save_pv_histories_to_redis, price_history_objects)
-        try:
-            total_results += sum([sum(result) for result in results])
-        except Exception as e:
-            pass
+        # price_history_objects = PriceHistory.objects.filter(
+        #     timestamp__gte=process_datetime - timedelta(hours=num_hours_per_query),
+        #     timestamp__lt=process_datetime,
+        #     source=BINANCE,  # Binance only for now
+        #     transaction_currency__in=["BTC", "ETH"],
+        #     counter_currency__in=[USDT]
+        # )
 
-        price_history_objects = PriceHistory.objects.filter(
-            timestamp__gte=process_datetime - timedelta(hours=num_hours_per_query),
-            timestamp__lt=process_datetime,
-            source=BINANCE,  # Binance only for now
-            counter_currency__in=[BTC]
-        )
+        # results = run_all_multithreaded(save_pv_histories_to_redis, price_history_objects)
+        # try:
+        #     total_results += sum([sum(result) for result in results])
+        # except Exception as e:
+        #     pass
 
-        results = run_all_multithreaded(save_pv_histories_to_redis, price_history_objects)
-        try:
-            total_results += sum([sum(result) for result in results])
-        except Exception as e:
-            pass
+        #TODO: refactor to call data from Core API. Do not query directly from DB
+
+        # price_history_objects = PriceHistory.objects.filter(
+        #     timestamp__gte=process_datetime - timedelta(hours=num_hours_per_query),
+        #     timestamp__lt=process_datetime,
+        #     source=BINANCE,  # Binance only for now
+        #     counter_currency__in=[BTC]
+        # )
+
+        # results = run_all_multithreaded(save_pv_histories_to_redis, price_history_objects)
+        # try:
+        #     total_results += sum([sum(result) for result in results])
+        # except Exception as e:
+        #     pass
 
         logger.info(f"{total_results} values added to Redis")
 
 
-
 ### PULL PRICE HISTORY RECORDS FROM CORE PRICE HISTORY DATABASE ###
 def save_pv_histories_to_redis(ph_object, pipeline=None):
-    if ph_object.source is not BINANCE or ph_object.counter_currency not in [BTC, USDT]:
+
+    if ph_object.source is not "binance" or ph_object.counter_currency not in ["BTC", "USDT"]:
         return pipeline or [0]
 
     using_local_pipeline = (not pipeline)
