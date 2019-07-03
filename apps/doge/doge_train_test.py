@@ -629,10 +629,10 @@ class DogeSubscriber(SignalSubscriber):
         self._vote_for_ticker(committee_ticker=self.ticker, ticker_to_vote_on=ticker_to_vote_on)
 
         # next: check if this committee also needs to vote on some shitcoins
-        from settings.doge import ENABLE_SHITCOIN_TRADING, SHITCOIN_TRADING
+        from settings.doge import ENABLE_SHITCOIN_TRADING, COMMITTEE_VOTE_SCOPE
 
         if ENABLE_SHITCOIN_TRADING:
-            shitcoins = SHITCOIN_TRADING[self.ticker] # shitcoins on which we want to use this committee
+            shitcoins = COMMITTEE_VOTE_SCOPE[self.ticker] # shitcoins on which we want to use this committee
             for shitcoin in shitcoins:
                 self._vote_for_ticker(committee_ticker=self.ticker, ticker_to_vote_on=shitcoin)
 

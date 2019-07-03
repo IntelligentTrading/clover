@@ -1,7 +1,7 @@
 from apps.TA.storages.abstract.indicator import IndicatorException, IndicatorStorage
 from apps.TA.storages.abstract.ticker_subscriber import TickerSubscriber, get_nearest_5min_timestamp
-from settings import logger, ENABLE_TA_FOR_SUPPORTED_DOGE_TICKERS_ONLY, SUPPORTED_DOGE_TICKERS
-
+from settings import logger
+from settings.doge import ENABLE_TA_FOR_SUPPORTED_DOGE_TICKERS_ONLY, SUPPORTED_DOGE_TICKERS
 
 class IndicatorSubscriber(TickerSubscriber):
     class_describer = "indicator_subscriber"

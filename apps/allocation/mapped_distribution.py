@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, timedelta
 from apps.TA import PERIODS_1HR
 from apps.doge.doge_TA_actors import CommitteeVoteStorage
-from settings.doge import DOGE_ENFORCE_FRESH_VOTES, ENABLE_SHITCOIN_TRADING, SHITCOIN_TRADING, supported_shitcoins, SUPPORTED_DOGE_TICKERS
+from settings.doge import DOGE_ENFORCE_FRESH_VOTES, ENABLE_SHITCOIN_TRADING, COMMITTEE_VOTE_SCOPE, supported_shitcoins, SUPPORTED_DOGE_TICKERS
 from collections import namedtuple
 
 (POLONIEX, BITTREX, BINANCE, BITFINEX, KUCOIN, GDAX, HITBTC) = list(range(7))

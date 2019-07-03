@@ -37,20 +37,14 @@ BACKTESTING_MODE = False
 LOAD_TALIB = False
 
 # Set up logger
-if LOCAL:
-    log_level = logging.DEBUG
-elif PRODUCTION:
+if PRODUCTION:
     log_level = logging.INFO
-elif STAGE:
-    log_level = logging.DEBUG
 elif BACKTESTING_MODE:
     log_level = logging.CRITICAL
 else:
     log_level = logging.DEBUG
 
-
-
-logging.basicConfig(level=log_level)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 if LOCAL or STAGE:
@@ -212,23 +206,6 @@ EXCHANGE_MARKETS = ('binance',)
 
 LOAD_TALIB = True
 
-# list of tickers for which doges will vote
-
-SUPPORTED_DOGE_TICKERS = ['BTC_USDT', 'ETH_USDT', 'ETH_BTC',]
-ENABLE_TA_FOR_SUPPORTED_DOGE_TICKERS_ONLY = False
-
-ONE_WEEK = 60*60*24*7
-ONE_DAY = 60*60*24
 ONE_HOUR = 60*60
-
-# doge training schedule (how often to retrain and reinit the committee)
-# if set to False, loads the latest vote for a ticker regardless when it was obtained
-
-for handler in logging.root.handlers[:]:
-    logging.root.removeHandler(handler)
-logger = logging.getLogger(__name__)
-logger.setLevel(log_level)
-import datetime, time
-time_str = datetime.datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d-%H.%M.%S-UTC')
-logging.basicConfig(filename=f'doge-{time_str}.log', filemode='a', format='[%(asctime)s]:%(name)s:%(levelname)s %(message)s')
-logging.getLogger().addHandler(logging.StreamHandler())
+ONE_DAY = ONE_HOUR*24
+ONE_WEEK = ONE_DAY*7
