@@ -3,11 +3,11 @@ from apps.doge.doge_train_test import DogeTrainer, DogeCommittee
 from settings.doge import SUPPORTED_DOGE_TICKERS, DOGE_RETRAINING_PERIOD_SECONDS, DOGE_TRAINING_PERIOD_DURATION_SECONDS, \
     DOGE_REBALANCING_PERIOD_SECONDS
 from apps.portfolio.management.commands.rebalancer import balance_portfolios
-from apps.doge.doge_train_test import NoGoodDogesException
 import logging
 import time
 from apps.backtesting.utils import datetime_from_timestamp, parallel_run_thread_pool, time_performance
-from functools import partial
+from apps.TA.storages.utils.memory_cleaner import redisCleanup
+from settings.redis_db import get_used_memory_percent
 
 class Command(BaseCommand):
 
@@ -58,6 +58,12 @@ class Command(BaseCommand):
             except Exception as e:
                 logging.critical(f'Error during rebalancing: {str(e)}')
                 logging.info(f'AUTOTRADING: >>> Rebalancing failed.')
+
+
+            # check if we need to clean Redis
+            if get_used_memory_percent() > 0.97:
+                redisCleanup()
+
 
             # sleep for rebalance duration
             time.sleep(DOGE_REBALANCING_PERIOD_SECONDS)
