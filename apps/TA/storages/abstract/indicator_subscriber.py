@@ -49,10 +49,7 @@ class IndicatorSubscriber(TickerSubscriber):
         import time
         from apps.backtesting.utils import datetime_from_timestamp
         if time.time() - self.timestamp > 60*20:
-            logger.warning(f'Setting a timestamp for message {data}')
-            logger.warning(f'   ! the current time is {datetime_from_timestamp(time.time())}')
-            logger.warning(f'   ! the message time is {datetime_from_timestamp(self.timestamp)}')
-
+            logger.warning(f'Timestamp is {datetime_from_timestamp(self.timestamp)} which is more than 20 minutes old. Data: {data}')
         return
 
 
