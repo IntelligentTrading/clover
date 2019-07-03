@@ -18,6 +18,7 @@ class IndicatorSubscriber(TickerSubscriber):
         #     "name": "176760000:1532373300",
         #     "score": "1532373300"
         # }
+        
         self.data = data
 
         [self.ticker, self.exchange, object_class, self.key_suffix] = data["key"].split(":")
