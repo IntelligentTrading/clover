@@ -11,8 +11,13 @@ from settings.redis_db import database
 logger = logging.getLogger(__name__)
 
 
-START_DATE = datetime(2019, 5, 1)
+START_DATE = datetime(2019, 6, 29)
 END_DATE = datetime.now()
+
+FILL_ONLY_SUPPORTED_TICKERS = True
+
+if FILL_ONLY_SUPPORTED_TICKERS:
+    from settings.doge import SUPPORTED_DOGE_TICKERS
 
 
 class Command(BaseCommand):
@@ -42,8 +47,13 @@ def refill_pv_storages():
     tei_processed = {}  # tei: ticker-exchange-index
 
     for key in database.keys("*PriceVolumeHistoryStorage*"):
-        logger.info("running pv refill for " + str(key))
+
         [ticker, exchange, object_class, index] = key.decode("utf-8").split(":")
+        if FILL_ONLY_SUPPORTED_TICKERS and ticker not in SUPPORTED_DOGE_TICKERS:
+            continue
+
+        logger.info("running pv refill for " + str(key))
+
         tei_key = f"{ticker}_{exchange}"
 
         for score in range(start_score, end_score):
@@ -60,12 +70,15 @@ def refill_pv_storages():
 def fill_data_gaps():
     method_params = []
 
-    for ticker in ["BTC_USDT", ]:  # ["*_USDT", "*_BTC"]:
+    for ticker in ["*_USDT", "*_BTC"]:
         for exchange in ["binance", ]:  # ["binance", "poloniex", "bittrex"]:
             for index in ['close_volume', 'open_price', 'high_price', 'low_price', 'close_price']:
 
                 for key in database.keys(f"{ticker}*{exchange}*PriceStorage*{index}*"):
                     [ticker, exchange, storage_class, index] = key.decode("utf-8").split(":")
+
+                    if FILL_ONLY_SUPPORTED_TICKERS and ticker not in SUPPORTED_DOGE_TICKERS:
+                        continue
 
                     ugly_tuple = (ticker, exchange, index)
                     method_params.append(ugly_tuple)

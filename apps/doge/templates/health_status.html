@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block tab_title %}
+  Dogtor
+{% endblock tab_title %}
+
+{#{% block content_title %}#}
+{#  Dogtor #}
+{#{% endblock content_title %}#}
+
+{% block content %}
+{% load humanize %}
+
+
+
+
+
+
+<div class="container">
+
+    <div class="row pb-md-4">
+          <h2> Showing health info for the past {{ hours }} hours </h2>
+      </div>
+
+        <div class="row pb-md-4">
+          <h2> Latest allocation: {{health_info.latest_allocation}} </h2>
+            <h2> Rebalances per hour: {{health_info.avg_rebalances_per_hour}} </h2>
+            <h2> Total rebalances: {{health_info.num_rebalances}} </h2>
+      </div>
+
+
+    {% for ticker, votes_info in latest_allocation_votes.items %}
+
+    {{ ticker }}
+
+      <div class="row pb-md-4">
+          {{ votes_info.earliest }} <br/>
+          {{ votes_info.latest }} <br/>
+          {{ votes_info.count }} <br/>
+          {{ votes_info.committee_ids }}
+      </div>
+    {% endfor %}
+
+
+
+
+
+
+{% endblock content %}
+
+{% load static %}
+{% block javascript %}
+  <script src="{% static '/javascript/allocation.js' %}"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+{% endblock javascript %}
