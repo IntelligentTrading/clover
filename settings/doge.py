@@ -32,7 +32,13 @@ DOGE_FALLBACK_BUY_SELL_THRESHOLD_PERCENT = 0.5      # if falling back to buy/sel
 
 # list of tickers for which doges will vote
 SUPPORTED_TICKERS = [
-    # TODO: add the top 50 _BTC tickers, remove all the _ETH and _BNB and other keymah
+    # the top 50 _BTC tickers from Binance, see binance_coin_filter.py if you want to change it
+    'BNB_BTC', 'LINK_BTC', 'CMT_BTC', 'XRP_BTC', 'LTC_BTC', 'BCHABC_BTC', 'FTM_BTC', 'EOS_BTC', 'REN_BTC',
+    'MATIC_BTC', 'ADA_BTC', 'CELR_BTC', 'ONE_BTC', 'MANA_BTC', 'AST_BTC', 'RVN_BTC', 'TRX_BTC', 'BQX_BTC',
+    'ALGO_BTC', 'NEO_BTC', 'XMR_BTC', 'BTT_BTC', 'WTC_BTC', 'XLM_BTC', 'MTH_BTC', 'TNT_BTC', 'BAT_BTC',
+    'POWR_BTC', 'ZIL_BTC', 'HC_BTC', 'HOT_BTC', 'WAVES_BTC', 'QTUM_BTC', 'VET_BTC', 'ATOM_BTC', 'ICX_BTC',
+    'ZEC_BTC', 'FET_BTC', 'VIBE_BTC', 'DENT_BTC', 'AGI_BTC', 'GVT_BTC', 'ONT_BTC', 'QKC_BTC', 'NANO_BTC',
+    'DASH_BTC', 'IOTA_BTC', 'NULS_BTC', 'DOCK_BTC', 'ARN_BTC'
 ]
 
 def supported_shitcoins():
