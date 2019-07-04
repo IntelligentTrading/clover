@@ -1,7 +1,7 @@
 from settings import ONE_HOUR, ONE_DAY, ONE_WEEK
 
 SUPPORTED_DOGE_TICKERS = ['BTC_USDT', 'ETH_USDT', 'ETH_BTC',]
-ENABLE_TA_FOR_SUPPORTED_DOGE_TICKERS_ONLY = True
+ENABLE_TA_FOR_SUPPORTED_DOGE_TICKERS_ONLY = False
 
 ENABLE_SHITCOIN_TRADING = False
 COMMITTEE_VOTE_SCOPE = {
@@ -31,7 +31,7 @@ DOGE_FALLBACK_BUY_SELL_THRESHOLD_PERCENT = 0.5      # if falling back to buy/sel
                                                     # threshold, selling if the losses are greater than -threshold, and ignore otherwise
 
 # list of tickers for which doges will vote
-SUPPORTED_TICKERS = [
+SUPPORTED_TICKERS = SUPPORTED_DOGE_TICKERS + [
     # the top 50 _BTC tickers from Binance, see binance_coin_filter.py if you want to change it
     'BNB_BTC', 'LINK_BTC', 'CMT_BTC', 'XRP_BTC', 'LTC_BTC', 'BCHABC_BTC', 'FTM_BTC', 'EOS_BTC', 'REN_BTC',
     'MATIC_BTC', 'ADA_BTC', 'CELR_BTC', 'ONE_BTC', 'MANA_BTC', 'AST_BTC', 'RVN_BTC', 'TRX_BTC', 'BQX_BTC',
