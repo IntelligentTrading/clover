@@ -1,7 +1,7 @@
 from apps.TA.storages.abstract.indicator import IndicatorException, IndicatorStorage
 from apps.TA.storages.abstract.ticker_subscriber import TickerSubscriber, get_nearest_5min_timestamp
 from settings import logger
-from settings.doge import ENABLE_TA_FOR_SUPPORTED_DOGE_TICKERS_ONLY, SUPPORTED_DOGE_TICKERS
+from settings.doge import ENABLE_TA_FOR_SUPPORTED_DOGE_TICKERS_ONLY, SUPPORTED_DOGE_TICKERS, SUPPORTED_TICKERS
 
 class IndicatorSubscriber(TickerSubscriber):
     class_describer = "indicator_subscriber"
@@ -74,7 +74,8 @@ class IndicatorSubscriber(TickerSubscriber):
         """
 
         # only run TA on the tickers that our doge support.
-        should_compute = self.ticker in SUPPORTED_DOGE_TICKERS or not ENABLE_TA_FOR_SUPPORTED_DOGE_TICKERS_ONLY
+        should_compute = self.ticker in SUPPORTED_DOGE_TICKERS or not \
+            ENABLE_TA_FOR_SUPPORTED_DOGE_TICKERS_ONLY and self.ticker in SUPPORTED_TICKERS
         if not should_compute:
             return  # stop handler
 
