@@ -14,3 +14,19 @@ python manage.py TA_Worker              # subscribes to TA indicators and recomp
 python manage.py doge_autotrade         # runs the rebalancer every DOGE_REBALANCING_PERIOD_SECONDS
                                         # also ensures that the committees are retrained every DOGE_RETRAINING_PERIOD_SECONDS
 ```
+
+
+## Setting up Redis locally
+1. Make sure that ITF Core is connected to production database on AWS
+2. Make sure Redis is connected to your local Redis, not Aiven!!
+3. If needed, set LOAD_TALIB to False in Core settings (it is not needed for data restoration)
+4. Make sure your Redis server is running (type `redis-server` in the Terminal)
+5. Run this:
+```
+from settings.redis_db import database as db
+for key in db.keys():   # only if you want to 😬
+    db.delete(key)    
+
+```
+6. Run `python manage.py TA_restore` in Core; this will restore all the ticker prices
+7. Run `restore_indicators` from `TA_wipe_restore_indicators` in Clover (you will need to set the score range manually)
