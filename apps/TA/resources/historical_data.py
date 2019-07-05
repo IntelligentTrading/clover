@@ -32,13 +32,11 @@ class HistoricalDataAPI(APIView):
                 f'db entries created and TA subscribers received'
             }, status=status.HTTP_201_CREATED)
 
-
         except Exception as e:
             logger.error(str(e))
             return Response({
                 'error': str(e)
             }, status=status.HTTP_501_NOT_IMPLEMENTED)
-
 
 
 def save_to_pv_history(ticker, data):

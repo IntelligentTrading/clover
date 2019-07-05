@@ -159,6 +159,9 @@ class TimeseriesStorage(KeyValueStorage):
 
         value_array = [float(v) for v in query_results['values']]
 
+        # if "_BTC" not in query_results["ticker"]:
+        #     logger.info(f"Query results {query_results} of length {len(value_array)} when requested up to {limit} for {query_results['latest_timestamp']}")
+
         if limit:
             if not isinstance(limit, int) or limit < 1:
                 raise TimeseriesException(f"bad limit: {limit}")
