@@ -25,7 +25,7 @@ class HistoricalDataAPI(APIView):
         """
 
         try:
-            database_response = load_ticker(ticker, request.data)
+            database_response = save_to_pv_history(ticker, request.data)
 
             return Response({
                 'success': f'{sum(database_response)} '
@@ -41,7 +41,7 @@ class HistoricalDataAPI(APIView):
 
 
 
-def load_ticker(ticker, data):
+def save_to_pv_history(ticker, data):
     ticker = ticker or data.get('ticker')
     exchange = data.get('exchange')
     timestamp = data.get('timestamp')
@@ -57,36 +57,19 @@ def load_ticker(ticker, data):
     )
     data_history_objects = {}
 
-
-    if "_ETH" in ticker:
-        return Response({
-            'success': f'not assessing ETH base tickers, 0 db entries created'
-        }, status=status.HTTP_202_ACCEPTED)
-
-    if "_BTC" in ticker:
-
-        close_volume = int(float(data["close_volume"]))
-        close_price = int(float(data["close_price"]))
-
-        if close_volume and close_price and (close_volume * close_price) < 50:  # less than 50 BTC volume
-            return Response({
-                'success': f'volume {close_volume} x {close_price} is low, 0 db entries created'
-            }, status=status.HTTP_202_ACCEPTED)
-
     for index in default_price_indexes + default_volume_indexes:
         if not data.get(index):
             continue
 
         index_value = float(data[index])
 
+        # convert prices to satoshis
         if index in default_price_indexes:
             index_value = index_value * (10 ** 8)
 
-        index_value = int(index_value)  # if you do int(float()) it will trim values such as 0.1237 to 0 💩
-
-        if index_value > 0:
+        if index_value >= 0:
             data_history.index = index
-            data_history.value = int(index_value)
+            data_history.value = int(index_value) # store value as whole number
 
             # ensure the object stays separate in memory
             # (because saving is pipelined)
@@ -96,4 +79,3 @@ def load_ticker(ticker, data):
             pipeline = data_history_objects[index].save(publish=True, pipeline=pipeline)
 
     return pipeline.execute()
-

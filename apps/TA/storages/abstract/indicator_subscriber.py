@@ -47,10 +47,11 @@ class IndicatorSubscriber(TickerSubscriber):
 
         self.timestamp = IndicatorStorage.timestamp_from_score(self.score)
 
-        import time
-        from apps.backtesting.utils import datetime_from_timestamp
-        if time.time() - self.timestamp > 60*20:
-            logger.warning(f'Timestamp is {datetime_from_timestamp(self.timestamp)} which is more than 20 minutes old. Data: {data}')
+        # import time
+        # from apps.backtesting.utils import datetime_from_timestamp
+        # if time.time() - self.timestamp > 60*20:
+        #     logger.debug(f'Timestamp is {datetime_from_timestamp(self.timestamp)} which is more than 20 minutes old. Data: {data}')
+
         return
 
 
@@ -89,7 +90,7 @@ class IndicatorSubscriber(TickerSubscriber):
         from apps.backtesting.utils import datetime_from_timestamp
 
         self.storage_class.compute_and_save_all_values_for_timestamp(self.ticker, self.exchange, self.timestamp)
-        logger.info(f'Computed {self.storage_class.__name__} '
-                     f'for {self.ticker} with message timestamp {datetime_from_timestamp(self.timestamp)} '
-                     f'(it is now {datetime_from_timestamp(time.time())})')
+        # logger.info(f'Computed {self.storage_class.__name__} '
+        #              f'for {self.ticker} with message timestamp {datetime_from_timestamp(self.timestamp)} '
+        #              f'(it is now {datetime_from_timestamp(time.time())})')
         # logger.debug(f'Ignoring {self.storage_class.__name__} for {self.ticker}')

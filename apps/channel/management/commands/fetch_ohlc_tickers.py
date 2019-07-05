@@ -6,7 +6,7 @@ import requests
 import schedule
 from django.core.management.base import BaseCommand
 
-from apps.TA.resources.historical_data import load_ticker
+from apps.TA.resources.historical_data import save_to_pv_history
 from apps.channel.tickers import Tickers, get_usdt_rates_for
 from apps.common.utilities.multithreading import start_new_thread
 from settings import EXCHANGE_MARKETS, DEBUG
@@ -25,7 +25,7 @@ class Command(BaseCommand):  # fetch_ohlc_tickers
 
         schedule.every(1).minutes.do(fetch_and_process_binance, usdt_rates)
         if DEBUG:
-            fetch_and_process_binance(usdt_rates) # and go now too!
+            fetch_and_process_binance(usdt_rates)  # and go now too!
 
         keep_going = True
         while keep_going:
@@ -42,19 +42,18 @@ def fetch_and_process_binance(usdt_rates):
     logger.debug(f'Starting fetch_and_process_binance')
     tickers = Tickers(exchange='binance', usdt_rates=usdt_rates)
     tickers.run()
+    extract_ohlc_data_and_save(tickers)
 
-    send_ohlc_data_to_TA(tickers)
-    # send_ohlc_data_to_queue(tickers)
 
 @start_new_thread
-def send_ohlc_data_to_TA(tickers_object):
+def extract_ohlc_data_and_save(tickers_object):
     for symbol, symbol_info in tickers_object.tickers.items():
 
         if tickers_object._symbol_allowed(symbol_info=symbol_info,
                                           usdt_rates=tickers_object.usdt_rates,
                                           minimum_volume_in_usd=tickers_object.minimum_volume_in_usd):
 
-            ticker = symbol.replace("/","_")
+            ticker = symbol.replace("/", "_")
             data = {
                 'exchange': tickers_object.exchange,
                 'ticker': symbol_info['symbol'],
@@ -67,7 +66,7 @@ def send_ohlc_data_to_TA(tickers_object):
             }
 
             try:
-                database_response = load_ticker(ticker, data)
+                database_response = save_to_pv_history(ticker, data)
                 logger.debug(str(database_response))
             except Exception as e:
                 logger.debug(str(e))

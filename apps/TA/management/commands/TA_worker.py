@@ -31,12 +31,15 @@ class Command(BaseCommand):
 
         subscribers = {}
         all_subscriber_classes = get_subscriber_classes() + get_doge_subscriber_classes()
-        # all_subscriber_classes = get_doge_subscriber_classes()
 
         for subscriber_class in all_subscriber_classes:
-            subscribers[subscriber_class.__name__] = subscriber_class()  # initialize class, see AbstractSubscriber.__init__()
-            logger.debug(f'added subscriber {subscriber_class}')
-            logger.debug(f'new subscriber is {subscribers[subscriber_class.__name__]}')
+            try:
+                subscribers[subscriber_class.__name__] = subscriber_class()  # initialize class, see AbstractSubscriber.__init__()
+                logger.debug(f'added subscriber {subscriber_class}')
+                logger.debug(f'new subscriber is {subscribers[subscriber_class.__name__]}')
+            except:
+                pass  # who cares? line 38 cares
+
 
         for s in subscribers:
             logger.debug(f'latest channels: {subscribers[s].database.pubsub_channels()}')
