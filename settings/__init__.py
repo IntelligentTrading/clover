@@ -45,7 +45,9 @@ else:
     log_level = logging.DEBUG
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+
+logger = logging.getLogger("Clover")
+logger.setLevel(logging.DEBUG)
 
 if LOCAL or STAGE:
     logging.getLogger('boto').setLevel(logging.INFO)

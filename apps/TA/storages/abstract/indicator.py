@@ -2,10 +2,7 @@ import logging
 
 from apps.TA import TAException, HORIZONS
 from apps.TA.storages.abstract.ticker import TickerStorage
-
-# from apps.signal.models import Signal
-
-logger = logging.getLogger(__name__)
+from settings import logger
 
 TRENDS = (BEARISH, BULLISH, OTHER) = (-1, 1, 0)
 
@@ -112,7 +109,7 @@ class IndicatorStorage(TickerStorage):
     def get_denoted_price_array(self, index: str = "close_price", periods: int = 0):
         from apps.TA.storages.data.price import PriceStorage
 
-        logger.debug(f"{self.__class__.__name__} is querying for key {self.ticker} over {periods or self.periods} periods")
+        # logger.debug(f"{self.__class__.__name__} is querying for key {self.ticker} over {periods or self.periods} periods")
 
         results_dict = PriceStorage.query(
             ticker=self.ticker,
@@ -173,7 +170,9 @@ class IndicatorStorage(TickerStorage):
         self.value = self.compute_value(self.periods)
         if self.value not in [None, ""]:
             self.save(pipeline=pipeline)
-        return bool(self.value)
+            logger.debug(f"computed value: {self.value} for {self.ticker} {self.__class__.__name__}")
+
+        return True if self.value == 0 else bool(self.value)
 
     @classmethod
     def compute_and_save_all_values_for_timestamp(cls, ticker, exchange, timestamp):

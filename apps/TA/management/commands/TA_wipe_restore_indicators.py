@@ -80,7 +80,6 @@ def parallel_restore(start_score, end_score, only_these_tickers=None):
 
         start = time.time()
 
-
         params = []
         for score in range(int(start_score), int(end_score)+1):
             if score % 10000 == 0:

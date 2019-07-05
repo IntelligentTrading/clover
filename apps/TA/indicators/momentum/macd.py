@@ -31,7 +31,7 @@ class MacdStorage(IndicatorStorage):
             fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=signalperiod
         )
 
-        logger.debug(f"Macd computed: {macd_value[-1]}:{macdsignal[-1]}:{macdhist[-1]}")
+        # logger.debug(f"Macd computed: {macd_value[-1]}:{macdsignal[-1]}:{macdhist[-1]}")
 
         if math.isnan(sum([macd_value[-1], macdsignal[-1], macdhist[-1]])):
             return ""

@@ -32,7 +32,7 @@ class StochStorage(IndicatorStorage):
 
         stoch_values = f'{slowk}:{slowd}'
 
-        logger.debug(f"Stoch computed: {stoch_values}")
+        # logger.debug(f"Stoch computed: {stoch_values}")
 
         if math.isnan(slowk) or math.isnan(slowd):
             return ""

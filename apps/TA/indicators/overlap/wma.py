@@ -30,7 +30,7 @@ class WmaStorage(IndicatorStorage):
             timeperiod=periods or self.periods
         )[-1]
 
-        logger.debug(f"WMA computed: {wma_value}")
+        # logger.debug(f"WMA computed: {wma_value}")
 
         if math.isnan(wma_value): return ""
 

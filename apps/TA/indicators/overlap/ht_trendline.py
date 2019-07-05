@@ -28,7 +28,7 @@ class HtTrendlineStorage(IndicatorStorage):
             requisite_pv_index_arrays["close_price"]
         )[-1]
 
-        logger.debug(f"HT Trendline computed: {ht_trendline_value}")
+        # logger.debug(f"HT Trendline computed: {ht_trendline_value}")
 
         if math.isnan(ht_trendline_value):
             return ""

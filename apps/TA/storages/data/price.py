@@ -84,6 +84,8 @@ class PriceSubscriber(TickerSubscriber):
 
         score = float(data["score"])
 
+        logger.info(f"new pv history found for {ticker}, {index}")
+
         if not float(name_score) == float(data["score"]):
             logger.warning(f'Unexpected that score in name {name_score}'
                            f'is different than score {score}')

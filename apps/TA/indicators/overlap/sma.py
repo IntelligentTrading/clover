@@ -30,7 +30,7 @@ class SmaStorage(IndicatorStorage):
             timeperiod=periods
         )[-1]
 
-        logger.debug(f"SMA computed: {sma_value}")
+        # logger.debug(f"SMA computed: {sma_value}")
 
         if math.isnan(sma_value):
             return ""
