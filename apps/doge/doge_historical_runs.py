@@ -70,10 +70,23 @@ class DogeHistorySimulator:
     @staticmethod
     @time_performance
     def _single_period_run(time_interval, time_to_retrain_seconds, ticker, horizon, exchange, rewrite_history=False):
+
         training_start_time, training_end_time = time_interval
         logging.info(f'Processing data for committee trained on data '
                      f'from {datetime_from_timestamp(training_start_time)} '
                      f'to {datetime_from_timestamp(training_end_time)}')
+
+        # first check if all the votes are already there (performance optimization)
+        from apps.tests.manual_scripts import RedisTests
+        if not rewrite_history and \
+                not any(RedisTests.find_gaps(
+                    '{ticker}*{exchange}*CommitteeVoteStorage',
+                    training_end_time,
+                    training_end_time + time_to_retrain_seconds)
+                                .values()):   # we have all the votes already
+            logging.info(' ---> all the votes already exist, skipping...')
+            return
+
         transaction_currency, counter_currency = ticker.split('_')
         ta_provider = TAProvider(db_interface=DB_INTERFACE)
         DB_INTERFACE.build_data_object(start_time=training_start_time,
@@ -81,8 +94,6 @@ class DogeHistorySimulator:
                                        ticker=f'{transaction_currency}_{counter_currency}',
                                        horizon=horizon,
                                        exchange=exchange)
-
-
         committee = None
 
         if not rewrite_history:

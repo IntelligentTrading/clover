@@ -311,6 +311,22 @@ class RedisDB(Database):
 
         return PriceStorage.timestamp_from_score(results['scores'][-1])
 
+    def get_nearest_committee_vote_timestamp(self, timestamp, ticker, exchange="binance", timestamp_tolerance=60*5):
+        from apps.doge.doge_TA_actors import CommitteeVoteStorage
+
+        results = CommitteeVoteStorage.query(
+            ticker=ticker,
+            exchange=exchange,
+            timestamp=timestamp,
+            timestamp_tolerance=timestamp_tolerance,
+            periods_key=12   # fixme hardcoded here
+        )
+
+        if not results['scores']:
+            return None
+
+        return PriceStorage.timestamp_from_score(results['scores'][-1])
+
 
     def _extract_indicator_value(self, indicator_name, result):
         if not result:
@@ -672,3 +688,7 @@ class Data:
 
         time_series_chart(timestamps, series_dict_primary=data_primary_axis, series_dict_secondary=data_secondary_axis,
                           title=f"{self.transaction_currency} - {self.counter_currency}", orders=orders)
+
+
+
+

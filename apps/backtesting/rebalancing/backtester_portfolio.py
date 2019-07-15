@@ -468,7 +468,7 @@ class DogeRebalancingBacktester(PortfolioBacktester):
                 else:    # we already have previous data
                     previous_portfolio = self._portfolio_snapshots[list(self._portfolio_snapshots.keys())[-1]]
                     snapshot = self._build_portfolio_with_trading_fee(timestamp=timestamp,
-                                                                      total_value=previous_portfolio.total_value(self._counter_currency),
+                                                                      total_value=previous_portfolio.update_to_timestamp(timestamp).total_value(self._counter_currency),
                                                                       previous_portfolio=previous_portfolio,
                                                                       target_portions=target_portons)
                 self._portfolio_snapshots[timestamp] = snapshot
@@ -478,8 +478,12 @@ class DogeRebalancingBacktester(PortfolioBacktester):
             except NoCommitteeVotesFoundException as e:
                 logging.error(f'{str(e)}, skipping snapshot...')
 
-    def _doge_allocations_to_portions(self, doge_allocations):
-        return {doge_allocation['coin']: doge_allocation['portion'] for doge_allocation in doge_allocations}
+    def _doge_allocations_to_portions(self, doge_allocations, fix_sum=True):
+        result = {doge_allocation['coin']: doge_allocation['portion'] for doge_allocation in doge_allocations}
+        if sum(result.values()) < 1:
+            result['BTC'] += 1 - sum(result.values())
+        return result
+
 
     def _init_held_assets(self):
         from settings.doge import SUPPORTED_DOGE_TICKERS
@@ -512,6 +516,30 @@ class DummyDataProvider:
     """
 
     def run(self):
+        from apps.backtesting.rebalancing.backtester_portfolio import DogeRebalancingBacktester
+        from apps.backtesting.data_sources import DB_INTERFACE
+        from apps.backtesting.utils import datetime_to_timestamp, datetime_from_timestamp
+
+        start_time = datetime_to_timestamp('2019/03/26 01:35:00 UTC')    ### TODO!!! figure out time shifts
+        end_time = datetime_to_timestamp('2019/04/06 23:35:00 UTC')
+
+        start_time = datetime_to_timestamp('2019/07/13 10:35:00 UTC')  ### TODO!!! figure out time shifts
+        end_time = datetime_to_timestamp('2019/07/14 13:35:00 UTC')
+
+        start_time = DB_INTERFACE.get_nearest_db_timestamp(start_time, 'BTC_USDT')
+        end_time = DB_INTERFACE.get_nearest_db_timestamp(end_time, 'BTC_USDT')
+
+        backtester = DogeRebalancingBacktester(start_time=datetime_from_timestamp(start_time),
+                                               end_time=datetime_from_timestamp(end_time),
+                                               step_seconds=60 * 60,
+                                               rebalancing_period_seconds=60 * 60,
+                                               counter_currency='USDT',
+                                               start_value_of_portfolio=100000000,
+                                               db_interface=DB_INTERFACE)
+        df = backtester.value_dataframe
+
+
+        exit(0)
         from apps.backtesting.utils import datetime_to_timestamp, datetime_from_timestamp
         # backtester = PortfolioBacktester()
         timestamp = datetime_to_timestamp('2019/02/01 00:00:00 UTC')

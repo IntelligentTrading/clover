@@ -99,6 +99,8 @@ class RedisTests:
         start_score = PriceStorage.score_from_timestamp(start_timestamp)
         end_score = PriceStorage.score_from_timestamp(end_timestamp)
 
+        gap_dict = {}
+
         keys = database.keys(key_pattern)
         for key in keys:
             logging.info(f'Processing data for {key}...')
@@ -114,6 +116,7 @@ class RedisTests:
                     continue
                 if next_score != current_score + 1:
                     gaps.append((current_score, next_score))
+            gap_dict[key] = gaps
 
             logging.info('Found gaps: ')
 
@@ -122,6 +125,9 @@ class RedisTests:
                 end = datetime_from_timestamp(PriceStorage.timestamp_from_score(gap[1]))
                 logging.info(f'    start: {start}, end: {end}  (scores {gap[0]}-{gap[1]})')
 
+        return gap_dict
+
+
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.DEBUG)
-    RedisTests.test_ticker_storages('ETH_BTC')
+    RedisTests.test_ticker_storages('BNB_USDT')
