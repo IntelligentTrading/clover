@@ -27,7 +27,7 @@ class RsiStorage(IndicatorStorage):
             timeperiod=periods-1
         )[-1]
 
-        logger.debug(f"RSI computed: {rsi_value}")
+        # logger.debug(f"RSI computed: {rsi_value}")
 
         if math.isnan(rsi_value):
             return ""

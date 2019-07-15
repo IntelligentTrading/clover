@@ -41,7 +41,7 @@ def wipe_all_indicators():
             # database.delete(key)
 
 
-def restore_indicators(start_score, end_score, ticker_filter=None):
+def restore_indicators(start_score, end_score, only_these_tickers=None):
 
     subscribers = []
     for subsrciber_class in get_subscriber_classes():
@@ -49,21 +49,21 @@ def restore_indicators(start_score, end_score, ticker_filter=None):
 
     for key in database.keys("*PriceStorage*close_price*"):
         [ticker, exchange, storage_class, index] = key.decode("utf-8").split(":")
-        if ticker_filter is not None and ticker not in ticker_filter:
+        if only_these_tickers and ticker not in only_these_tickers:
             continue
         logging.critical(f'Restoring {ticker}...')
 
         for score in range(int(start_score), int(end_score)+1):
-            if score % 10000 == 0:
+            if int(score) % 10000 == 0:
                 logging.critical(f'    ... score {score}')
             for subscriber in subscribers:
                 subscriber(data_event=forge_data_event(
-                    ticker, exchange, storage_class, index, "123ABC", score
+                    ticker, exchange, storage_class, index, value="doesntmatter", score=score
                 ))
         logging.critical(f'{ticker} done')
 
 
-def parallel_restore(start_score, end_score, allowed_tickers=None):
+def parallel_restore(start_score, end_score, only_these_tickers=None):
     from apps.backtesting.utils import parallel_run
     subscribers = []
     for subsrciber_class in get_subscriber_classes():
@@ -71,7 +71,7 @@ def parallel_restore(start_score, end_score, allowed_tickers=None):
 
     for key in database.keys("*PriceStorage*close_price*"):
         [ticker, exchange, storage_class, index] = key.decode("utf-8").split(":")
-        if allowed_tickers is not None and not ticker in allowed_tickers:
+        if only_these_tickers is not None and not ticker in only_these_tickers:
             logging.critical(f'Skipping {ticker}...')
             continue
 
@@ -79,7 +79,6 @@ def parallel_restore(start_score, end_score, allowed_tickers=None):
         import time
 
         start = time.time()
-
 
         params = []
         for score in range(int(start_score), int(end_score)+1):

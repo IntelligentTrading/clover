@@ -17,7 +17,7 @@ django-unixtimestampfield==0.3.9
 djangorestframework==3.7.7
 gunicorn==19.9.0
 jsonfield==2.0.2
-numpy==1.15.4
+numpy==1.16.4
 psycopg2-binary==2.7.6.1
 python-binary-memcached==0.28.0
 python-dateutil==2.7.4

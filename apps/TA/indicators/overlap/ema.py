@@ -30,7 +30,7 @@ class EmaStorage(IndicatorStorage):
             timeperiod=periods or self.periods
         )[-1]
 
-        logger.debug(f"EMA computed: {ema_value}")
+        # logger.debug(f"EMA computed: {ema_value}")
 
         if math.isnan(ema_value): return ""
 

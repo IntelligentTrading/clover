@@ -1,11 +1,8 @@
 import logging
 
-from apps.TA import TAException, HORIZONS
+from apps.TA import TAException, HORIZONS, SuchWowException
 from apps.TA.storages.abstract.ticker import TickerStorage
-
-# from apps.signal.models import Signal
-
-logger = logging.getLogger(__name__)
+from settings import logger
 
 TRENDS = (BEARISH, BULLISH, OTHER) = (-1, 1, 0)
 
@@ -112,7 +109,7 @@ class IndicatorStorage(TickerStorage):
     def get_denoted_price_array(self, index: str = "close_price", periods: int = 0):
         from apps.TA.storages.data.price import PriceStorage
 
-        logger.debug(f"{self.__class__.__name__} is querying for key {self.ticker} over {periods or self.periods} periods")
+        # logger.info(f"{self.__class__.__name__} is querying for key {self.ticker} over {periods or self.periods} periods")
 
         results_dict = PriceStorage.query(
             ticker=self.ticker,
@@ -121,6 +118,7 @@ class IndicatorStorage(TickerStorage):
             timestamp=self.unix_timestamp,
             periods_range=periods or self.periods
         )
+
         return self.get_values_array_from_query(results_dict, limit=periods)
 
     def compute_value(self, periods: int = 0) -> str:
@@ -136,8 +134,15 @@ class IndicatorStorage(TickerStorage):
                         f"Error finding denoted price array for requisite index {index}. Returning empty value.")
                     return ""
 
-        if min([len(index_value_arrays[array_name]) for array_name in index_value_arrays] + [periods, ]) < periods:
-            logger.debug(f"possibly not enough data for {self.__class__.__name__} to compute")
+        shortest_array_length = min([len(index_value_arrays[array_name]) for array_name in index_value_arrays] + [periods,])
+
+        if shortest_array_length < periods:
+            # logger.info(f"possibly not enough data for {self.__class__.__name__} to compute. Only {shortest_array_length} but asking for {periods}")
+            # try:
+            #     raise SuchWowException(f"possibly not enough data for {self.__class__.__name__} to compute")
+            # except Exception as e:
+            #     logger.debug(str(e))
+            pass
 
         return self.compute_value_with_requisite_indexes(index_value_arrays, periods)
 
@@ -173,7 +178,9 @@ class IndicatorStorage(TickerStorage):
         self.value = self.compute_value(self.periods)
         if self.value not in [None, ""]:
             self.save(pipeline=pipeline)
-        return bool(self.value)
+            logger.debug(f"computed value: {self.value} for {self.ticker} {self.__class__.__name__}")
+
+        return True if self.value == 0 else bool(self.value)
 
     @classmethod
     def compute_and_save_all_values_for_timestamp(cls, ticker, exchange, timestamp):
@@ -183,7 +190,7 @@ class IndicatorStorage(TickerStorage):
         for periods in cls.get_periods_list():
             new_class_storage.periods = periods
             new_class_storage.compute_and_save(pipeline)
-            pipeline.execute()  # TODO @tomcounsell check if this is a good fix
+        pipeline.execute()
 
     def produce_signal(self):
         """

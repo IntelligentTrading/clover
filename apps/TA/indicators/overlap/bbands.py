@@ -43,7 +43,7 @@ class BbandsStorage(IndicatorStorage):
 
         self.value = f"{upperband[-1]}:{middleband[-1]}:{lowerband[-1]}"
 
-        logger.debug(f"Bbands computed: {self.value}")
+        # logger.debug(f"Bbands computed: {self.value}")
 
         if math.isnan(sum([upperband[-1], middleband[-1], lowerband[-1]])):
             return ""

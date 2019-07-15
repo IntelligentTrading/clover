@@ -59,11 +59,8 @@ class Tickers:
                 (transaction_currency, counter_currency) = symbol.split('/') # check format
             except ValueError:
                 logger.debug(f'Skipping symbol: {symbol}')
-                continue # skip malformed currency pairs
+                continue  # skip malformed currency pairs
 
-
-            # FIXME add filtering by volume symbol_allowed()
-            #if counter_currency in ('BTC', 'USDT', 'ETH'): # and enough_volume(symbol_info): # filtering
             if self._symbol_allowed(symbol_info=symbol_info, usdt_rates=self.usdt_rates, minimum_volume_in_usd=self.minimum_volume_in_usd):
                 # For debug
                 # if transaction_currency in ('BTC', 'ETH', 'DASH'):
@@ -99,22 +96,24 @@ class Tickers:
             logger.debug(f'Skipping symbol: {symbol_info["symbol"]}')
             return False
 
-        if counter_currency in ["USDT",] and not transaction_currency in ["BTC", "ETH",]:
-            logger.debug(f'Skipping symbol: {symbol_info["symbol"]}')
-            return False
-
-        if counter_currency in ["ETH",]: # skip ETH counter currency tickers
-            logger.debug(f'Skipping symbol: {symbol_info["symbol"]}')
-            return False
-
-        if None in (minimum_volume_in_usd, usdt_rates):
+        if counter_currency in ["BTC"]:
             return True
 
-        quote_volume_in_usdt = symbol_info['quoteVolume']*usdt_rates[counter_currency]
-        #print(f">>>>{symbol_info['symbol']} : qV {symbol_info['quoteVolume']}, USD {quote_volume_in_usdt}")
-        if quote_volume_in_usdt <= minimum_volume_in_usd:
-            return False
-        return True
+        if counter_currency in ["USDT",] and transaction_currency in ["BTC", "ETH",]:
+            return True
+
+        # didn't match the above, so filter it out.
+        logger.debug(f'Skipping symbol: {symbol_info["symbol"]}')
+        return False
+
+        # if None in (minimum_volume_in_usd, usdt_rates):
+        #     return True
+        #
+        # quote_volume_in_usdt = symbol_info['quoteVolume']*usdt_rates[counter_currency]
+        # #print(f">>>>{symbol_info['symbol']} : qV {symbol_info['quoteVolume']}, USD {quote_volume_in_usdt}")
+        # if quote_volume_in_usdt <= minimum_volume_in_usd:
+        #     return False
+        # return True
 
 
 ## Helpers

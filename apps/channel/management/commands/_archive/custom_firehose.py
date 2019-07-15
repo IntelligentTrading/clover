@@ -14,6 +14,7 @@ allowed_tickers = [
     'XRP_USDT',
     'ETH_BTC',
     'TUSD_BTC',
+    'DOGE_BTC',
 ]
 
 

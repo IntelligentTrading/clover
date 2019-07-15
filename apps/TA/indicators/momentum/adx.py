@@ -30,7 +30,7 @@ class AdxStorage(IndicatorStorage):
             timeperiod=periods
         )[-1]
 
-        logger.debug(f"ADX computed: {adx_value}")
+        # logger.debug(f"ADX computed: {adx_value}")
 
         if math.isnan(adx_value):
             return ""

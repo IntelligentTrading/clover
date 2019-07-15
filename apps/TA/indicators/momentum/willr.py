@@ -34,7 +34,7 @@ class WillrStorage(IndicatorStorage):
             timeperiod=periods
         )[-1]
 
-        logger.debug(f"Willr computed: {willr_value}")
+        # logger.debug(f"Willr computed: {willr_value}")
 
         if math.isnan(willr_value):
             return ""

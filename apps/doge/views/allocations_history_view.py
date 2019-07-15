@@ -12,15 +12,6 @@ class AllocationsHistoryView(ListView):
     # paginate_by = 10
 
 
-    def get_allocations(self, delta_time=60*60*8):
-        import datetime
-
-        min_timestamp = datetime.datetime.now() - datetime.timedelta(seconds=delta_time)
-        allocations = Allocation.objects.annotate(timestamp=Func(F('_timestamp'), function='UNIX_TIMESTAMP')).filter(_timestamp__gte=min_timestamp)
-        for allocation in allocations:
-            print(allocation)
-
-
     def get_queryset(self):
         import datetime
         delta_time = 60*60*24*7
@@ -37,15 +28,4 @@ class AllocationsHistoryView(ListView):
 
 
 
-
-    # def get(self, request):
-
-    # allocations = self.get_allocations()
-
-
-    #    context = {
-    #        "allocations": allocations,
-    #    }
-
-    #    return render(request, 'allocations.html', context)
 
