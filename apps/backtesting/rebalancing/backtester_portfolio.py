@@ -177,6 +177,14 @@ class PortfolioBacktester(ABC):
     def held_assets(self):
         return self._portions_dict.keys()
 
+    @property
+    def start_time(self):
+        return self._start_time
+
+    @property
+    def end_time(self):
+        return self._end_time
+
     def get_benchmark_for_asset(self, asset):
         return self._benchmarks.get(asset, None)
 
@@ -434,7 +442,44 @@ class FixedRatiosPortfolioBacktester(PortfolioBacktester):
         return current_snapshot
 
 
+class RealDogeTradingBacktester(PortfolioBacktester):
+    """
+    Enables building a backtester from real trading data stored in Postgres DB.
+    """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
+    def _build_portfolio_snapshots(self):
+        from apps.portfolio.models.allocation import Allocation as DatabaseAllocationRecord
+        import datetime
+
+        self._portfolio_snapshots = OrderedDict()
+        allocations = DatabaseAllocationRecord.objects.filter(
+            _timestamp__gte=datetime.datetime.utcfromtimestamp(self.start_time),
+            _timestamp__lte=datetime.datetime.utcfromtimestamp(self.end_time))
+
+        for allocation in allocations:
+            realized_allocation = allocation.realized_allocation
+            timestamp = allocation._timestamp
+
+            try:
+                portfolio_allocations = []
+                for item in realized_allocation:
+                    portfolio_allocations.append(Allocation(amount=item['amount'], asset=item['coin'],
+                                                            portion=item['portion'], timestamp=timestamp,
+                                                            db_interface=self._db_interface,
+                                                            counter_currency=self._counter_currency))
+
+                portfolio_snapshot = PortfolioSnapshot(timestamp=timestamp, allocations_data=portfolio_allocations,
+                                                       db_interface=self._db_interface,
+                                                       counter_currency=self._counter_currency,
+                                                       load_from_json=False)
+                self._portfolio_snapshots[timestamp] = portfolio_snapshot
+
+            except Exception as e:
+                logging.error(f'{str(e)}, skipping snapshot at {allocation._timestamp}...')
 
 
 from apps.portfolio.services.doge_votes import get_allocations_from_doge, NoCommitteeVotesFoundException
@@ -477,6 +522,8 @@ class DogeRebalancingBacktester(PortfolioBacktester):
                 logging.error(f'Unable to load price data at {timestamp}, skipping snapshot: {str(e)}...')
             except NoCommitteeVotesFoundException as e:
                 logging.error(f'{str(e)}, skipping snapshot...')
+            except Exception as e:
+                logging.critical(e)
 
     def _doge_allocations_to_portions(self, doge_allocations, fix_sum=True):
         result = {doge_allocation['coin']: doge_allocation['portion'] for doge_allocation in doge_allocations}
@@ -523,21 +570,46 @@ class DummyDataProvider:
         start_time = datetime_to_timestamp('2019/03/26 01:35:00 UTC')    ### TODO!!! figure out time shifts
         end_time = datetime_to_timestamp('2019/04/06 23:35:00 UTC')
 
-        start_time = datetime_to_timestamp('2019/07/13 10:35:00 UTC')  ### TODO!!! figure out time shifts
+        start_time = datetime_to_timestamp('2019/07/01 10:35:00 UTC')  ### TODO!!! figure out time shifts
         end_time = datetime_to_timestamp('2019/07/14 13:35:00 UTC')
 
-        start_time = DB_INTERFACE.get_nearest_db_timestamp(start_time, 'BTC_USDT')
-        end_time = DB_INTERFACE.get_nearest_db_timestamp(end_time, 'BTC_USDT')
+        from apps.backtesting.rebalancing.backtester_portfolio import RealDogeTradingBacktester
+        from apps.backtesting.data_sources import DB_INTERFACE
+        from apps.backtesting.utils import datetime_to_timestamp, datetime_from_timestamp
+
+        # import os
+        # os.environ.setdefault("DJANGO_SETTINGS_MODULE", "web.settings")
+
+        start_time = datetime_to_timestamp('2019/01/01 10:35:00 UTC')  ### TODO!!! figure out time shifts
+        end_time = datetime_to_timestamp('2019/07/14 13:35:00 UTC')
+
+        print(start_time)
+        print(end_time)
+
+        backtester = RealDogeTradingBacktester(start_time=datetime_from_timestamp(start_time),
+                                               end_time=datetime_from_timestamp(end_time),
+                                               step_seconds=60 * 20,
+                                               counter_currency='USDT',
+                                               db_interface=DB_INTERFACE, trading_cost_percent=0.1)
+        df = backtester.value_dataframe
+
+
+
+
+        start_time = DB_INTERFACE.get_nearest_committee_vote_timestamp(start_time, 'BTC_USDT',
+                                                                       timestamp_tolerance=60 * 90)
+        end_time = DB_INTERFACE.get_nearest_committee_vote_timestamp(end_time, 'BTC_USDT', timestamp_tolerance=60 * 90)
+
+        print(start_time)
+        print(end_time)
 
         backtester = DogeRebalancingBacktester(start_time=datetime_from_timestamp(start_time),
                                                end_time=datetime_from_timestamp(end_time),
-                                               step_seconds=60 * 60,
-                                               rebalancing_period_seconds=60 * 60,
+                                               step_seconds=60 * 20,
+                                               rebalancing_period_seconds=60 * 20,
                                                counter_currency='USDT',
                                                start_value_of_portfolio=100000000,
-                                               db_interface=DB_INTERFACE)
-        df = backtester.value_dataframe
-
+                                               db_interface=DB_INTERFACE, trading_cost_percent=0.1)
 
         exit(0)
         from apps.backtesting.utils import datetime_to_timestamp, datetime_from_timestamp
