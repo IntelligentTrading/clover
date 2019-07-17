@@ -271,6 +271,25 @@ class RedisDB(Database):
                                        max_delta_seconds_past=60*60,
                                        max_delta_seconds_future=60*5, return_timestamp=False):
 
+        # try in PV storage first
+        output = self.get_price_volume_storage_price_nearest_to_timestamp(transaction_currency, timestamp, exchange,
+                                                                          counter_currency,
+                                                                          max_delta_seconds_past,
+                                                                          max_delta_seconds_future, return_timestamp)
+        if not isinstance(output, tuple) and output is not None or isinstance(output, tuple) and output[0] is not None:
+            return output
+        else:
+            # nothing in PV storage, check price storage
+            return self.get_price_storage_price_nearest_to_timestamp(transaction_currency, timestamp, exchange,
+                                                                     counter_currency,
+                                                                     max_delta_seconds_past,
+                                                                     max_delta_seconds_future, return_timestamp)
+
+    def get_price_volume_storage_price_nearest_to_timestamp(self, transaction_currency, timestamp, exchange,
+                                                            counter_currency,
+                                                            max_delta_seconds_past=60 * 60,
+                                                            max_delta_seconds_future=60 * 5, return_timestamp=False):
+
         if not isinstance(timestamp, int):
             timestamp = timestamp.timestamp()
         results = PriceVolumeHistoryStorage.query(
@@ -284,10 +303,36 @@ class RedisDB(Database):
         if results['latest_timestamp'] > (timestamp - max_delta_seconds_past):
             timestamp = results['latest_timestamp']
             value = float(results['values'][-1]) if len(results['values']) else None
+
             if return_timestamp:
                 return value, timestamp
             else:
                 return value
+
+    def get_price_storage_price_nearest_to_timestamp(self, transaction_currency, timestamp, exchange, counter_currency,
+                                                     max_delta_seconds_past=60 * 60,
+                                                     max_delta_seconds_future=60 * 5, return_timestamp=False):
+
+        if not isinstance(timestamp, int):
+            timestamp = timestamp.timestamp()
+        results = PriceStorage.query(
+            ticker=f'{transaction_currency}_{counter_currency}',
+            exchange=exchange,
+            index="close_price",
+            timestamp=timestamp,
+            timestamp_tolerance=max_delta_seconds_future
+        )
+
+        if results['latest_timestamp'] > (timestamp - max_delta_seconds_past):
+
+            value = float(results['values'][-1]) if len(results['values']) else None
+            timestamp = PriceStorage.timestamp_from_score(float(results['scores'][-1])) if len(results['scores']) else None
+
+            if return_timestamp:
+                return value, timestamp
+            else:
+                return value
+
 
 
     def get_timestamp_n_ticks_earlier(self, timestamp, n, transaction_currency, counter_currency, source, resample_period):

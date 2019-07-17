@@ -593,7 +593,7 @@ class DummyDataProvider:
         # os.environ.setdefault("DJANGO_SETTINGS_MODULE", "web.settings")
 
 
-        start_time = datetime_to_timestamp('2019/07/12 10:35:00 UTC')  ### TODO!!! figure out time shifts
+        start_time = datetime_to_timestamp('2019/07/01 10:35:00 UTC')  ### TODO!!! figure out time shifts
         end_time = datetime_to_timestamp('2019/07/16 13:35:00 UTC')
 
         print(start_time)
@@ -603,7 +603,8 @@ class DummyDataProvider:
                                                end_time=datetime_from_timestamp(end_time),
                                                step_seconds=60 * 20,
                                                counter_currency='USDT',
-                                               db_interface=DB_INTERFACE, trading_cost_percent=0.1)
+                                               db_interface=DB_INTERFACE, trading_cost_percent=0.1,
+                                               baseline_portions={'BTC':1.0})
         df = backtester.value_dataframe
 
 
