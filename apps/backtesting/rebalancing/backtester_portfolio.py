@@ -58,13 +58,13 @@ class PortfolioBacktester(ABC):
     def _build_benchmark_baselines(self):
 
         if self._baseline_portions == None:   # divide everything equally among held assets:
-            baseline_portions = {coin: 1.0/len(self.held_assets) for coin in self.held_assets}
+            baseline_portions = self._baseline_portions = {coin: 1.0/len(self.held_assets) for coin in self.held_assets}
         else:
             baseline_portions = self._baseline_portions
         self._benchmarks = {}
         self._usdt_benchmarks = {}
         from apps.backtesting.backtester_ticks import TickDrivenBacktester
-        for asset in self.held_assets:
+        for asset in baseline_portions:
             asset_df = self.get_dataframe_for_asset(asset)
             tick_provider = TickProviderDataframe(transaction_currency=asset,
                                                   counter_currency='BTC',
@@ -103,8 +103,8 @@ class PortfolioBacktester(ABC):
         for timestamp in range(start_time, self._end_time+1, self._step_seconds):
             try:
                 current_snapshot = self._get_next_snapshot(current_snapshot, timestamp, previous_snapshot)
-                if current_snapshot is None:   # ran out of data
-                    break
+                if current_snapshot is None:   # no data, just continue, TODO check
+                    continue
                 if self._verbose:
                     current_snapshot.report()
                 logging.info(current_snapshot.to_dict())
@@ -195,7 +195,7 @@ class PortfolioBacktester(ABC):
 
     def _fill_benchmark_dataframe(self):
         df = None
-        for asset in self.held_assets:
+        for asset in self._baseline_portions:
             if df is None:
                 df = self._benchmarks[asset].trading_df.copy()
                 df = df.add_suffix(f'_{asset}')
@@ -206,12 +206,12 @@ class PortfolioBacktester(ABC):
                 df = df.join(right)
                 right_usdt = self._usdt_benchmarks[asset].trading_df.copy().add_suffix(f'_usdt_{asset}')
                 df = df.join(right_usdt)
-        sum_columns = [f'total_value_{asset}' for asset in self.held_assets]
+        sum_columns = [f'total_value_{asset}' for asset in self._baseline_portions]
         df['total_value'] = df[sum_columns].sum(axis=1)
         df = self._fill_relative_returns(df, total_value_column_name='total_value', 
                                          relative_returns_column_name='return_relative_to_past_tick')
 
-        sum_columns_usdt = [f'total_value_usdt_{asset}' for asset in self.held_assets]
+        sum_columns_usdt = [f'total_value_usdt_{asset}' for asset in self._baseline_portions]
         df['total_value_usdt'] = df[sum_columns_usdt].sum(axis=1)
         df = self._fill_relative_returns(df, total_value_column_name='total_value_usdt', 
                                          relative_returns_column_name='return_relative_to_past_tick_usdt')
@@ -394,6 +394,7 @@ class RebalancingStrategyBacktester(PortfolioBacktester):
 
 
 
+
 class FixedRatiosPortfolioBacktester(PortfolioBacktester):
     '''
     A backtester that assumes fixed preset asset ratios (e.g. 50% BTC, 50% ETH) and simulates the performance
@@ -447,9 +448,13 @@ class RealDogeTradingBacktester(PortfolioBacktester):
     Enables building a backtester from real trading data stored in Postgres DB.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, baseline_portions, *args, **kwargs):
+        # self._portions_dict = {'BTC': 1.0, 'ETH': 0.0, 'USDT': 0.0, 'OMG': 0.0, 'NEO': 0.0}
+        super().__init__(baseline_portions=baseline_portions, *args, **kwargs)
 
+    @property
+    def held_assets(self):
+        return ['BTC', 'ETH', 'USDT', 'OMG', 'NEO']
 
     def _build_portfolio_snapshots(self):
         from apps.portfolio.models.allocation import Allocation as DatabaseAllocationRecord
@@ -458,16 +463,16 @@ class RealDogeTradingBacktester(PortfolioBacktester):
         self._portfolio_snapshots = OrderedDict()
         allocations = DatabaseAllocationRecord.objects.filter(
             _timestamp__gte=datetime.datetime.utcfromtimestamp(self.start_time),
-            _timestamp__lte=datetime.datetime.utcfromtimestamp(self.end_time))
+            _timestamp__lte=datetime.datetime.utcfromtimestamp(self.end_time)).order_by('_timestamp')
 
         for allocation in allocations:
             realized_allocation = allocation.realized_allocation
-            timestamp = allocation._timestamp
+            timestamp = int(allocation._timestamp.timestamp())
 
             try:
                 portfolio_allocations = []
                 for item in realized_allocation:
-                    portfolio_allocations.append(Allocation(amount=item['amount'], asset=item['coin'],
+                    portfolio_allocations.append(Allocation(amount=item['amount'] if item['coin'] != 'USDT' else item['amount']*1E8, asset=item['coin'],
                                                             portion=item['portion'], timestamp=timestamp,
                                                             db_interface=self._db_interface,
                                                             counter_currency=self._counter_currency))
@@ -477,9 +482,17 @@ class RealDogeTradingBacktester(PortfolioBacktester):
                                                        counter_currency=self._counter_currency,
                                                        load_from_json=False)
                 self._portfolio_snapshots[timestamp] = portfolio_snapshot
+                logging.info(f'Created snapshot at {timestamp}')
 
             except Exception as e:
                 logging.error(f'{str(e)}, skipping snapshot at {allocation._timestamp}...')
+
+
+    def _get_next_snapshot(self, current_snapshot, timestamp, previous_snapshot):
+        if timestamp in self._portfolio_snapshots:
+            return self._portfolio_snapshots[timestamp]    # we have a rebalancing checkpoint here
+        else:
+            return None   # no real data, just continue...
 
 
 from apps.portfolio.services.doge_votes import get_allocations_from_doge, NoCommitteeVotesFoundException
@@ -494,6 +507,7 @@ class DogeRebalancingBacktester(PortfolioBacktester):
         self._start_value_of_portfolio = start_value_of_portfolio
         self._init_held_assets()
         super().__init__(*args, **kwargs)
+
 
     def _build_portfolio_snapshots(self):
         from apps.backtesting.utils import datetime_from_timestamp
@@ -570,8 +584,6 @@ class DummyDataProvider:
         start_time = datetime_to_timestamp('2019/03/26 01:35:00 UTC')    ### TODO!!! figure out time shifts
         end_time = datetime_to_timestamp('2019/04/06 23:35:00 UTC')
 
-        start_time = datetime_to_timestamp('2019/07/01 10:35:00 UTC')  ### TODO!!! figure out time shifts
-        end_time = datetime_to_timestamp('2019/07/14 13:35:00 UTC')
 
         from apps.backtesting.rebalancing.backtester_portfolio import RealDogeTradingBacktester
         from apps.backtesting.data_sources import DB_INTERFACE
@@ -580,8 +592,9 @@ class DummyDataProvider:
         # import os
         # os.environ.setdefault("DJANGO_SETTINGS_MODULE", "web.settings")
 
-        start_time = datetime_to_timestamp('2019/01/01 10:35:00 UTC')  ### TODO!!! figure out time shifts
-        end_time = datetime_to_timestamp('2019/07/14 13:35:00 UTC')
+
+        start_time = datetime_to_timestamp('2019/07/12 10:35:00 UTC')  ### TODO!!! figure out time shifts
+        end_time = datetime_to_timestamp('2019/07/16 13:35:00 UTC')
 
         print(start_time)
         print(end_time)

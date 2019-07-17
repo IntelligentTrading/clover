@@ -38,9 +38,10 @@ class Allocation:
                                                             counter_currency='USDT',
                                                             db_interface=db_interface)
         else:
-            self.unit_price_usdt = unit_price
+            self.unit_price_usdt = self.unit_price
 
         self.value_usdt = self.amount * self.unit_price_usdt if self.unit_price_usdt is not None else None
+        return
 
 
     def to_dict(self, prefix=''):
